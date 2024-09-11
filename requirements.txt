@@ -1,0 +1,10 @@
+boto3
+sagemaker
+supabase
+python-dotenv
+requests
+beautifulsoup4
+pytest
+python-dotenv
+streamlit
+requests_aws4auth
