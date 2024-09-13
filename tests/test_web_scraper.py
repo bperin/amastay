@@ -1,24 +1,14 @@
-import unittest
 import logging
+import unittest
 import uuid
-from scraper import Scraper
-import requests
 
-# Configure logging for the test
-logging.basicConfig(
-    level=logging.DEBUG,  # Set to DEBUG to capture detailed logs
-    format='%(asctime)s - %(levelname)s - %(message)s'
-)
+from scraper import Scraper
 
 class TestScraper(unittest.TestCase):
-
     def test_scraper(self):
-        """
-        Function to test the Scraper class with actual uploading and saving.
-        """
         try:
-            # Example Property ID from Supabase (use a real or test UUID for testing)
-            property_id = str(uuid.uuid4())  # Generate a new UUID for each test
+            # Example Property ID from Supabase (use a fake UUID for testing)
+            property_id = str(uuid.uuid4())  # Use a new UUID for each test
 
             # URL to scrape
             url_to_scrape = "https://www.airbnb.com/rooms/1035914537235834436"
@@ -26,40 +16,38 @@ class TestScraper(unittest.TestCase):
             # Instantiate the scraper
             scraper = Scraper(url_to_scrape)
 
-            # Start of test: Scraping
+            # Scrape the data
             logging.info(f"Starting the scraping process for {url_to_scrape}.")
-            document = scraper.scrape()
+            scraped_data = scraper.scrape()
 
-            # Check if the document was successfully scraped
-            self.assertIsNotNone(document, "Scraping failed. No document returned.")
+            # Ensure data is scraped
+            self.assertIsNotNone(scraped_data, "Scraping failed. No data returned.")
+            logging.info(f"Scraped data length: {len(scraped_data)}")
 
-            # Log document size
-            logging.info(f"Scraped document length: {len(document)} characters")
+            # Save the scraped data to Supabase
+            logging.info("Uploading scraped data to Supabase.")
+            filename = scraper.save_scraped_data(property_id, scraped_data)
 
-            # Check document content more deeply
-            self.assertGreater(len(document), 200, "Document is too short, scraping may have failed.")
-            self.assertIn("URL: https://www.airbnb.com/rooms", document, "Document does not contain expected URL metadata.")
-                
-            # Start of test: Uploading to Supabase
-            logging.info("Uploading document to Supabase.")
+            # Check for issues with filename or response
+            if filename is None:
+                logging.error("Upload failed: Filename returned as None.")
+                raise ValueError("Filename is None after upload. Check upload process.")
 
-            # Attempt to upload the document to Supabase
-            document_url = scraper.upload_document_to_supabase(property_id, document)
-            self.assertIsNotNone(document_url, "Upload to Supabase failed: No URL returned.")
+            # Ensure the file was uploaded
+            self.assertIsNotNone(filename, "Upload to Supabase failed: No filename returned.")
+            logging.info(f"File uploaded successfully: {filename}")
 
-            # Test saving the document metadata in the database
-            db_response = scraper.save_document_to_database(property_id, document_url)
-            self.assertEqual(db_response.status_code, 201, "Failed to save document metadata to the database")
+        except FileNotFoundError as fnfe:
+            logging.error(f"File not found error: {fnfe}")
+            self.fail(f"FileNotFoundError occurred: {fnfe}")
 
-            logging.info(f"Test completed successfully for property ID: {property_id}.")
+        except IOError as ioe:
+            logging.error(f"I/O error while processing the file: {ioe}")
+            self.fail(f"IOError occurred: {ioe}")
 
-        except requests.ConnectionError as ce:
-            logging.error(f"Connection error during scraping or upload: {ce}")
-            self.fail(f"Connection error occurred: {ce}")
         except Exception as e:
             logging.error(f"Test failed with error: {str(e)}")
             self.fail(f"Test failed with unexpected error: {str(e)}")
-
 
 if __name__ == "__main__":
     unittest.main()

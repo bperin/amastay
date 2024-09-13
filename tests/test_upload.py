@@ -1,40 +1,55 @@
-# import logging
-# from utils import supabase
-# import io
-# import tempfile
-# import os
+import logging
+from utils import supabase
+import io
+import tempfile
+import os
 
-# # Configure logging
-# logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
+# Configure logging
+logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 
-# # Create an in-memory file-like object with 'Test content'
-# file_content = io.BytesIO(b'Test content')
+# Create an in-memory file-like object with 'Test content'
+file_content = io.BytesIO(b'Test content')
 
-# try:
-#     # Create a temporary file and write the in-memory content to it
-#     with tempfile.NamedTemporaryFile(delete=False) as temp_file:
-#         temp_file.write(file_content.getvalue())  # Write in-memory content to the file
-#         temp_file.seek(0)  # Move the cursor back to the beginning of the file
-#         temp_file_path = temp_file.name
+try:
+    # Create a temporary file and write the in-memory content to it
+    with tempfile.NamedTemporaryFile(delete=False) as temp_file:
+        temp_file.write(file_content.getvalue())  # Write in-memory content to the file
+        temp_file.seek(0)  # Move the cursor back to the beginning of the file
+        temp_file_path = temp_file.name
 
-#     # Test Supabase storage upload by uploading the temporary file
-#     response = supabase.storage.from_('properties').upload('test.txt', temp_file_path)
+    # Generate a unique filename to avoid collisions
+    filename = 'test_file_' + next(tempfile._get_candidate_names()) + '.txt'
 
-#     # Check upload response
-#     if response:
-#         logging.info("Test document uploaded successfully.")
-#         print("Test document uploaded successfully.")
-#     else:
-#         logging.error("Failed to upload test document.")
-#         print("Failed to upload test document.")
+    # Test Supabase storage upload by uploading the temporary file
+    logging.info(f"Uploading file: {filename}")
+    response = supabase.storage.from_('properties').upload(filename, temp_file_path)
+
+    # Check upload response
+    if response:
+        logging.info(f"File '{filename}' uploaded successfully.")
+        print(f"File '{filename}' uploaded successfully.")
         
-# except Exception as e:
-#     logging.error(f"An error occurred during the upload: {str(e)}")
-#     print(f"An error occurred during the upload: {str(e)}")
+        # Now test the deletion process
+        delete_response = supabase.storage.from_('properties').remove([filename])
 
-# finally:
-#     # Cleanup: Remove the temporary file
-#     if os.path.exists(temp_file_path):
-#         os.remove(temp_file_path)
-#         logging.info("Temporary file deleted.")
-#         print("Temporary file deleted.")
+        if delete_response:
+            logging.info(f"File '{filename}' deleted successfully.")
+            print(f"File '{filename}' deleted successfully.")
+        else:
+            logging.error(f"Failed to delete file '{filename}'.")
+            print(f"Failed to delete file '{filename}'.")
+
+    else:
+        logging.error(f"Failed to upload file '{filename}'.")
+        print(f"Failed to upload file '{filename}'.")
+
+except Exception as e:
+    logging.error(f"An error occurred during the upload or deletion: {str(e)}")
+    print(f"An error occurred during the upload or deletion: {str(e)}")
+
+finally:
+    # Cleanup: Remove the temporary local file
+    if os.path.exists(temp_file_path):
+        os.remove(temp_file_path)
+        logging.info(f"Temporary file '{temp_file_path}' deleted.")
+        print(f"Temporary file '{temp_file_path}' deleted.")
