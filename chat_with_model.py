@@ -1,74 +1,58 @@
 import json
+from flask import jsonify
 import boto3
-from create_conversation import create_or_get_conversation
-from get_renter_info import get_renter_info
-from get_property_info import get_property_info
-from get_message_history import get_message_history
+import os
+
+# Load AWS credentials and SageMaker endpoint from environment variables
+SAGEMAKER_ENDPOINT = os.getenv('SAGEMAKER_ENDPOINT')
 
 # Initialize the SageMaker runtime client
 sagemaker_runtime = boto3.client('sagemaker-runtime')
 
-# Function to call the SageMaker model
-def invoke_model(payload: str) -> str:
+def query_model(user_input: str) -> str:
+    """
+    Sends the user's input to the SageMaker model and returns the model's response.
+    """
+    payload = {
+        "inputs": user_input
+    }
+    
     try:
+        # Call the SageMaker endpoint
         response = sagemaker_runtime.invoke_endpoint(
-            EndpointName='amastay',  # Replace with your actual endpoint name
+            EndpointName=SAGEMAKER_ENDPOINT,
             ContentType='application/json',
-            Body=payload
+            Body=json.dumps(payload)
         )
+        
+        # Decode the response body
         response_body = response['Body'].read().decode('utf-8')
         model_response = json.loads(response_body)
 
-        # Extract the generated text from the model's response
-        generated_text = model_response.get('generated_text', "No response received.")
-        return generated_text
+        # Handle response, checking if it's a list or dict
+        if isinstance(model_response, list):
+            # If the response is a list, process the first element
+            return model_response[0].get('generated_text', 'No response received.')
+        elif isinstance(model_response, dict):
+            # If the response is a dict, process it as expected
+            return model_response.get('generated_text', 'No response received.')
+        else:
+            return "Unexpected response format received."
 
     except Exception as e:
         return f"Error occurred while invoking the model: {str(e)}"
 
-# Function to manage the SMS-based interaction with the AI model
-def process_sms_message(booking_id: int, property_id: int, user_input: str):
-    # Step 1: Create or fetch the conversation using booking_id and property_id
-    conversation = create_or_get_conversation(booking_id, property_id)
-    
-    if not conversation:
-        print("Failed to create or retrieve conversation.")
-        return "Error: No conversation found."
+def handle_chat(request):
+    """
+    Handles the chat request and returns the AI response.
+    """
+    data = request.get_json()
+    prompt = data.get('message', '')
 
-    conversation_id = conversation['id']
+    if not prompt:
+        return jsonify({"error": "No message provided"}), 400
 
-    # Step 2: Fetch renter info and property info
-    renter_info = get_renter_info(conversation['booking_id'])
-    property_info = get_property_info(conversation['property_id'])
+    # Query the model with the user's input
+    ai_response = query_model(prompt)
 
-    # Step 3: Fetch recent message history
-    message_history = get_message_history(conversation_id, limit=10)
-
-    # Create the payload for the model
-    context = {
-        "roles": {
-            "renter": renter_info,
-            "ai": {"role": "AI Assistant"}
-        },
-        "property": property_info,
-        "message_history": message_history,
-        "user_input": user_input
-    }
-    input_payload = json.dumps(context)
-
-    # Step 4: Invoke the model and get the response
-    model_response = invoke_model(input_payload)
-
-    # Step 5: Log the AI response in the conversation history (optional)
-    # save_message_to_history(conversation_id, model_response, "AI")
-
-    return model_response
-
-# Example usage
-if __name__ == "__main__":
-    booking_id = 1
-    property_id = 1
-    user_input = "Can I bring my pet?"
-
-    ai_response = process_sms_message(booking_id, property_id, user_input)
-    print(f"AI Response: {ai_response}")
+    return jsonify({"response": ai_response})

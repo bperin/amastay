@@ -1,14 +1,9 @@
 import logging
-import requests
 import time
-import random
 from bs4 import BeautifulSoup
-from datetime import datetime
-import uuid
 from selenium import webdriver
 from selenium.webdriver.chrome.options import Options
-from urllib.parse import urlparse
-from utils import supabase  # Import Supabase client from utils.py
+from utils import supabase
 import tempfile
 import os
 
@@ -26,115 +21,78 @@ class Scraper:
     def __init__(self, url):
         self.url = url
         self.driver = None
-        self.headers_list = self.get_headers_list()
-        self.current_header_index = 0
 
     def init_selenium(self):
+        """Initialize the Selenium WebDriver with options."""
         options = Options()
         options.headless = True
         options.add_argument("--no-sandbox")
         options.add_argument("--disable-dev-shm-usage")
+        options.add_argument("start-maximized")
+        options.add_argument("disable-infobars")
+        options.add_argument("--disable-extensions")
 
-        headers = self.get_next_header()
-        options.add_experimental_option("excludeSwitches", ["enable-logging"])
-        options.add_argument(f"user-agent={headers['User-Agent']}")
-
+        # Initialize the Chrome driver (Make sure chromedriver is installed)
         self.driver = webdriver.Chrome(options=options)
 
-    def scrape_search_results(self):
-        self.init_selenium()
-        logging.info(f"Starting Selenium scrape for Search Results")
-        try:
-            self.driver.get(self.url)
-            time.sleep(5)  # Adjust this timeout as needed
+    def filter_content(self, soup):
+        """Filter out unwanted content such as headers, footers, and navigation elements."""
+        # Remove irrelevant tags
+        for tag in soup(['script', 'style', 'header', 'footer', 'nav', 'aside']):
+            tag.decompose()
 
-            # Simulate scrolling behavior
-            for _ in range(4):
-                self.driver.execute_script("window.scrollBy(0, 1000);")
-                sleep_time = random.uniform(2, 3)
-                logging.info(f"Simulating scroll and sleeping for {sleep_time:.2f} seconds")
-                time.sleep(sleep_time)
+        # Extract meaningful text
+        text = soup.get_text(separator='\n', strip=True)
 
-            # Extract data from the loaded page
-            soup = BeautifulSoup(self.driver.page_source, 'html.parser')
-            search_results = []
-            for result in soup.find_all('div', class_='search-result'):
-                title = result.find('h2').text.strip()
-                description = result.find('p').text.strip()
-                search_results.append({'title': title, 'description': description})
-
-            logging.info(f"Extracted {len(search_results)} search results")
-            return search_results if search_results else "No search results found."
-
-        except Exception as e:
-            logging.error(f"Error during scraping: {e}")
-            return None
+        # Post-process the text to remove excessive newlines and white spaces
+        lines = [line.strip() for line in text.splitlines() if line.strip()]
+        clean_text = '\n'.join(lines)
+        return clean_text
 
     def scrape(self):
+        """Scrape content from the page using Selenium to render it."""
         self.init_selenium()
         logging.info(f"Starting Selenium scrape for URL: {self.url}")
+
         try:
-            data = self.scrape_search_results()  # Use the new method
-            if data is not None:
-                return data
-            else:
-                raise Exception("Failed to extract search results")
+            # Load the page and let it render
+            self.driver.get(self.url)
+            time.sleep(5)  # Adjust sleep time to allow the page to load fully
+
+            # Get the page source and parse it with BeautifulSoup
+            page_source = self.driver.page_source
+            soup = BeautifulSoup(page_source, 'html.parser')
+
+            # Filter the content to remove unnecessary parts
+            filtered_text = self.filter_content(soup)
+            logging.info(f"Filtered document length: {len(filtered_text)} characters")
+
+            return filtered_text if filtered_text else "No content found"
         except Exception as e:
             logging.error(f"Error during scraping: {e}")
             return None
+        finally:
+            if self.driver:
+                self.driver.quit()
 
     def save_scraped_data(self, property_id, scraped_data):
-        """
-        Saves the scraped data to a file and uploads it to Supabase.
-        Converts lists into strings if needed.
-        """
-        if isinstance(scraped_data, list):
-            scraped_data = '\n'.join([f"Title: {item['title']}\nDescription: {item['description']}" for item in scraped_data])
-
-        # Create a temporary file and write the scraped data to it
+        """Save scraped data as a text file to Supabase."""
+        filename = f"{property_id}_{int(time.time())}.txt"
         try:
             with tempfile.NamedTemporaryFile(delete=False) as temp_file:
-                temp_file.write(scraped_data.encode('utf-8'))  # Write data as bytes
+                temp_file.write(scraped_data.encode('utf-8'))
                 temp_file_path = temp_file.name
 
-            # Generate filename
-            filename = f"{property_id}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.txt"
+            # Upload to Supabase
             response = supabase.storage.from_('properties').upload(filename, temp_file_path)
 
             if response:
                 logging.info(f"Document uploaded successfully as {filename}")
+                os.remove(temp_file_path)  # Clean up temp file
                 return filename
             else:
-                logging.error(f"Failed to upload document: {response}")
+                logging.error(f"Failed to upload document to Supabase.")
                 return None
-
         except Exception as e:
-            logging.error(f"Error saving scraped data to Supabase: {e}")
+            logging.error(f"Error uploading document: {e}")
             return None
-
-        finally:
-            # Cleanup temporary file
-            if os.path.exists(temp_file_path):
-                os.remove(temp_file_path)
-                logging.info(f"Temporary file '{temp_file_path}' deleted.")
-
-    def get_next_header(self):
-        headers = self.headers_list[self.current_header_index]
-        self.current_header_index = (self.current_header_index + 1) % len(self.headers_list)
-        return headers
-
-    def get_headers_list(self):
-        return [
-            {
-                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/74.0.3729.169 Safari/537.3',
-                'Accept-Language': 'en-US,en;q=0.9'
-            },
-            {
-                'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',
-                'Accept-Language': 'en-US,en;q=0.9'
-            },
-            {
-                'User-Agent': 'Mozilla/5.0 (iPhone; CPU iPhone OS 13_2_3 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/13.0.3 Mobile/15E148 Safari/604.1',
-                'Accept-Language': 'en-US,en;q=0.9'
-            }
-        ]
