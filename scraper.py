@@ -3,18 +3,24 @@ import time
 import random
 from bs4 import BeautifulSoup
 from datetime import datetime
-from supabase import create_client
-import os
+import uuid
+import logging
+from urllib.parse import urlparse  # To parse the domain from URL
+from utils import supabase  # Import Supabase client from utils.py
+
+# Configure logging
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(levelname)s - %(message)s',
+    handlers=[
+        logging.FileHandler("scraper.log"),
+        logging.StreamHandler()
+    ]
+)
 
 class Scraper:
-    def __init__(self, url, property_id):
+    def __init__(self, url):
         self.url = url
-        self.property_id = property_id  # Foreign key from the properties table
-
-        # Initialize Supabase client (assumes environment variables are set)
-        self.supabase_url = os.getenv('SUPABASE_URL')
-        self.supabase_key = os.getenv('SUPABASE_KEY')
-        self.supabase = create_client(self.supabase_url, self.supabase_key)
 
     def scrape(self):
         """
@@ -22,37 +28,43 @@ class Scraper:
         Stops once one method succeeds and returns the plain text content with metadata.
         """
         headers_list = self.get_headers_list()
-        
+
+        logging.info(f"Starting scrape for URL: {self.url}")
+
         for i, headers in enumerate(headers_list):
             try:
-                print(f"Trying method {i+1} with headers: {headers['User-Agent']}")
+                logging.info(f"Trying method {i+1} with headers: {headers['User-Agent']}")
                 response = self.fetch_data(headers)
 
                 if response and response.status_code == 200:
-                    print(f"Success on method {i+1}! Status code: {response.status_code}")
+                    logging.info(f"Success on method {i+1}! Status code: {response.status_code}")
                     document = self.create_document(response)
-                    self.upload_document_to_supabase(document)
+                    logging.debug(f"Scraped content (first 200 characters): {document[:200]}...")
                     return document
                 else:
-                    print(f"Method {i+1} failed. Status code: {response.status_code if response else 'No response'}")
-            
+                    logging.warning(f"Method {i+1} failed. Status code: {response.status_code if response else 'No response'}")
+
             except Exception as e:
-                print(f"Error on method {i+1}: {str(e)}")
+                logging.error(f"Error on method {i+1}: {str(e)}")
 
             # Random delay to avoid detection
             sleep_time = random.uniform(2, 5)
-            print(f"Waiting for {sleep_time:.2f} seconds before next attempt...\n")
+            logging.info(f"Waiting for {sleep_time:.2f} seconds before next attempt...\n")
             time.sleep(sleep_time)
 
-        print("All methods failed.")
+        logging.error("All methods failed.")
         return None
 
     def fetch_data(self, headers):
         """
         Fetches the webpage using the provided headers.
         """
-        response = requests.get(self.url, headers=headers)
-        return response
+        try:
+            response = requests.get(self.url, headers=headers)
+            return response
+        except requests.RequestException as e:
+            logging.error(f"Error fetching data: {e}")
+            return None
 
     def create_document(self, response):
         """
@@ -61,26 +73,61 @@ class Scraper:
         soup = BeautifulSoup(response.content, 'html.parser')
         plain_text = soup.get_text(separator="\n", strip=True)  # Get all text with line breaks
 
-        # Create a plain text document with metadata (property ID, URL, and timestamp)
-        document = f"Property ID: {self.property_id}\nURL: {self.url}\nScraped on: {datetime.now()}\n\n{plain_text}"
+        # Create a plain text document with metadata
+        document = f"URL: {self.url}\nScraped on: {datetime.now()}\n\n{plain_text}"
+        logging.info(f"Created document with {len(document)} characters.")
         return document
 
-    def upload_document_to_supabase(self, document):
+    def generate_filename(self, property_id):
         """
-        Uploads the scraped document to the Supabase table.
+        Generates a unique filename based on the property ID, URL, and timestamp.
+        """
+        parsed_url = urlparse(self.url)
+        domain = parsed_url.netloc.replace('.', '_')  # Replace dots with underscores in domain
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")  # Format the current timestamp
+
+        # Construct a unique filename: property_id + domain + timestamp
+        filename = f"{property_id}_{domain}_{timestamp}.txt"
+        return filename
+
+    def upload_document_to_supabase(self, property_id, document):
+        """
+        Uploads the scraped document to the Supabase bucket 'properties'.
         """
         data = {
-            'property_id': self.property_id,
+            'id': str(uuid.uuid4()),  # New UUID for the document
+            'foreign_id': property_id,  # Property UUID (foreign key)
             'url': self.url,
-            'scraped_data': document,
+            'scraped_data': document,  # Store the scraped data in the database
             'timestamp': str(datetime.now())
         }
 
-        response = self.supabase.from_('scraped_documents').insert(data).execute()
-        if response.status_code == 201:
-            print("Document uploaded successfully to Supabase.")
-        else:
-            print(f"Failed to upload document: {response.status_code}")
+        try:
+            # Generate a unique filename for each document
+            filename = self.generate_filename(property_id)
+
+            # Upload document to the 'properties' bucket in Supabase
+            response = supabase.storage.from_('properties').upload(filename, document)
+
+            if response:
+                logging.info(f"Document uploaded successfully to Supabase with filename: {filename}. Property ID: {property_id}")
+            else:
+                logging.error(f"Failed to upload document to Supabase. Response: {response}")
+
+        except Exception as e:
+            logging.error(f"Failed to upload document to Supabase: {str(e)}")
+
+        # Insert metadata into the database table
+        try:
+            db_response = supabase.from_('scraped_documents').insert(data).execute()
+            if db_response.status_code == 201:
+                logging.info(f"Document metadata inserted successfully. Property ID: {property_id}")
+            else:
+                logging.error(f"Failed to insert document metadata: {db_response.status_code}. Error: {db_response.json()}")
+        except Exception as e:
+            logging.error(f"Failed to insert document metadata into Supabase: {str(e)}")
+
+        return response
 
     def get_headers_list(self):
         """

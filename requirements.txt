@@ -8,3 +8,5 @@ pytest
 python-dotenv
 streamlit
 requests_aws4auth
+flask
+flask_cors

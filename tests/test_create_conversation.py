@@ -1,6 +1,6 @@
 # tests/test_create_conversation.py
 import unittest
-from unittest.mock import patch, MagicMock
+from unittest.mock import patch
 from create_conversation import create_or_get_conversation
 import uuid
 
