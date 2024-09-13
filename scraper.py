@@ -5,12 +5,14 @@ from bs4 import BeautifulSoup
 from datetime import datetime
 import uuid
 import logging
-from urllib.parse import urlparse  # To parse the domain from URL
+import os
+import tempfile
+from urllib.parse import urlparse
 from utils import supabase  # Import Supabase client from utils.py
 
 # Configure logging
 logging.basicConfig(
-    level=logging.INFO,
+    level=logging.DEBUG,
     format='%(asctime)s - %(levelname)s - %(message)s',
     handlers=[
         logging.FileHandler("scraper.log"),
@@ -24,8 +26,7 @@ class Scraper:
 
     def scrape(self):
         """
-        Tries multiple scraping methods (different headers, User-Agents).
-        Stops once one method succeeds and returns the plain text content with metadata.
+        Scrape the webpage content from the URL.
         """
         headers_list = self.get_headers_list()
 
@@ -33,7 +34,7 @@ class Scraper:
 
         for i, headers in enumerate(headers_list):
             try:
-                logging.info(f"Trying method {i+1} with headers: {headers['User-Agent']}")
+                logging.debug(f"Trying method {i+1} with headers: {headers['User-Agent']}")
                 response = self.fetch_data(headers)
 
                 if response and response.status_code == 200:
@@ -43,11 +44,9 @@ class Scraper:
                     return document
                 else:
                     logging.warning(f"Method {i+1} failed. Status code: {response.status_code if response else 'No response'}")
-
             except Exception as e:
                 logging.error(f"Error on method {i+1}: {str(e)}")
 
-            # Random delay to avoid detection
             sleep_time = random.uniform(2, 5)
             logging.info(f"Waiting for {sleep_time:.2f} seconds before next attempt...\n")
             time.sleep(sleep_time)
@@ -60,7 +59,7 @@ class Scraper:
         Fetches the webpage using the provided headers.
         """
         try:
-            response = requests.get(self.url, headers=headers)
+            response = requests.get(self.url, headers=headers, timeout=10)
             return response
         except requests.RequestException as e:
             logging.error(f"Error fetching data: {e}")
@@ -71,68 +70,84 @@ class Scraper:
         Parses the webpage content, extracts plain text, and formats it into a document with metadata.
         """
         soup = BeautifulSoup(response.content, 'html.parser')
-        plain_text = soup.get_text(separator="\n", strip=True)  # Get all text with line breaks
+        plain_text = soup.get_text(separator="\n", strip=True)
 
         # Create a plain text document with metadata
         document = f"URL: {self.url}\nScraped on: {datetime.now()}\n\n{plain_text}"
         logging.info(f"Created document with {len(document)} characters.")
         return document
 
-    def generate_filename(self, property_id):
-        """
-        Generates a unique filename based on the property ID, URL, and timestamp.
-        """
-        parsed_url = urlparse(self.url)
-        domain = parsed_url.netloc.replace('.', '_')  # Replace dots with underscores in domain
-        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")  # Format the current timestamp
-
-        # Construct a unique filename: property_id + domain + timestamp
-        filename = f"{property_id}_{domain}_{timestamp}.txt"
-        return filename
-
     def upload_document_to_supabase(self, property_id, document):
         """
-        Uploads the scraped document to the Supabase bucket 'properties'.
+        Uploads the scraped document to Supabase storage.
+        """
+        filename = f"{property_id}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.txt"
+        temp_file_path = None  # Ensure temp_file_path is defined
+
+        try:
+            # Save the scraped content to a temporary file before uploading
+            with tempfile.NamedTemporaryFile(delete=False) as temp_file:
+                temp_file.write(document.encode())  # Write document content to file
+                temp_file.seek(0)  # Move the cursor back to the beginning of the file
+                temp_file_path = temp_file.name
+
+            # Upload the temporary file to Supabase storage
+            response = supabase.storage.from_('properties').upload(filename, temp_file_path)
+
+            # Check if the upload was successful
+            if response:
+                logging.info(f"Document uploaded successfully as {filename}")
+            else:
+                logging.error(f"Failed to upload document: {response}")
+            return response
+
+        except Exception as e:
+            logging.error(f"Error uploading document: {e}")
+            return None
+
+        finally:
+            # Cleanup: Remove the temporary file
+            if temp_file_path and os.path.exists(temp_file_path):
+                os.remove(temp_file_path)
+                logging.info("Temporary file deleted.")
+
+    def save_document_to_database(self, property_id, file_url):
+        """
+        Save metadata related to the scraped document to the database.
+        The document is stored as a file in Supabase, and this method
+        stores a reference to the file.
+        
+        :param property_id: UUID of the property
+        :param file_url: URL or pointer to the file in Supabase storage
         """
         data = {
-            'id': str(uuid.uuid4()),  # New UUID for the document
-            'foreign_id': property_id,  # Property UUID (foreign key)
+            'property_id': property_id,
             'url': self.url,
-            'scraped_data': document,  # Store the scraped data in the database
-            'timestamp': str(datetime.now())
+            'file_url': file_url,  # Pointer to the file in storage (instead of the full document)
+            'timestamp': str(datetime.now())  # Current timestamp
         }
 
+        logging.info("Inserting document metadata into the database.")
         try:
-            # Generate a unique filename for each document
-            filename = self.generate_filename(property_id)
+            # Insert the metadata (including the file URL) into the database
+            response = supabase.from_('scraped_documents').insert(data).execute()
 
-            # Upload document to the 'properties' bucket in Supabase
-            response = supabase.storage.from_('properties').upload(filename, document)
-
-            if response:
-                logging.info(f"Document uploaded successfully to Supabase with filename: {filename}. Property ID: {property_id}")
+            # Check if the insert was successful
+            if response.status_code == 201:
+                logging.info(f"Document metadata inserted successfully for Property ID: {property_id}")
             else:
-                logging.error(f"Failed to upload document to Supabase. Response: {response}")
-
+                logging.error(f"Failed to insert document metadata: {response.status_code}")
+            return response
         except Exception as e:
-            logging.error(f"Failed to upload document to Supabase: {str(e)}")
+            logging.error(f"Error inserting document metadata: {e}")
+            return None
 
-        # Insert metadata into the database table
-        try:
-            db_response = supabase.from_('scraped_documents').insert(data).execute()
-            if db_response.status_code == 201:
-                logging.info(f"Document metadata inserted successfully. Property ID: {property_id}")
-            else:
-                logging.error(f"Failed to insert document metadata: {db_response.status_code}. Error: {db_response.json()}")
-        except Exception as e:
-            logging.error(f"Failed to insert document metadata into Supabase: {str(e)}")
-
-        return response
 
     def get_headers_list(self):
         """
-        Returns a list of different headers (User-Agents) to try.
+        Returns a list of different headers (User-Agents) to try for the requests.
         """
+        logging.debug("Generating list of headers for scraping.")
         return [
             {
                 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/58.0.3029.110 Safari/537.3',
@@ -154,9 +169,5 @@ class Scraper:
                 'Accept-Language': 'en-US,en;q=0.9',
                 'Referer': 'https://www.airbnb.com/',
             },
-            {
-                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/58.0.3029.110 Safari/537.3',
-                'Accept-Language': 'en-US,en;q=0.9',
-                'Referer': '',
-            }
         ]
+

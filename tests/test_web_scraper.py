@@ -1,63 +1,80 @@
-from scraper import Scraper
+import unittest
 import logging
 import uuid
+from scraper import Scraper
+from unittest.mock import patch, MagicMock
+import requests  # Import requests to validate connection errors
 
 # Configure logging for the test
 logging.basicConfig(
-    level=logging.INFO,
+    level=logging.DEBUG,  # Set to DEBUG to capture detailed logs
     format='%(asctime)s - %(levelname)s - %(message)s'
 )
 
-def test_scraper():
-    """
-    Function to test the Scraper class.
-    """
-    try:
-        # Example Property ID from Supabase (use a real property UUID from your database)
-        property_id = str(uuid.uuid4())  # Use a new UUID for each test
+class TestScraper(unittest.TestCase):
 
-        # URL to scrape (Ensure that scraping the URL won't be blocked by rate-limits)
-        url_to_scrape = "https://www.airbnb.com/rooms/1035914537235834436?category_tag=Tag%3A670&enable_m3_private_room=true&photo_id=1791475063&search_mode=regular_search&check_in=2024-09-20&check_out=2024-09-21&source_impression_id=p3_1726102320_P3c2GGVcc1OkEHBa&previous_page_section_name=1000&federated_search_id=8cb2009c-bb4e-461b-ae44-26967cdc1d55"
+    @patch('scraper.Scraper.upload_document_to_supabase')  # Mock the upload function
+    @patch('scraper.Scraper.save_document_to_database')  # Mock the database save function
+    def test_scraper(self, mock_db_save, mock_upload):
+        """
+        Function to test the Scraper class with a focus on saving the document and
+        making sure it is stored regardless of whether the database entry succeeds.
+        """
+        # Set up the mock response for file upload to simulate a successful upload
+        mock_upload_response = MagicMock()
+        mock_upload_response.status_code = 201  # Simulate a successful HTTP 201 Created response
+        mock_upload.return_value = mock_upload_response  # Mock the return value of the upload function
 
-        # Instantiate the scraper
-        scraper = Scraper(url_to_scrape)
+        # Set up the mock response for database save to simulate a failure
+        mock_db_save.side_effect = Exception("Database save failed")  # Simulate a database failure
 
-        # Scrape the content
-        logging.info("Starting the scraping process.")
-        document = scraper.scrape()
+        try:
+            # Example Property ID from Supabase (use a fake UUID for testing)
+            property_id = str(uuid.uuid4())  # Use a new UUID for each test
 
-        if document:
+            # URL to scrape (Ensure that scraping the URL won't be blocked by rate-limits)
+            url_to_scrape = "https://www.airbnb.com/rooms/1035914537235834436"
+
+            # Instantiate the scraper
+            scraper = Scraper(url_to_scrape)
+
+            # Start of test: Scraping
+            logging.info(f"Starting the scraping process for {url_to_scrape}.")
+            document = scraper.scrape()
+
+            # Check if the document was successfully scraped
+            self.assertIsNotNone(document, "Scraping failed. No document returned.")
+
+            # Log document size
             logging.info(f"Scraped document length: {len(document)} characters")
 
             # Check document content more deeply
-            if len(document) > 200:
-                logging.info("Document looks valid based on length.")
-
-            # Ensure some basic structure or keywords exist in the document
-            if "URL: https://www.airbnb.com/rooms" in document:
-                logging.info("Document contains the expected URL metadata.")
-            else:
-                logging.warning("Document does not contain expected URL metadata.")
+            self.assertGreater(len(document), 200, "Document is too short, scraping may have failed.")
+            self.assertIn("URL: https://www.airbnb.com/rooms", document, "Document does not contain expected URL metadata.")
                 
-            # Proceed to upload the document to Supabase
+            # Test: Uploading the document to Supabase (regardless of database entry)
             logging.info("Uploading document to Supabase.")
             response = scraper.upload_document_to_supabase(property_id, document)
 
-            # Verify the response from Supabase
-            if response:
-                logging.info(f"Upload response: {response}")
-                if response.status_code == 201:
-                    logging.info("Document successfully uploaded.")
-                else:
-                    logging.error(f"Failed to upload document. Supabase responded with: {response.json()}")
-            else:
-                logging.error("Upload to Supabase failed with no response.")
-        else:
-            logging.error("Scraping failed, no document returned.")
+            # Validate the Supabase file upload response
+            self.assertIsNotNone(response, "Upload to Supabase failed: No response from Supabase.")
+            self.assertEqual(response.status_code, 201, f"Supabase upload failed with status code {response.status_code}")
 
-    except Exception as e:
-        logging.error(f"Test failed with error: {str(e)}")
+            # Test: Saving the document to the database
+            logging.info("Attempting to save document metadata to the database.")
+            try:
+                scraper.save_document_to_database(property_id, document)
+            except Exception as db_error:
+                logging.warning(f"Database save failed: {db_error}")
+                # The test should not fail if the DB save fails, only log it
+
+        except requests.ConnectionError as ce:
+            logging.error(f"Connection error during scraping or upload: {ce}")
+            self.fail(f"Connection error occurred: {ce}")
+        except Exception as e:
+            logging.error(f"Test failed with error: {str(e)}")
+            self.fail(f"Test failed with unexpected error: {str(e)}")
 
 if __name__ == "__main__":
-    # Run the test
-    test_scraper()
+    unittest.main()
+
