@@ -12,4 +12,3 @@ flask
 flask_cors
 selenium
 furl
-
