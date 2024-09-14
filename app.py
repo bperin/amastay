@@ -17,6 +17,13 @@ def chat():
 def process_sms():
     return handle_sms_request()
 
+@app.route('/hello', methods=['GET'])
+def hello():
+    return "world"
+
+@app.route('/health', methods=['GET'])
+def process_health():
+    return jsonify(status="OK"), 200
 
 if __name__ == "__main__":
     app.run(debug=True)
