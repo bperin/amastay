@@ -1,5 +1,5 @@
 # get_message_history.py
-from utils import supabase
+import supabase
 from typing import List, Optional
 
 def get_message_history(conversation_id: int, limit: int = 10) -> Optional[List[dict]]:

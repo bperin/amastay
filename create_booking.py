@@ -1,5 +1,5 @@
 # create_booking.py
-from utils import supabase
+import supabase
 from typing import Optional
 
 def create_booking(renter_id: str, property_id: int, check_in_date: str, check_out_date: str) -> Optional[dict]:

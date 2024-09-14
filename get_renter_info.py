@@ -1,4 +1,4 @@
-from utils import supabase
+import supabase
 from typing import Optional
 
 def get_renter_info(booking_id: int) -> Optional[dict]:

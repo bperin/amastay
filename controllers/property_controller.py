@@ -1,22 +1,33 @@
 from flask import request, jsonify
-from services.property_service import create_property
+from services.property_service import PropertyService
 
-def handle_create_property():
-    """Handles the API request for creating a property."""
-    data = request.get_json()
+class PropertyController:
+    
+    @staticmethod
+    def  create_property(request):
+        try:
+            data = request.json
+            name = data.get('name')
+            address = data.get('address')
+            external_url = data.get('external_url')
 
-    # Get property details from the request body
-    name = data.get('name')
-    address = data.get('address')
-    external_url = data.get('external_url')
+            if not name or not address or not external_url:
+                return jsonify({"error": "Missing required fields"}), 400
 
-    if not name or not address or not external_url:
-        return jsonify({"error": "Missing required property information"}), 400
+            new_property = PropertyService.create_property(name, address, external_url)
 
-    # Call the service to create the property
-    new_property = create_property(name, address, external_url)
+            if new_property:
+                return jsonify(new_property), 201
+            else:
+                return jsonify({"error": "Failed to create property"}), 500
 
-    if new_property:
-        return jsonify({"message": "Property created successfully", "property": new_property}), 201
-    else:
-        return jsonify({"error": "Failed to create property"}), 500
+        except Exception as e:
+            return jsonify({"error": str(e)}), 500
+
+    @staticmethod
+    def get_properties():
+        try:
+            properties = PropertyService.get_properties()
+            return jsonify(properties), 200
+        except Exception as e:
+            return jsonify({"error": str(e)}), 500

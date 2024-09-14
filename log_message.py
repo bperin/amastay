@@ -1,4 +1,4 @@
-from utils import supabase
+import supabase
 from typing import Optional
 
 def log_message(conversation_id: int, sender_id: str, message_content: str, sender_type: str) -> Optional[dict]:

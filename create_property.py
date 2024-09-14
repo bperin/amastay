@@ -1,4 +1,4 @@
-from utils import supabase
+import supabase
 from typing import Optional
 
 def create_property(name: str, address: str, external_url: str) -> Optional[dict]:

@@ -1,5 +1,5 @@
 # create_user.py
-from utils import supabase
+import supabase
 from typing import Optional
 
 def create_or_get_user(phone_number: str, role: str = 'renter') -> Optional[dict]:

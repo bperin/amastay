@@ -1,5 +1,5 @@
 # create_conversation.py
-from utils import supabase
+import supabase
 from typing import Optional
 
 def create_or_get_conversation(booking_id: int, property_id: int) -> Optional[dict]:
