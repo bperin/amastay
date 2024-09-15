@@ -1,4 +1,4 @@
-import supabase
+import supabase_utils
 from typing import Optional
 
 def create_property(name: str, address: str, external_url: str) -> Optional[dict]:
@@ -12,7 +12,7 @@ def create_property(name: str, address: str, external_url: str) -> Optional[dict
     }
 
     # Insert property into the properties table
-    property_response = supabase.table('properties').insert(new_property_data).execute()
+    property_response = supabase_utils.table('properties').insert(new_property_data).execute()
     
     return property_response.data[0] if property_response.data else None
 

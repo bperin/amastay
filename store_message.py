@@ -1,4 +1,4 @@
-from utils import supabase
+from supabase_utils import supabase
 from datetime import datetime
 
 def store_message(conversation_id: int, content: str, direction: str) -> dict:

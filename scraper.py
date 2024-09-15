@@ -3,7 +3,7 @@ import time
 from bs4 import BeautifulSoup
 from selenium import webdriver
 from selenium.webdriver.chrome.options import Options
-from utils import supabase
+from supabase_utils import supabase_client
 import tempfile
 import os
 
@@ -84,7 +84,7 @@ class Scraper:
                 temp_file_path = temp_file.name
 
             # Upload to Supabase
-            response = supabase.storage.from_('properties').upload(filename, temp_file_path)
+            response = supabase_client.storage.from_('properties').upload(filename, temp_file_path)
 
             if response:
                 logging.info(f"Document uploaded successfully as {filename}")

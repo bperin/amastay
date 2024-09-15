@@ -1,3 +1,5 @@
+from supabase_utils import supabase_client
+
 def process_incoming_sms(phone_number: str, message: str) -> dict:
     """
     Process the incoming SMS message and prepare a response.

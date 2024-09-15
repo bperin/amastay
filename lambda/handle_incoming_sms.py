@@ -1,16 +1,12 @@
 import json
 import boto3
 import os
-from supabase import create_client
+from supabase_utils import create_client
 
 # Initialize the SageMaker runtime client and SNS client
 sagemaker_runtime = boto3.client('sagemaker-runtime')
 sns_client = boto3.client('sns')
 
-# Supabase client for querying bookings and property info
-supabase_url = os.getenv('SUPABASE_URL')
-supabase_key = os.getenv('SUPABASE_KEY')
-supabase = create_client(supabase_url, supabase_key)
 
 # Environment variables
 ENDPOINT_NAME = os.getenv('SAGEMAKER_ENDPOINT_NAME')  # SageMaker endpoint name

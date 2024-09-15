@@ -1,5 +1,5 @@
 # create_booking.py
-import supabase
+from supabase_utils import supabase_client
 from typing import Optional
 
 def create_booking(renter_id: str, property_id: int, check_in_date: str, check_out_date: str) -> Optional[dict]:
@@ -13,7 +13,7 @@ def create_booking(renter_id: str, property_id: int, check_in_date: str, check_o
     }
 
     # Insert booking into the bookings table
-    booking_response = supabase.table('bookings').insert(new_booking_data).execute()
+    booking_response = supabase_client.table('bookings').insert(new_booking_data).execute()
 
     return booking_response.data[0] if booking_response.data else None
 

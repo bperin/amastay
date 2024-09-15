@@ -2,19 +2,14 @@ import os
 import json
 import random
 import boto3
-from supabase import create_client
+from supabase_utils import supabase_client
+
 
 # Load AWS credentials for SageMaker and Supabase client from environment variables
 SAGEMAKER_ACCESS_KEY = os.getenv('SAGEMAKER_ACCESS_KEY')
 SAGEMAKER_SECRET_ACCESS_KEY = os.getenv('SAGEMAKER_SECRET_ACCESS_KEY')
 SAGEMAKER_ENDPOINT = os.getenv('SAGEMAKER_ENDPOINT')
 
-# Supabase credentials
-SUPABASE_URL = os.getenv('SUPABASE_URL')
-SUPABASE_KEY = os.getenv('SUPABASE_KEY')
-
-# Initialize Supabase client
-supabase = create_client(SUPABASE_URL, SUPABASE_KEY)
 
 # SageMaker runtime client
 sagemaker_runtime = boto3.client(
@@ -33,11 +28,11 @@ def get_booking_context(renter_id):
     """
     Fetch booking context for the given renter.
     """
-    response = supabase.from_('bookings').select('*').eq('renter_id', renter_id).execute()
+    response = supabase_client.from_('bookings').select('*').eq('renter_id', renter_id).execute()
     
     if response.data:
         booking = response.data[0]
-        property_response = supabase.from_('properties').select('*').eq('property_id', booking['property_id']).execute()
+        property_response = supabase_client.from_('properties').select('*').eq('property_id', booking['property_id']).execute()
         
         if property_response.data:
             property_data = property_response.data[0]
