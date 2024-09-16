@@ -1,6 +1,6 @@
 # tests/test_get_message_history.py
 import unittest
-from unittest.mock import patch, MagicMock
+from unittest.mock import patch
 from get_message_history import get_message_history
 
 class TestGetMessageHistory(unittest.TestCase):

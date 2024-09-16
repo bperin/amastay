@@ -1,6 +1,6 @@
 # tests/test_log_message.py
 import unittest
-from unittest.mock import patch, MagicMock
+from unittest.mock import patch
 from log_message import log_message
 
 class TestLogMessage(unittest.TestCase):

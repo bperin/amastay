@@ -1,15 +1,14 @@
 import logging
-from flask import Flask, request, jsonify
+from flask import Flask, request
 from flask_cors import CORS
+from flask_restx import Api, Resource
 from controllers.auth_controller import auth_bp  # Import the auth blueprint
 from controllers.property_controller import PropertyController
 from controllers.scrape_controller import handle_scrape
-from controllers.chat_controller import handle_chat
 from controllers.sms_controller import handle_sms_request
 from services.jwt_service import JwtService
 
 app = Flask(__name__)
-
 CORS(app)
 
 # Set up logging
@@ -18,39 +17,71 @@ file_handler = logging.FileHandler('app.log')
 file_handler.setLevel(logging.INFO)
 app.logger.addHandler(file_handler)
 
-# Register the auth blueprint with the URL prefix `/auth`
-app.register_blueprint(auth_bp, url_prefix='/auth')
+# Initialize Flask-RESTX API (Flask-RESTX, not RESTPlus)
+api = Api(app, version='1.0', title='Your API', description='A simple API')
 
-@app.route('/scrape', methods=['POST'])
-def scrape():
-    return handle_scrape(request)
+api = Api(app)
+ns = api.namespace('api/v1', description='Main API operations')
 
-@app.route('/chat', methods=['POST'])
-def chat():
-    return handle_chat(request)
+# Register routes as Flask-RESTX Resources
+@ns.route('/scrape')
+class ScrapeResource(Resource):
+    def post(self):
+        """Handles scraping"""
+        return handle_scrape(request)
 
-@app.route('/process_sms', methods=['POST'])
-def process_sms():
-    return handle_sms_request()
+@ns.route('/process_sms')
+class ProcessSMSResource(Resource):
+    def post(self):
+        """Handles SMS requests"""
+        return handle_sms_request()
 
-# Protect these endpoints using @JwtService.jwt_required decorator
+# Property management routes
 @app.route('/properties', methods=['POST'])
-@JwtService.jwt_required
 def create_property():
-    return PropertyController.create_property(request)
+    """
+    Route to create a new property and invoke the scraper if a URL is provided.
+    """
+    return PropertyController.create_property()
 
 @app.route('/properties', methods=['GET'])
-@JwtService.jwt_required
 def get_properties():
+    """
+    Route to fetch all properties.
+    """
     return PropertyController.get_properties()
 
-@app.route('/hello', methods=['GET'])
-def hello():
-    return "world"
+@app.route('/properties/<property_id>', methods=['PUT'])
+def update_property(property_id):
+    """
+    Route to update an existing property by property_id.
+    """
+    return PropertyController.update_property(property_id)
 
-@app.route('/health', methods=['GET'])
-def process_health():
-    return jsonify(status="OK"), 200
+@app.route('/properties/<property_id>', methods=['DELETE'])
+def delete_property(property_id):
+    """
+    Route to delete a property by property_id.
+    """
+    return PropertyController.delete_property(property_id)
+
+@ns.route('/hello')
+class HelloWorldResource(Resource):
+    def get(self):
+        """Says hello"""
+        return {"message": "world"}
+
+@ns.route('/health')
+class HealthResource(Resource):
+    def get(self):
+        """Checks API health"""
+        return {"status": "OK"}, 200  # Returning a dictionary instead of jsonify
+
+# Register the auth blueprint (assuming the auth routes are managed in auth_controller)
+app.register_blueprint(auth_bp, url_prefix='/api/v1/auth')
+
+# Initialize API with the namespace
+api.add_namespace(ns)
 
 if __name__ == "__main__":
     app.run(debug=True, host="0.0.0.0", port=5001)

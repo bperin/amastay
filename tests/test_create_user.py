@@ -1,6 +1,6 @@
 # tests/test_create_user.py
 import unittest
-from unittest.mock import patch, MagicMock
+from unittest.mock import patch
 from create_user import create_or_get_user
 
 class TestCreateUser(unittest.TestCase):

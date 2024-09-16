@@ -1,11 +1,12 @@
 import logging
-from flask import jsonify, make_response, request
+from flask import make_response, jsonify
 from supabase_utils import supabase_client
 
 class AuthService:
-
+    
     @staticmethod
     def send_otp(phone_number):
+        """Sends OTP to the specified phone number using Supabase's OTP functionality."""
         try:
             response = supabase_client.auth.sign_in_with_otp({"phone": phone_number})
             if response:
@@ -19,63 +20,50 @@ class AuthService:
 
     @staticmethod
     def verify_otp(phone_number, otp):
+        """Verifies the OTP for the given phone number using Supabase."""
         try:
             logging.debug(f"Verifying OTP for phone number: {phone_number}, OTP: {otp}")
             
-            # Verify OTP
+            # Verify OTP using Supabase's OTP verification method
             response = supabase_client.auth.verify_otp({
                 "phone": phone_number, 
                 "token": otp, 
                 "type": "sms"
             })
             
-            if response and response.user:
+            if response and response.session:
                 logging.debug(f"OTP verified successfully for {phone_number}")
-                
-                # Retrieve the session with tokens after OTP verification
-                session_response = supabase_client.auth.get_session()
 
-                if session_response and session_response.access_token:
-                    return {
-                        "access_token": session_response.access_token,
-                        "refresh_token": session_response.refresh_token,
-                        "expires_at": session_response.expires_at
-                    }
-                return {"error": "Failed to retrieve session information"}
-            return {"error": "OTP verification failed"}
+                # Call helper to return session tokens and headers
+                return AuthService._build_session_response(response)
+            else:
+                logging.error(f"OTP verification failed for {phone_number}")
+                return {"error": "OTP verification failed"}
+        
         except Exception as e:
             logging.error(f"Error verifying OTP: {e}")
             return {"error": str(e)}
 
     @staticmethod
     def refresh_token():
-        """
-        Extract the refresh token from the request headers and call Supabase to refresh the session.
-        """
-        # Retrieve the refresh token from the headers
-        refresh_token = request.headers.get('X-Refresh-Token')
+        """Refreshes the session token using the provided refresh token from the request headers."""
+        refresh_token = request.headers.get('x-refresh-token')
 
-        # Log the received refresh token
         logging.debug(f"Received Refresh Token: {refresh_token}")
 
-        # If no refresh token is provided, return an error
         if not refresh_token:
             logging.warning("No refresh token provided in the request headers")
             return jsonify({"error": "Refresh token is required"}), 400
 
         try:
-            # Call Supabase to refresh the session using the provided refresh token
+            # Refresh the session using Supabase
             response = supabase_client.auth.refresh_session({"refresh_token": refresh_token})
 
-            if response and response.access_token:
+            if response and response.session.access_token:
                 logging.debug("Session refreshed successfully")
-                # Set the new tokens in the response headers
-                res = make_response(jsonify({"message": "Token refreshed successfully"}), 200)
-                res.headers['X-Access-Token'] = response.access_token
-                res.headers['X-Refresh-Token'] = response.refresh_token
-                res.headers['X-Expires-At'] = response.expires_at
 
-                return res
+                # Call helper to return session tokens and headers
+                return AuthService._build_session_response(response)
             else:
                 logging.error("Failed to refresh session")
                 return jsonify({"error": "Failed to refresh session"}), 500
@@ -83,3 +71,20 @@ class AuthService:
         except Exception as e:
             logging.error(f"Error refreshing token: {e}")
             return jsonify({"error": str(e)}), 500
+
+    @staticmethod
+    def _build_session_response(auth_response):
+        """Helper function to build the response with session tokens and user ID in headers."""
+        
+        user_id = auth_response.user.id  # Get the user ID from the session response
+        
+        # Create a response with the tokens and user ID in the headers
+        res = make_response(jsonify({"message": "Token issued successfully"}), 200)
+        res.headers['x-access-token'] = auth_response.session.access_token
+        res.headers['x-refresh-token'] = auth_response.session.refresh_token
+        res.headers['x-expires-at'] = auth_response.session.expires_at
+        res.headers['x-user-id'] = user_id  # Add the user ID to the headers
+
+        logging.debug(f"User ID {user_id} included in response headers")
+
+        return res

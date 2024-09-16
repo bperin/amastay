@@ -1,6 +1,5 @@
 import os
 import json
-import random
 import boto3
 from supabase_utils import supabase_client
 

@@ -1,33 +1,41 @@
-from flask import request, jsonify
+# controllers/property_controller.py
+
+from flask import jsonify, request
 from services.property_service import PropertyService
 
 class PropertyController:
-    
-    @staticmethod
-    def  create_property(request):
-        try:
-            data = request.json
-            name = data.get('name')
-            address = data.get('address')
-            external_url = data.get('external_url')
-
-            if not name or not address or not external_url:
-                return jsonify({"error": "Missing required fields"}), 400
-
-            new_property = PropertyService.create_property(name, address, external_url)
-
-            if new_property:
-                return jsonify(new_property), 201
-            else:
-                return jsonify({"error": "Failed to create property"}), 500
-
-        except Exception as e:
-            return jsonify({"error": str(e)}), 500
-
     @staticmethod
     def get_properties():
-        try:
-            properties = PropertyService.get_properties()
-            return jsonify(properties), 200
-        except Exception as e:
-            return jsonify({"error": str(e)}), 500
+        """
+        Handles GET request to fetch properties and returns the response in JSON format.
+        """
+        # Call the service to fetch properties
+        properties = PropertyService.get_properties()
+
+        # Return the properties as JSON
+        return jsonify(properties), 200 if 'error' not in properties else 500
+
+    @staticmethod
+    def update_property(property_id):
+        """
+        Handles PUT request to update a property.
+        """
+        # Get the data from the request
+        property_data = request.get_json()
+
+        # Call the service to update the property
+        result = PropertyService.update_property(property_id, property_data)
+
+        # Return the appropriate response
+        return jsonify(result), 200 if 'message' in result else 500
+
+    @staticmethod
+    def delete_property(property_id):
+        """
+        Handles DELETE request to remove a property.
+        """
+        # Call the service to delete the property
+        result = PropertyService.delete_property(property_id)
+
+        # Return the appropriate response
+        return jsonify(result), 200 if 'message' in result else 500

@@ -1,7 +1,6 @@
 import json
 import boto3
 import os
-from supabase_utils import create_client
 
 # Initialize the SageMaker runtime client and SNS client
 sagemaker_runtime = boto3.client('sagemaker-runtime')
