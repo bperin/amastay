@@ -9,7 +9,7 @@ class AuthService:
         """Sends OTP to the specified phone number using Supabase's OTP functionality."""
         try:
             response = supabase_client.auth.sign_in_with_otp({"phone": phone_number})
-            if response:
+            if response and response.user:
                 logging.debug(f"OTP sent successfully to {phone_number}")
                 return {"message": "OTP sent"}
             else:
@@ -33,8 +33,6 @@ class AuthService:
             
             if response and response.session:
                 logging.debug(f"OTP verified successfully for {phone_number}")
-
-                # Call helper to return session tokens and headers
                 return AuthService._build_session_response(response)
             else:
                 logging.error(f"OTP verification failed for {phone_number}")
@@ -46,27 +44,29 @@ class AuthService:
 
     @staticmethod
     def refresh_token():
-        """Refreshes the session token using the provided refresh token from the request headers."""
-        refresh_token = request.headers.get('x-refresh-token')
-
-        logging.debug(f"Received Refresh Token: {refresh_token}")
-
-        if not refresh_token:
-            logging.warning("No refresh token provided in the request headers")
-            return jsonify({"error": "Refresh token is required"}), 400
-
+        """Refreshes the session token using the provided refresh token from the POST parameter."""
         try:
+            # Get refresh token from request body
+            refresh_token = request.json.get('refresh_token')
+
+            logging.debug(f"Received Refresh Token: {refresh_token}")
+
+            if not refresh_token:
+                logging.warning("No refresh token provided in the request")
+                return jsonify({"error": "Refresh token is required"}), 400
+
             # Refresh the session using Supabase
             response = supabase_client.auth.refresh_session({"refresh_token": refresh_token})
 
-            if response and response.session.access_token:
-                logging.debug("Session refreshed successfully")
+            logging.debug(f"Supabase Response: {response}")
 
-                # Call helper to return session tokens and headers
+            if response and response.session:
+                logging.debug("Session refreshed successfully")
                 return AuthService._build_session_response(response)
             else:
-                logging.error("Failed to refresh session")
-                return jsonify({"error": "Failed to refresh session"}), 500
+                error_message = response.error.message if response and response.error else "Unknown error"
+                logging.error(f"Failed to refresh session: {error_message}")
+                return jsonify({"error": error_message}), 500
 
         except Exception as e:
             logging.error(f"Error refreshing token: {e}")
@@ -75,7 +75,6 @@ class AuthService:
     @staticmethod
     def _build_session_response(auth_response):
         """Helper function to build the response with session tokens and user ID in headers."""
-        
         user_id = auth_response.user.id  # Get the user ID from the session response
         
         # Create a response with the tokens and user ID in the headers

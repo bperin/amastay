@@ -1,8 +1,14 @@
 from flask import Blueprint, jsonify, request
+from controllers.token_validator import token_required
 from services.property_service import PropertyService
 
 # Create a blueprint for PropertyController
 property_bp = Blueprint('property_bp', __name__)
+
+@property_bp.route('/properties_protected', methods=['GET'])
+@token_required
+def protected_route():
+    return jsonify({"message": "This is a protected route. Token required!"})
 
 @property_bp.route('/properties', methods=['GET'])
 def get_properties():
