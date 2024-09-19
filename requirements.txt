@@ -1,17 +1,27 @@
+# AWS SDK and Services
 boto3
 sagemaker
+
+# Supabase and Related Dependencies
 supabase
+
+# Environment Management
 python-dotenv
+
+# HTTP and Web Scraping
 requests
 beautifulsoup4
-pytest
-streamlit
 requests_aws4auth
+
+# Web Frameworks
 flask
 flask_cors
+flask-restx
+
+# Testing and Automation
+pytest
 selenium
+
+# Utilities
 furl
-jwt
-flask-restplus
-slack_sdk
-Flask
+PyJWT

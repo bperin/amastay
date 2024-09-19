@@ -1,5 +1,5 @@
 import logging
-from flask import make_response, jsonify
+from flask import make_response, jsonify, request
 from supabase_utils import supabase_client
 
 class AuthService:

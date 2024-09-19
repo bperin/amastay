@@ -1,6 +1,6 @@
 import unittest
 from scraper import Scraper
-from supabase import create_client
+from supabase_utils import create_client
 from generte_ai_response import generate_ai_response
 import os
 

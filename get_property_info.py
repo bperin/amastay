@@ -1,9 +1,9 @@
-import supabase
+import supabase_utils
 from typing import Optional
 
 def get_property_info(property_id: int) -> Optional[dict]:
     """Fetches property information based on the property ID."""
-    response = supabase.table('properties').select('*').eq('id', property_id).execute()
+    response = supabase_utils.table('properties').select('*').eq('id', property_id).execute()
     
     if response.data:
         property_data = response.data[0]

@@ -1,5 +1,5 @@
 import unittest
-from supabase import create_client
+from supabase_utils import create_client
 import os
 
 # Initialize Supabase client

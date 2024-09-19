@@ -1,11 +1,11 @@
 # create_user.py
-import supabase
+import supabase_utils
 from typing import Optional
 
 def create_or_get_user(phone_number: str, role: str = 'renter') -> Optional[dict]:
     """Creates or fetches a user profile based on the phone number."""
     # Check if the user already exists
-    response = supabase.table('users').select('*').eq('phone_number', phone_number).execute()
+    response = supabase_utils.table('users').select('*').eq('phone_number', phone_number).execute()
 
     if response.data:
         return response.data[0]  # Return the existing user profile
@@ -15,7 +15,7 @@ def create_or_get_user(phone_number: str, role: str = 'renter') -> Optional[dict
         'phone_number': phone_number,
         'user_role': role  # 'renter' or 'owner'
     }
-    user_response = supabase.table('users').insert(new_user_data).execute()
+    user_response = supabase_utils.table('users').insert(new_user_data).execute()
 
     return user_response.data[0]
 

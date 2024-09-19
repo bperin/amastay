@@ -18,7 +18,7 @@ def query_model(user_input: str) -> str:
     
     try:
         # Call the SageMaker endpoint
-        response = sagemaker_runtime.invoke_endpoint(
+        response = sagemaker_runtime.f(
             EndpointName=SAGEMAKER_ENDPOINT,
             ContentType='application/json',
             Body=json.dumps(payload)

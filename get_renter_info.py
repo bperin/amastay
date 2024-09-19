@@ -1,9 +1,9 @@
-import supabase
+import supabase_utils
 from typing import Optional
 
 def get_renter_info(booking_id: int) -> Optional[dict]:
     """Fetches renter information based on the booking ID."""
-    response = supabase.table('bookings').select('renter_id, renter_name').eq('id', booking_id).execute()
+    response = supabase_utils.table('bookings').select('renter_id, renter_name').eq('id', booking_id).execute()
     
     if response.data:
         renter = response.data[0]
