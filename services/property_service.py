@@ -1,126 +1,125 @@
-# services/property_service.py
+# property_service.py
 
-from supabase_utils import supabase_client
-from scraper import Scraper  # Import the Scraper class
 import logging
+from supabase_utils import supabase_client
+from models.property import Property
+from scraper import Scraper  # Adjust the import path if necessary
+from typing import List, Optional
+from uuid import UUID
 
 class PropertyService:
     @staticmethod
-    def create_property(property_data):
-        """
-        Creates a new property and invokes the scraper to scrape property data if a URL is provided.
-        """
+    def create_property(property_data: Property, user_id: UUID) -> Property:
         try:
-            logging.debug(f"Creating property with data: {property_data}")
+            # Convert the Property model to a dictionary, excluding unset fields
+            property_dict = property_data.dict(exclude_unset=True)
+            property_dict['owner_id'] = str(user_id)  # Ensure owner_id is a string
 
-            # Insert the property data into the 'properties' table
-            response = supabase_client.table('properties').insert(property_data).execute()
-
+            # Insert the property into the 'properties' table
+            response = supabase_client.table('properties').insert(property_dict).execute()
             if response.error:
-                logging.error(f"Error creating property: {response.error.message}")
-                return {"error": response.error.message}
+                logging.error(f"Error inserting property: {response.error.message}")
+                raise Exception(response.error.message)
 
-            # Fetch the property ID from the response
-            property_id = response.data[0]['id']
+            data = response.data[0]
+            new_property = Property(**data)
 
-            # Scrape the property URL if available
-            if 'url' in property_data:
-                scraper = Scraper(property_data['url'])
+            # If 'property_url' is provided, use the scraper
+            if 'property_url' in property_dict and property_dict['property_url']:
+                scraper = Scraper(property_dict['property_url'])
                 scraped_data = scraper.scrape()
 
                 if scraped_data:
-                    # Save the scraped data to Supabase storage
-                    filename = scraper.save_scraped_data(property_id, scraped_data)
+                    # Save the scraped data using the scraper's save method
+                    filename = scraper.save_scraped_data(new_property.id, scraped_data)
                     if filename:
-                        logging.info(f"Scraped data saved successfully for property {property_id}")
+                        logging.info(f"Scraped data saved successfully for property {new_property.id}")
                     else:
-                        logging.error(f"Failed to save scraped data for property {property_id}")
+                        logging.error(f"Failed to save scraped data for property {new_property.id}")
                 else:
-                    logging.error(f"Failed to scrape data for property {property_id}")
+                    logging.error(f"Failed to scrape data for property {new_property.id}")
+            else:
+                logging.info(f"No 'property_url' provided for property {new_property.id}")
 
-            return {"message": "Property created successfully", "property_id": property_id}
+            return new_property
 
         except Exception as e:
-            logging.error(f"Error creating property: {e}")
-            return {"error": str(e)}
+            logging.error(f"Exception in create_property: {e}")
+            raise e
 
     @staticmethod
-    def get_properties():
-        """
-        Fetches the list of properties from the Supabase database.
-        """
+    def get_property(property_id: UUID) -> Optional[Property]:
         try:
-            logging.debug("Fetching properties from database...")
-
-            # Fetch data from the Supabase 'properties' table
-            response = supabase_client.table('properties').select('*').execute()
-
-            # Check for errors in the response
+            response = supabase_client.table('properties').select('*').eq('id', str(property_id)).execute()
             if response.error:
-                logging.error(f"Error fetching properties: {response.error.message}")
-                return {"error": response.error.message}
+                logging.error(f"Error fetching property: {response.error.message}")
+                raise Exception(response.error.message)
 
-            logging.debug(f"Properties fetched: {response.data}")
-            return response.data
-
+            if response.data:
+                return Property(**response.data[0])
+            else:
+                return None
         except Exception as e:
-            logging.error(f"Error fetching properties: {e}")
-            return {"error": str(e)}
+            logging.error(f"Exception in get_property: {e}")
+            raise e
 
     @staticmethod
-    def update_property(property_id, property_data):
-        """
-        Updates a property in the database by property_id and invokes the scraper if a new URL is provided.
-        """
+    def update_property(property_id: UUID, update_data: dict, user_id: UUID) -> Property:
         try:
-            logging.debug(f"Updating property {property_id} with data {property_data}")
+            # Verify that the user is the owner of the property
+            existing_property = PropertyService.get_property(property_id)
+            if not existing_property:
+                raise Exception("Property not found")
+            if existing_property.owner_id != user_id:
+                raise Exception("Unauthorized: You do not own this property")
 
-            # Perform the update in Supabase
-            response = supabase_client.table('properties').update(property_data).eq('id', property_id).execute()
-
+            response = supabase_client.table('properties').update(update_data).eq('id', str(property_id)).execute()
             if response.error:
                 logging.error(f"Error updating property: {response.error.message}")
-                return {"error": response.error.message}
+                raise Exception(response.error.message)
 
-            # If a new URL is provided, trigger the scraper
-            if 'url' in property_data:
-                scraper = Scraper(property_data['url'])
-                scraped_data = scraper.scrape()
-
-                if scraped_data:
-                    # Save the scraped data to Supabase storage
-                    filename = scraper.save_scraped_data(property_id, scraped_data)
-                    if filename:
-                        logging.info(f"Scraped data saved successfully for property {property_id}")
-                    else:
-                        logging.error(f"Failed to save scraped data for property {property_id}")
-                else:
-                    logging.error(f"Failed to scrape data for property {property_id}")
-
-            return {"message": "Property updated successfully"}
-
+            if response.data:
+                return Property(**response.data[0])
+            else:
+                raise Exception("Property not found after update")
         except Exception as e:
-            logging.error(f"Error updating property: {e}")
-            return {"error": str(e)}
+            logging.error(f"Exception in update_property: {e}")
+            raise e
 
     @staticmethod
-    def delete_property(property_id):
-        """
-        Deletes a property from the database by property_id.
-        """
+    def delete_property(property_id: UUID, user_id: UUID) -> bool:
         try:
-            logging.debug(f"Deleting property {property_id}")
+            # Verify that the user is the owner of the property
+            existing_property = PropertyService.get_property(property_id)
+            if not existing_property:
+                raise Exception("Property not found")
+            if existing_property.owner_id != user_id:
+                raise Exception("Unauthorized: You do not own this property")
 
-            # Perform the delete operation in Supabase
-            response = supabase_client.table('properties').delete().eq('id', property_id).execute()
-
+            response = supabase_client.table('properties').delete().eq('id', str(property_id)).execute()
             if response.error:
                 logging.error(f"Error deleting property: {response.error.message}")
-                return {"error": response.error.message}
+                raise Exception(response.error.message)
 
-            logging.debug(f"Property {property_id} deleted successfully")
-            return {"message": "Property deleted successfully"}
-
+            return True
         except Exception as e:
-            logging.error(f"Error deleting property: {e}")
-            return {"error": str(e)}
+            logging.error(f"Exception in delete_property: {e}")
+            raise e
+
+    @staticmethod
+    def list_properties(owner_id: Optional[UUID] = None) -> List[Property]:
+        try:
+            query = supabase_client.table('properties').select('*')
+            if owner_id:
+                query = query.eq('owner_id', str(owner_id))
+
+            response = query.execute()
+            if response.error:
+                logging.error(f"Error listing properties: {response.error.message}")
+                raise Exception(response.error.message)
+
+            properties = [Property(**prop) for prop in response.data]
+            return properties
+        except Exception as e:
+            logging.error(f"Exception in list_properties: {e}")
+            raise e
