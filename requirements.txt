@@ -17,6 +17,7 @@ requests_aws4auth
 flask
 flask_cors
 flask-restx
+flask_jwt_extended
 
 # Testing and Automation
 pytest
@@ -26,3 +27,5 @@ selenium
 furl
 PyJWT
 pydantic
+uuid
+setuptools

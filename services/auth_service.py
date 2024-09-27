@@ -1,7 +1,7 @@
 import logging
 import requests
 from flask import make_response, jsonify, request
-from supabase_utils import supabase_client
+from supabase_utils import supabase_client,supabase_admin_client
 
 class AuthService:
 
@@ -114,8 +114,9 @@ class AuthService:
 
     @staticmethod
     def _build_session_response(auth_response):
+        print(auth_response)
         """Helper function to build the response with session tokens and user ID in headers."""
-        user_id = auth_response['user']['id']  # Get the user ID from the session response
+        user_id = auth_response['user']['id']
         
         # Create a response with the tokens and user ID in the headers
         res = make_response(jsonify({"message": "Token issued successfully"}), 200)
@@ -127,3 +128,40 @@ class AuthService:
         logging.debug(f"User ID {user_id} included in response headers")
 
         return res
+    
+    @staticmethod
+    def get_user_by_id(user_id):
+        print("get user by id")
+        print(user_id)
+        """Retrieve user information from Supabase by user ID."""
+        print(user_id)
+        try:
+            # Use Supabase's auth API to get the user
+            response = supabase_admin_client.auth.admin.get_user_by_id(user_id)
+            if response.error:
+                logging.error(f"Error fetching user: {response.error.message}")
+                return None
+
+            print("GOT USER")
+            print(response)
+            user = response.user
+
+            # Construct user info to return
+            user_info = {
+                'id': user.id,
+                'email': user.email,
+                'phone': user.phone,
+                'app_metadata': user.app_metadata,
+                'user_metadata': user.user_metadata,
+                'created_at': user.created_at,
+                'confirmed_at': user.confirmed_at,
+                'last_sign_in_at': user.last_sign_in_at,
+                'role': user.role,
+                # Add other fields as needed
+            }
+
+            return user_info
+
+        except Exception as e:
+            logging.error(f"Error retrieving user by ID: {e}")
+            return None

@@ -1,5 +1,6 @@
 import logging
-from flask import Blueprint, request, jsonify
+from flask import Blueprint, g, request, jsonify
+from auth_utils import jwt_required
 from services.auth_service import AuthService
 
 auth_bp = Blueprint('auth_bp', __name__)
@@ -20,6 +21,25 @@ def send_otp():
     
     logging.info(f"Send OTP success: {result['message']}")
     return jsonify(result), 200
+
+# Route to get the current user's information
+@auth_bp.route('/me', methods=['GET'])
+@jwt_required
+def get_current_user():
+    try:
+        user_id = g.current_user['id']
+        print(user_id)
+        # Call AuthService to get the user's information
+        user_info = AuthService.get_user_by_id(user_id)
+
+        if not user_info:
+            return jsonify({"error": "User not found"}), 404
+
+        return jsonify(user_info), 200
+
+    except Exception as e:
+        logging.error(f"Error retrieving user info: {e}")
+        return jsonify({"error": str(e)}), 500
 
 # Route to verify OTP and return session tokens
 @auth_bp.route('/verify_otp', methods=['POST'])

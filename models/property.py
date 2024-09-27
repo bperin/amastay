@@ -1,12 +1,13 @@
 # models/property.py
+
 from pydantic import BaseModel
+from uuid import UUID
 from typing import Optional
 from datetime import datetime
-from uuid import UUID
 
 class Property(BaseModel):
-    id: UUID
-    owner_id: Optional[UUID]
+    id: Optional[UUID]
+    owner_id: Optional[str]  # Assuming owner_id is a string (user's ID)
     name: str
     description: Optional[str]
     address: Optional[str]

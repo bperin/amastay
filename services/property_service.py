@@ -9,11 +9,10 @@ from uuid import UUID
 
 class PropertyService:
     @staticmethod
-    def create_property(property_data: Property, user_id: UUID) -> Property:
+    def create_property(property_data: Property) -> Property:
         try:
             # Convert the Property model to a dictionary, excluding unset fields
             property_dict = property_data.dict(exclude_unset=True)
-            property_dict['owner_id'] = str(user_id)  # Ensure owner_id is a string
 
             # Insert the property into the 'properties' table
             response = supabase_client.table('properties').insert(property_dict).execute()
@@ -24,7 +23,7 @@ class PropertyService:
             data = response.data[0]
             new_property = Property(**data)
 
-            # If 'property_url' is provided, use the scraper
+            # Proceed to scrape if 'property_url' is provided
             if 'property_url' in property_dict and property_dict['property_url']:
                 scraper = Scraper(property_dict['property_url'])
                 scraped_data = scraper.scrape()
