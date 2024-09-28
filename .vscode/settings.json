@@ -4,7 +4,16 @@
   ],
   "deno.lint": true,
   "deno.unstable": true,
+  // TypeScript specific settings for Deno
   "[typescript]": {
     "editor.defaultFormatter": "denoland.vscode-deno"
-  }
+  },
+  // Python specific settings for Black
+  "[python]": {
+    "editor.defaultFormatter": "ms-python.black-formatter",
+    "editor.formatOnSave": true,
+    "python.formatting.provider": "black"
+  },
+  // Global format on save settings
+  "editor.formatOnSave": true
 }

@@ -1,73 +1,113 @@
-import logging
-from flask import Blueprint, g, request, jsonify
+# controllers/auth_controller.py
+
+from flask import Blueprint, request, jsonify
 from auth_utils import jwt_required
 from services.auth_service import AuthService
+import logging
+import time
 
-auth_bp = Blueprint('auth_bp', __name__)
+# Create a Blueprint for the auth routes
+auth_bp = Blueprint("auth_bp", __name__)
 
-# Route to send OTP to phone number
-@auth_bp.route('/send_otp', methods=['POST'])
-def send_otp():
-    phone_number = request.json.get('phone_number')
-    if not phone_number:
-        logging.warning("Send OTP failed: Phone number is missing.")
-        return jsonify({"error": "Phone number is required"}), 400
-    
-    result = AuthService.send_otp(phone_number)
-    
-    if isinstance(result, dict) and 'error' in result:
-        logging.error(f"Send OTP error: {result['error']}")
-        return jsonify(result), 500
-    
-    logging.info(f"Send OTP success: {result['message']}")
-    return jsonify(result), 200
 
-# Route to get the current user's information
-@auth_bp.route('/me', methods=['GET'])
+# Sign-Up Route
+@auth_bp.route("/signup", methods=["POST"])
+def signup():
+    """
+    Signs up a new user and sends an OTP to their phone number.
+    Expects JSON data with first_name, last_name, estimated_properties, and phone_number.
+    """
+    data = request.get_json()
+    first_name = data.get("first_name")
+    last_name = data.get("last_name")
+    estimated_properties = data.get("estimated_properties")
+    phone_number = data.get("phone_number")
+
+    # Validate required fields
+    if not all([first_name, last_name, estimated_properties, phone_number]):
+        logging.warning("Signup failed: Missing required fields.")
+        return jsonify({"error": "All fields are required"}), 400
+
+    # Call the AuthService to handle sign-up
+    return AuthService.signup(
+        phone_number,
+        first_name,
+        last_name,
+        estimated_properties,
+    )
+
+
+# OTP Verification Route
+@auth_bp.route("/verify_otp", methods=["POST"])
+def verify_otp():
+    """
+    Verifies the OTP received by the user and issues session tokens.
+    Expects JSON data with phone_number and otp.
+    """
+    data = request.get_json()
+    phone_number = data.get("phone_number")
+    otp = data.get("otp")
+
+    if not all([phone_number, otp]):
+        logging.warning("OTP verification failed: Missing phone number or OTP.")
+        return jsonify({"error": "Phone number and OTP are required"}), 400
+
+    print(phone_number, otp)
+    # Call the AuthService to handle OTP verification
+    return AuthService.verify_otp(phone_number, otp)
+
+
+# Refresh Token Route
+@auth_bp.route("/refresh_token", methods=["POST"])
+def refresh_token():
+    """
+    Refreshes the session tokens using the provided refresh token.
+    Expects JSON data with refresh_token.
+    """
+    return AuthService.refresh_token()
+
+
+# Get Current User Route
+@auth_bp.route("/me", methods=["GET"])
 @jwt_required
 def get_current_user():
-    try:
-        user_id = g.current_user['id']
-        print(user_id)
-        # Call AuthService to get the user's information
-        user_info = AuthService.get_user_by_id(user_id)
+    """
+    Retrieves the current logged-in user's information.
+    Requires Authorization header with Bearer token.
+    """
+    return AuthService.get_current_user()
 
-        if not user_info:
-            return jsonify({"error": "User not found"}), 404
 
-        return jsonify(user_info), 200
+@auth_bp.route("/logout", methods=["GET"])
+def logout():
+    return AuthService.logout()
 
-    except Exception as e:
-        logging.error(f"Error retrieving user info: {e}")
-        return jsonify({"error": str(e)}), 500
 
-# Route to verify OTP and return session tokens
-@auth_bp.route('/verify_otp', methods=['POST'])
-def verify_otp():
-    phone_number = request.json.get('phone_number')
-    otp = request.json.get('otp')
+@auth_bp.route("/login", methods=["POST"])
+def login():
+    """
+    Sends a sms OTP
+    """
+    data = request.get_json()
+    phone_number = data.get("phone_number")
 
-    if not phone_number or not otp:
-        logging.warning("Verify OTP failed: Phone number or OTP is missing.")
-        return jsonify({"error": "Phone number and OTP are required"}), 400
-    
-    result = AuthService.verify_otp(phone_number, otp)
-    
-    if isinstance(result, dict) and 'error' in result:
-        logging.error(f"Verify OTP error: {result['error']}")
-        return jsonify(result), 500
-    
-    logging.info("Verify OTP success.")
-    return result  # Return Flask response with session tokens and headers
+    if not phone_number:
+        logging.warning("Logout failed: Missing phone_number.")
+        return jsonify({"error": "phone_number is required"}), 400
 
-# Route to refresh tokens using the refresh token
-@auth_bp.route('/refresh_token', methods=['POST'])
-def refresh_token():
-    result = AuthService.refresh_token()
-    
-    if isinstance(result, dict) and 'error' in result:
-        logging.error(f"Refresh Token error: {result['error']}")
-        return jsonify(result), 500
-    
-    logging.info("Refresh Token success.")
-    return result  # Return Flask response with new tokens in headers
+    return AuthService.login(phone_number)
+
+
+@auth_bp.route("/resend", methods=["POST"])
+def resend():
+    """
+    resend account creation sms OTP
+    """
+    data = request.get_json()
+    phone_number = data.get("phone_number")
+
+    if not phone_number:
+        logging.warning("Logout failed: Missing phone_number.")
+        return jsonify({"error": "phone_number is required"}), 400
+
+    return AuthService.resend_otp(phone_number)

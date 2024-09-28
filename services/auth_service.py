@@ -1,81 +1,159 @@
+# services/auth_service.py
+
+from supabase_utils import supabase_client, supabase_admin_client
 import logging
+from flask import jsonify, make_response, request
 import requests
-from flask import make_response, jsonify, request
-from supabase_utils import supabase_client,supabase_admin_client
+import time
+import secrets
+import string
+
 
 class AuthService:
 
     @staticmethod
-    def send_otp(phone_number):
-        """Sends OTP to the specified phone number using Supabase's OTP functionality via API."""
-        try:
-            # Define the URL for Supabase's OTP sending endpoint
-            otp_url = f"{supabase_client.supabase_url}/auth/v1/otp"
+    def generate_random_password(length=12):
+        """Generates a random string of letters, digits, and special characters."""
+        alphabet = string.ascii_letters + string.digits + string.punctuation
+        return "".join(secrets.choice(alphabet) for _ in range(length))
 
-            # Set headers for the request
-            headers = {
-                "Content-Type": "application/json",
-                "apikey": supabase_client.supabase_key
+    @staticmethod
+    def signup(
+        phone_number,
+        first_name,
+        last_name,
+        estimated_properties,
+    ):
+        """Signs up a new user and sends an OTP."""
+        try:
+            # Prepare the user metadata
+            user_metadata = {
+                "first_name": first_name,
+                "last_name": last_name,
+                "estimated_properties": estimated_properties,
             }
 
-            # Make the request to send OTP
-            response = requests.post(otp_url, json={"phone": phone_number}, headers=headers)
+            random_password = AuthService.generate_random_password(24)
 
-            logging.debug(f"Supabase OTP Response Status: {response.status_code}")
-            logging.debug(f"Supabase OTP Response Body: {response.text}")
+            # Sign up the user with the phone number and user metadata
+            response = supabase_client.auth.sign_up(
+                {
+                    "phone": phone_number,
+                    "options": {"data": user_metadata},
+                    "password": random_password,
+                }
+            )
 
-            if response.status_code == 200:
-                logging.debug(f"OTP sent successfully to {phone_number}")
-                return {"message": "OTP sent"}
+            if response.user:
+                logging.debug(f"User signed up with ID: {response.user.id}")
+                # Return response indicating OTP has been sent
+                res = make_response(jsonify({"message": "OTP sent successfully"}), 200)
+                return res
             else:
-                error_message = response.json().get('error_description', 'Failed to send OTP')
+                error_message = (
+                    response.error.message
+                    if response.error
+                    else "Failed to sign up user"
+                )
+                logging.error(f"Failed to sign up user: {error_message}")
+                return make_response(jsonify({"error": error_message}), 400)
+
+        except Exception as e:
+            logging.error(f"Error during sign-up: {e}")
+            return make_response(jsonify({"error": str(e)}), 500)
+
+    @staticmethod
+    def login(phone_number):
+        """Sends an OTP to the user's phone number using Supabase."""
+        try:
+            # Send OTP to the user's phone number
+            response = supabase_client.auth.sign_in_with_otp(
+                {"phone": phone_number, "type": "sms"}
+            )
+
+            if response:
+                logging.debug(f"OTP sent successfully to {phone_number}")
+                res = make_response(jsonify({"message": "OTP sent successfully"}), 200)
+                return res
+            else:
+                error_message = (
+                    response.error.message if response.error else "Failed to send OTP"
+                )
                 logging.error(f"Failed to send OTP: {error_message}")
-                return {"error": error_message}
+                return make_response(jsonify({"error": error_message}), 400)
 
         except Exception as e:
             logging.error(f"Error sending OTP: {e}")
-            return {"error": str(e)}
+            return make_response(jsonify({"error": str(e)}), 500)
+
+    @staticmethod
+    def resend_otp(phone_number):
+        """Sends an OTP to the user's phone number using Supabase."""
+        try:
+            # Send OTP to the user's phone number
+            response = supabase_client.auth.resend(
+                {"phone": phone_number, "type": "sms"}
+            )
+
+            if response:
+                logging.debug(f"OTP sent successfully to {phone_number}")
+                res = make_response(jsonify({"message": "OTP sent successfully"}), 200)
+                return res
+            else:
+                error_message = (
+                    response.error.message if response.error else "Failed to send OTP"
+                )
+                logging.error(f"Failed to send OTP: {error_message}")
+                return make_response(jsonify({"error": error_message}), 400)
+
+        except Exception as e:
+            logging.error(f"Error sending OTP: {e}")
+            return make_response(jsonify({"error": str(e)}), 500)
 
     @staticmethod
     def verify_otp(phone_number, otp):
-        """Verifies the OTP for the given phone number using Supabase's API."""
+        """Verifies the OTP and issues session tokens."""
         try:
-            logging.debug(f"Verifying OTP for phone number: {phone_number}, OTP: {otp}")
-            
-            # Define the URL for Supabase's OTP verification endpoint
-            verify_url = f"{supabase_client.supabase_url}/auth/v1/verify"
+            # Verify the OTP
+            response = supabase_client.auth.verify_otp(
+                {"phone": phone_number, "token": otp, "type": "sms"}
+            )
 
-            # Set headers for the request
-            headers = {
-                "Content-Type": "application/json",
-                "apikey": supabase_client.supabase_key
-            }
+            if response.session:
+                access_token = response.session.access_token
+                refresh_token = response.session.refresh_token
+                expires_in = response.session.expires_in  # Expires in seconds
+                user_id = response.session.user.id
 
-            # Make the request to verify the OTP
-            response = requests.post(verify_url, json={"phone": phone_number, "token": otp, "type": "sms"}, headers=headers)
+                # Compute expires_at timestamp
+                expires_at = int(time.time()) + expires_in
 
-            logging.debug(f"Supabase OTP Verification Response Status: {response.status_code}")
-            logging.debug(f"Supabase OTP Verification Response Body: {response.text}")
-
-            if response.status_code == 200:
-                auth_response = response.json()
-                logging.debug(f"OTP verified successfully for {phone_number}")
-                return AuthService._build_session_response(auth_response)
+                # Build the auth response
+                auth_response = {
+                    "access_token": access_token,
+                    "refresh_token": refresh_token,
+                    "expires_at": expires_at,
+                    "user": {"id": user_id},
+                }
+                res = AuthService._build_session_response(auth_response)
+                return res
             else:
-                error_message = response.json().get('error_description', 'OTP verification failed')
+                error_message = (
+                    response.error.message if response.error else "Failed to verify OTP"
+                )
                 logging.error(f"Failed to verify OTP: {error_message}")
-                return {"error": error_message}
+                return make_response(jsonify({"error": error_message}), 400)
 
         except Exception as e:
-            logging.error(f"Error verifying OTP: {e}")
-            return {"error": str(e)}
+            logging.error(f"Error during OTP verification: {e}")
+            return make_response(jsonify({"error": str(e)}), 500)
 
     @staticmethod
     def refresh_token():
-        """Refreshes the session token using the provided refresh token from the POST parameter."""
+        """Refreshes the session tokens using the provided refresh token."""
         try:
             # Get refresh token from request body
-            refresh_token = request.json.get('refresh_token')
+            refresh_token = request.json.get("refresh_token")
 
             logging.debug(f"Received Refresh Token: {refresh_token}")
 
@@ -84,17 +162,21 @@ class AuthService:
                 return jsonify({"error": "Refresh token is required"}), 400
 
             # Define the URL for Supabase's token refresh endpoint
-            token_url = f"{supabase_client.supabase_url}/auth/v1/token?grant_type=refresh_token"
+            token_url = (
+                f"{supabase_client.supabase_url}/auth/v1/token?grant_type=refresh_token"
+            )
 
             # Set headers for the request
             headers = {
                 "Content-Type": "application/json",
                 "apikey": supabase_client.supabase_key,
-                "Authorization": f"Bearer {refresh_token}"
+                "Authorization": f"Bearer {supabase_client.supabase_key}",
             }
 
             # Make the request to the Supabase token endpoint
-            response = requests.post(token_url, json={"refresh_token": refresh_token}, headers=headers)
+            response = requests.post(
+                token_url, json={"refresh_token": refresh_token}, headers=headers
+            )
 
             logging.debug(f"Supabase Response Status: {response.status_code}")
             logging.debug(f"Supabase Response Body: {response.text}")
@@ -104,7 +186,9 @@ class AuthService:
                 logging.debug("Session refreshed successfully")
                 return AuthService._build_session_response(auth_response)
             else:
-                error_message = response.json().get('error_description', 'Unknown error')
+                error_message = response.json().get(
+                    "error_description", "Unknown error"
+                )
                 logging.error(f"Failed to refresh session: {error_message}")
                 return jsonify({"error": error_message}), 500
 
@@ -113,55 +197,76 @@ class AuthService:
             return jsonify({"error": str(e)}), 500
 
     @staticmethod
+    def get_current_user():
+        """Retrieves the current logged-in user's information."""
+        try:
+            # Get the access token from the Authorization header
+            auth_header = request.headers.get("Authorization")
+            if not auth_header or not auth_header.startswith("Bearer "):
+                logging.warning("Authorization header missing or invalid")
+                return (
+                    jsonify({"error": "Authorization header missing or invalid"}),
+                    401,
+                )
+
+            access_token = auth_header.split(" ")[1]
+
+            # Get the user information from Supabase
+            user_response = supabase_client.auth.get_user(access_token)
+
+            if user_response.user:
+                user_data = user_response.user
+                return (
+                    jsonify(
+                        {
+                            "id": user_data.id,
+                            "email": user_data.email,
+                            "phone": user_data.phone,
+                            "user_metadata": user_data.user_metadata,
+                            "app_metadata": user_data.app_metadata,
+                            "created_at": user_data.created_at,
+                            "updated_at": user_data.updated_at,
+                        }
+                    ),
+                    200,
+                )
+            else:
+                error_message = (
+                    user_response.error.message
+                    if user_response.error
+                    else "User not found"
+                )
+                logging.error(f"Failed to retrieve user: {error_message}")
+                return jsonify({"error": error_message}), 401
+
+        except Exception as e:
+            logging.error(f"Error retrieving current user: {e}")
+            return jsonify({"error": str(e)}), 500
+
+    @staticmethod
     def _build_session_response(auth_response):
-        print(auth_response)
         """Helper function to build the response with session tokens and user ID in headers."""
-        user_id = auth_response['user']['id']
-        
+        user_id = auth_response["user"]["id"]
+
+        # Determine expires_at
+        expires_at = auth_response.get("expires_at")
+        expires_in = auth_response.get("expires_in")
+
+        # If expires_at is not provided, compute it from expires_in
+        if not expires_at and expires_in:
+            expires_at = int(time.time()) + int(expires_in)
+
         # Create a response with the tokens and user ID in the headers
         res = make_response(jsonify({"message": "Token issued successfully"}), 200)
-        res.headers['x-access-token'] = auth_response['access_token']
-        res.headers['x-refresh-token'] = auth_response['refresh_token']
-        res.headers['x-expires-at'] = auth_response['expires_at']
-        res.headers['x-user-id'] = user_id  # Add the user ID to the headers
+        res.headers["x-access-token"] = auth_response["access_token"]
+        res.headers["x-refresh-token"] = auth_response["refresh_token"]
+        res.headers["x-expires-at"] = str(expires_at)
+        res.headers["x-user-id"] = user_id  # Add the user ID to the headers
 
         logging.debug(f"User ID {user_id} included in response headers")
 
         return res
-    
+
     @staticmethod
-    def get_user_by_id(user_id):
-        print("get user by id")
-        print(user_id)
-        """Retrieve user information from Supabase by user ID."""
-        print(user_id)
-        try:
-            # Use Supabase's auth API to get the user
-            response = supabase_admin_client.auth.admin.get_user_by_id(user_id)
-            if response.error:
-                logging.error(f"Error fetching user: {response.error.message}")
-                return None
-
-            print("GOT USER")
-            print(response)
-            user = response.user
-
-            # Construct user info to return
-            user_info = {
-                'id': user.id,
-                'email': user.email,
-                'phone': user.phone,
-                'app_metadata': user.app_metadata,
-                'user_metadata': user.user_metadata,
-                'created_at': user.created_at,
-                'confirmed_at': user.confirmed_at,
-                'last_sign_in_at': user.last_sign_in_at,
-                'role': user.role,
-                # Add other fields as needed
-            }
-
-            return user_info
-
-        except Exception as e:
-            logging.error(f"Error retrieving user by ID: {e}")
-            return None
+    def logout():
+        return supabase_client.auth.sign_out()
