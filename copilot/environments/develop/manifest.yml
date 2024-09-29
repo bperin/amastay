@@ -6,16 +6,6 @@
 name: develop
 type: Environment
 
-# Import your own VPC and subnets or configure how they should be created.
-# network:
-#   vpc:
-#     id:
 
-# Configure the load balancers in your environment, once created.
-http:
-  alias: develop.amastayai.com
-#   private:
-
-# Configure observability for your environment resources.
 observability:
   container_insights: false

@@ -9,7 +9,7 @@ import logging
 SAGEMAKER_ENDPOINT = os.getenv("SAGEMAKER_ENDPOINT")
 
 # Initialize the SageMaker runtime client
-sagemaker_runtime = boto3.client("sagemaker-runtime")
+sagemaker_runtime = boto3.client("sagemaker-runtime", region_name="us-east-1")
 
 
 class AIService:
@@ -27,24 +27,15 @@ class AIService:
         formatted_messages = [
             {
                 "role": "system",
-                "content": "You are an AI assistant for managing bookings.",
+                "content": "You are an AI assistant for managing bookings. "
+                           f"Property information: {property_info}"
             }
         ]
 
         # Add the last N messages from the conversation
         for msg in messages:
-            if msg["sender_type"] == "guest":
-                formatted_messages.append(
-                    {"role": "user", "content": msg["message_body"]}
-                )
-            elif msg["sender_type"] == "owner":
-                formatted_messages.append(
-                    {"role": "assistant", "content": msg["message_body"]}
-                )
-
-        # Include the property information in the context for the model
-        if property_info:
-            formatted_messages.append({"role": "system", "content": property_info})
+            role = "user" if msg["sender_type"] == "guest" else "assistant"
+            formatted_messages.append({"role": role, "content": msg["message_body"]})
 
         # Step 3: Query the model
         return AIService._query_model(formatted_messages)
@@ -76,7 +67,9 @@ class AIService:
         """
         Sends the formatted conversation to the SageMaker model and retrieves the response.
         """
-        payload = {"inputs": messages}
+        # Format messages into a single string
+        conversation = "\n".join([f"{msg['role']}: {msg['content']}" for msg in messages])
+        payload = {"inputs": conversation}
 
         try:
             # Call the SageMaker endpoint
@@ -90,13 +83,8 @@ class AIService:
             response_body = response["Body"].read().decode("utf-8")
             model_response = json.loads(response_body)
 
-            # Handle response, checking if it's a list or dict
-            if isinstance(model_response, list):
-                return model_response[0].get("generated_text", "No response received.")
-            elif isinstance(model_response, dict):
-                return model_response.get("generated_text", "No response received.")
-            else:
-                return "Unexpected response format received."
+            # Assuming the model returns a string directly
+            return model_response if isinstance(model_response, str) else str(model_response)
 
         except Exception as e:
             logging.error(f"Error occurred while invoking the model: {str(e)}")

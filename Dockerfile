@@ -16,9 +16,12 @@ RUN pip install --no-cache-dir -r requirements.txt
 # Copy the current directory contents into the container at /app
 COPY . .
 
+COPY .env .env
+
 # Expose port 80 for the application
 EXPOSE 80
-EXPOSE 443
+
+ENV FLASK_APP app.py
 
 # Set environment variables (optional)
 ENV PYTHONUNBUFFERED=1

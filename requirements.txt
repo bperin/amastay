@@ -5,6 +5,8 @@ transformers
 
 # Supabase and Related Dependencies
 supabase
+httpx
+postgrest-py
 
 # Environment Management
 python-dotenv

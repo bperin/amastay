@@ -3,7 +3,7 @@
 #  https://aws.github.io/copilot-cli/docs/manifest/lb-web-service/
 
 # Your service name will be used in naming your resources like log groups, ECS services, etc.
-name: amastay
+name: api
 type: Load Balanced Web Service
 
 # Distribute traffic to your service.
@@ -12,7 +12,7 @@ http:
     # To match all requests you can use the "/" path.
     path: "/"
     # You can specify a custom health check path. The default is "/".
-    healthcheck: "/api/v1/health"
+    healthcheck: "api/v1/health/check"
 
 # Configuration for your containers and service.
 image:
@@ -35,7 +35,7 @@ network:
 # Optional fields for more advanced use-cases.
 #
 #variables:                    # Pass environment variables as key value pairs.
-LOG_LEVEL: info
+LOG_LEVEL: debug
 #secrets:                      # Pass secrets from AWS Systems Manager (SSM) Parameter Store.
 #  GITHUB_TOKEN: GITHUB_TOKEN  # The key is the name of the environment variable, the value is the name of the SSM parameter.
 
