@@ -3,6 +3,7 @@ import os
 from flask import request, jsonify, g
 from functools import wraps
 from datetime import datetime, timezone
+from supabase_utils import supabase_client
 
 from dotenv import load_dotenv
 
@@ -32,6 +33,9 @@ def jwt_required(f):
                 audience="authenticated",
                 issuer=f"{SUPABASE_URL}/auth/v1",
             )
+
+            session = supabase_client.auth.get_session
+            print(session)
 
             # Check if the token has expired
             exp = payload.get("exp")

@@ -10,12 +10,10 @@ import os
 # Configure logging
 logging.basicConfig(
     level=logging.DEBUG,
-    format='%(asctime)s - %(levelname)s - %(message)s',
-    handlers=[
-        logging.FileHandler("scraper.log"),
-        logging.StreamHandler()
-    ]
+    format="%(asctime)s - %(levelname)s - %(message)s",
+    handlers=[logging.FileHandler("scraper.log"), logging.StreamHandler()],
 )
+
 
 class Scraper:
     def __init__(self, url):
@@ -36,17 +34,30 @@ class Scraper:
         self.driver = webdriver.Chrome(options=options)
 
     def filter_content(self, soup):
-        """Filter out unwanted content such as headers, footers, and navigation elements."""
+        """Filter out unwanted content such as headers, footers, and calendar elements."""
         # Remove irrelevant tags
-        for tag in soup(['script', 'style', 'header', 'footer', 'nav', 'aside']):
+        for tag in soup(["script", "style", "header", "footer", "nav", "aside"]):
             tag.decompose()
 
+        # Remove calendar elements based on their known class or ID (modify this selector as needed)
+        for calendar_tag in soup.find_all(class_="calendar"):
+            calendar_tag.decompose()
+
+        # Remove any specific elements with text patterns like 'Add your travel dates'
+        for tag in soup.find_all(
+            string=lambda text: "Add your travel dates" in text
+            or "Su Mo Tu We Th Fr Sa" in text
+        ):
+            parent_tag = tag.find_parent()
+            if parent_tag:
+                parent_tag.decompose()
+
         # Extract meaningful text
-        text = soup.get_text(separator='\n', strip=True)
+        text = soup.get_text(separator="\n", strip=True)
 
         # Post-process the text to remove excessive newlines and white spaces
         lines = [line.strip() for line in text.splitlines() if line.strip()]
-        clean_text = '\n'.join(lines)
+        clean_text = "\n".join(lines)
         return clean_text
 
     def scrape(self):
@@ -61,7 +72,7 @@ class Scraper:
 
             # Get the page source and parse it with BeautifulSoup
             page_source = self.driver.page_source
-            soup = BeautifulSoup(page_source, 'html.parser')
+            soup = BeautifulSoup(page_source, "html.parser")
 
             # Filter the content to remove unnecessary parts
             filtered_text = self.filter_content(soup)
@@ -80,11 +91,13 @@ class Scraper:
         filename = f"{property_id}_{int(time.time())}.txt"
         try:
             with tempfile.NamedTemporaryFile(delete=False) as temp_file:
-                temp_file.write(scraped_data.encode('utf-8'))
+                temp_file.write(scraped_data.encode("utf-8"))
                 temp_file_path = temp_file.name
 
             # Upload to Supabase
-            response = supabase_client.storage.from_('properties').upload(filename, temp_file_path)
+            response = supabase_client.storage.from_("properties").upload(
+                filename, temp_file_path
+            )
 
             if response:
                 logging.info(f"Document uploaded successfully as {filename}")

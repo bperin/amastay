@@ -1,75 +1,80 @@
-import boto3
-from botocore.exceptions import ClientError
+from services.ai_service import AIService
+from services.booking_service import BookingService
+from services.conversation_service import ConversationService
 from supabase_utils import supabase_client
 
 
 class MessageService:
 
     @staticmethod
-    def send_sms(to_number, message):
-        # Initialize AWS Pinpoint client
-        client = boto3.client(
-            "pinpoint", region_name="your-region"
-        )  # Replace with your region
+    def process_incoming_message(from_number, message_body):
+        """
+        Processes an incoming message from a guest or owner.
+        Looks up the sender, determines the active booking, and adds the message to the conversation.
+        If applicable, generates an AI response.
+        """
+        # Identify the sender (guest or owner) by phone number
+        sender_info = MessageService._get_sender_info(from_number)
 
-        try:
-            response = client.send_messages(
-                ApplicationId="your-pinpoint-app-id",  # Replace with your Pinpoint app ID
-                MessageRequest={
-                    "Addresses": {to_number: {"ChannelType": "SMS"}},
-                    "MessageConfiguration": {
-                        "SMSMessage": {"Body": message, "MessageType": "TRANSACTIONAL"}
-                    },
-                },
+        if sender_info:
+            sender_id = sender_info["id"]
+            sender_type = sender_info["type"]
+
+            # Step 1: Find the active booking for the sender by sender_id
+            active_booking = BookingService.get_active_booking_by_sender_id(sender_id)
+            if not active_booking:
+                print(f"No active booking found for {sender_type} with ID {sender_id}")
+                return
+
+            booking_id = active_booking["id"]
+
+            # Step 2: Get or create a conversation for the active booking
+            conversation = ConversationService.get_or_create_conversation(booking_id)
+
+            # Step 3: Add the incoming message to the conversation
+            ConversationService.add_message(
+                conversation_id=conversation["id"],
+                sender_id=sender_id,
+                sender_type=sender_type,
+                message_body=message_body,
             )
-            print(f"Message sent to {to_number}: {response}")
-            return response
-        except ClientError as e:
-            print(f"Failed to send SMS to {to_number}: {e}")
+
+            # Step 4: Get context (last 15 messages) for the AI to respond
+            context_messages = ConversationService.get_last_n_messages(
+                conversation_id=conversation["id"], limit=15
+            )
+
+            # Step 5: Generate AI response (if applicable)
+            ai_response = AIService.generate_response(context_messages, booking_id)
+
+            return ai_response  # Returning the AI response if there is one
+        else:
+            print(f"Sender not found for phone number {from_number}")
             return None
 
     @staticmethod
-    def receive_sms(from_number, message):
-        # Get the guest or owner by phone number
+    def _get_sender_info(phone_number):
+        """
+        Helper method to retrieve the sender (guest or owner) information.
+        """
         guest = (
             supabase_client.table("guests")
             .select("*")
-            .eq("phone", from_number)
+            .eq("phone", phone_number)
             .single()
             .execute()
         )
+
         owner = (
             supabase_client.table("owners")
             .select("*")
-            .eq("phone", from_number)
+            .eq("phone", phone_number)
             .single()
             .execute()
         )
 
-        sender_id = None
-        sender_type = None
-
         if guest.data:
-            sender_id = guest.data["id"]
-            sender_type = "guest"
+            return {"id": guest.data["id"], "type": "guest"}
         elif owner.data:
-            sender_id = owner.data["id"]
-            sender_type = "owner"
-
-        if sender_id and sender_type:
-            # Find the active booking for the guest/owner
-            active_booking = BookingService.get_active_booking(sender_id)
-            if active_booking:
-                # Get or create a conversation for the active booking
-                conversation = ConversationService.get_or_create_conversation(
-                    active_booking["id"]
-                )
-
-                # Add the incoming message to the conversation
-                ConversationService.add_message(
-                    conversation["id"], sender_id, sender_type, message
-                )
-            else:
-                print("No active booking found for the sender.")
-        else:
-            print("Sender not found.")
+            return {"id": owner.data["id"], "type": "owner"}
+        return None

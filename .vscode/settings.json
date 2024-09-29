@@ -12,7 +12,12 @@
   "[python]": {
     "editor.defaultFormatter": "ms-python.black-formatter",
     "editor.formatOnSave": true,
-    "python.formatting.provider": "black"
+    "editor.formatOnPaste": true,
+    "python.formatting.provider": "black",
+    "python.formatting.blackArgs": [
+      "--line-length",
+      "88"
+    ]
   },
   // Global format on save settings
   "editor.formatOnSave": true

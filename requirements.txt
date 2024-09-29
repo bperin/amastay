@@ -1,6 +1,7 @@
 # AWS SDK and Services
 boto3
 sagemaker
+transformers
 
 # Supabase and Related Dependencies
 supabase

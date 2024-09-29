@@ -1,52 +1,98 @@
+from supabase_utils import supabase_client
 import json
 import boto3
 import os
 import logging
 
-# Load environment variables
-SAGEMAKER_ENDPOINT = os.getenv('SAGEMAKER_ENDPOINT')
+# Load the SageMaker endpoint from environment variables
+SAGEMAKER_ENDPOINT = os.getenv("SAGEMAKER_ENDPOINT")
 
-# Configure logging
-logging.basicConfig(
-    level=logging.INFO,
-    format='%(asctime)s - %(levelname)s - %(message)s',
-    handlers=[
-        logging.FileHandler("ai_service.log"),
-        logging.StreamHandler()
-    ]
-)
+# Initialize the SageMaker runtime client
+sagemaker_runtime = boto3.client("sagemaker-runtime")
 
-# Initialize SageMaker runtime client
-sagemaker_runtime = boto3.client('sagemaker-runtime')
 
 class AIService:
+    @staticmethod
+    def generate_response(messages, booking_id):
+        """
+        Generates a response from the AI using the SageMaker model based on the last N messages
+        and property information associated with the booking.
+        """
+        # Step 1: Retrieve the property information for the booking
+        property_info = AIService._get_property_info(booking_id)
+
+        # Step 2: Format the conversation messages for the model
+        formatted_messages = [
+            {
+                "role": "system",
+                "content": "You are an AI assistant for managing bookings.",
+            }
+        ]
+
+        # Add the last N messages from the conversation
+        for msg in messages:
+            if msg["sender_type"] == "guest":
+                formatted_messages.append(
+                    {"role": "user", "content": msg["message_body"]}
+                )
+            elif msg["sender_type"] == "owner":
+                formatted_messages.append(
+                    {"role": "assistant", "content": msg["message_body"]}
+                )
+
+        # Include the property information in the context for the model
+        if property_info:
+            formatted_messages.append({"role": "system", "content": property_info})
+
+        # Step 3: Query the model
+        return AIService._query_model(formatted_messages)
 
     @staticmethod
-    def query_model(user_input: str) -> str:
+    def _get_property_info(booking_id):
         """
-        Sends the user's input to the SageMaker model and returns the model's response.
+        Retrieves relevant property information for the given booking ID.
         """
-        payload = {"inputs": f"User Input: {user_input}"}
-        
+        # Query the property information associated with the booking
+        response = (
+            supabase_client.table("properties_information")
+            .select("info")
+            .eq("booking_id", booking_id)
+            .execute()
+        )
+
+        if response.data:
+            # Return the concatenated property info
+            return " ".join([row["info"] for row in response.data])
+        else:
+            return None
+
+    @staticmethod
+    def _query_model(messages):
+        """
+        Sends the formatted conversation to the SageMaker model and retrieves the response.
+        """
+        payload = {"inputs": messages}
+
         try:
-            # Call SageMaker endpoint with the user input
+            # Call the SageMaker endpoint
             response = sagemaker_runtime.invoke_endpoint(
                 EndpointName=SAGEMAKER_ENDPOINT,
-                ContentType='application/json',
-                Body=json.dumps(payload)
+                ContentType="application/json",
+                Body=json.dumps(payload),
             )
 
-            response_body = response['Body'].read().decode('utf-8')
+            # Decode the response body
+            response_body = response["Body"].read().decode("utf-8")
             model_response = json.loads(response_body)
 
-            # Process response based on the format returned by the model
+            # Handle response, checking if it's a list or dict
             if isinstance(model_response, list):
-                return model_response[0].get('generated_text', 'No response received.')
+                return model_response[0].get("generated_text", "No response received.")
             elif isinstance(model_response, dict):
-                return model_response.get('generated_text', 'No response received.')
+                return model_response.get("generated_text", "No response received.")
             else:
                 return "Unexpected response format received."
 
         except Exception as e:
-            logging.error(f"Error invoking SageMaker model: {e}")
-            return "Error occurred while invoking the model."
+            logging.error(f"Error occurred while invoking the model: {str(e)}")
+            return f"Error occurred: {str(e)}"

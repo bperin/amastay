@@ -5,6 +5,7 @@ from uuid import UUID
 from typing import Optional
 from datetime import datetime
 
+
 class Property(BaseModel):
     id: Optional[UUID]
     owner_id: Optional[str]  # Assuming owner_id is a string (user's ID)
