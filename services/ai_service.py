@@ -1,3 +1,4 @@
+from models.booking import Booking
 from supabase_utils import supabase_client
 import json
 import boto3
@@ -12,14 +13,15 @@ sagemaker_runtime = boto3.client("sagemaker-runtime")
 
 
 class AIService:
+
     @staticmethod
-    def generate_response(messages, booking_id):
+    def generate_response(messages, booking: Booking):
         """
         Generates a response from the AI using the SageMaker model based on the last N messages
         and property information associated with the booking.
         """
         # Step 1: Retrieve the property information for the booking
-        property_info = AIService._get_property_info(booking_id)
+        property_info = AIService._get_property_info(booking.property_id)
 
         # Step 2: Format the conversation messages for the model
         formatted_messages = [
@@ -48,21 +50,24 @@ class AIService:
         return AIService._query_model(formatted_messages)
 
     @staticmethod
-    def _get_property_info(booking_id):
+    def _get_property_info(property_id):
         """
         Retrieves relevant property information for the given booking ID.
+        Queries the 'properties_information' table to get the 'name' and 'detail'.
         """
         # Query the property information associated with the booking
         response = (
-            supabase_client.table("properties_information")
-            .select("info")
-            .eq("booking_id", booking_id)
+            supabase_client.table("property_information")
+            .select("name, detail")
+            .eq("property_id", property_id)
             .execute()
         )
 
         if response.data:
-            # Return the concatenated property info
-            return " ".join([row["info"] for row in response.data])
+            # Return the concatenated property info (name and detail)
+            return " ".join(
+                [f"{row['name']}: {row['detail']}" for row in response.data]
+            )
         else:
             return None
 

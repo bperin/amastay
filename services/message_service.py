@@ -1,80 +1,73 @@
-from services.ai_service import AIService
-from services.booking_service import BookingService
-from services.conversation_service import ConversationService
 from supabase_utils import supabase_client
+from models.message import Message
+from typing import Optional
+from datetime import datetime
 
 
 class MessageService:
 
     @staticmethod
-    def process_incoming_message(from_number, message_body):
-        """
-        Processes an incoming message from a guest or owner.
-        Looks up the sender, determines the active booking, and adds the message to the conversation.
-        If applicable, generates an AI response.
-        """
-        # Identify the sender (guest or owner) by phone number
-        sender_info = MessageService._get_sender_info(from_number)
+    def add_message(
+        booking_id: str, sender_id: str, sender_type: int, content: str
+    ) -> Optional[Message]:
+        new_message = {
+            "booking_id": booking_id,
+            "sender_id": sender_id,
+            "sender_type": sender_type,
+            "content": content,
+        }
 
-        if sender_info:
-            sender_id = sender_info["id"]
-            sender_type = sender_info["type"]
+        response = supabase_client.table("messages").insert(new_message).execute()
 
-            # Step 1: Find the active booking for the sender by sender_id
-            active_booking = BookingService.get_active_booking_by_sender_id(sender_id)
-            if not active_booking:
-                print(f"No active booking found for {sender_type} with ID {sender_id}")
-                return
-
-            booking_id = active_booking["id"]
-
-            # Step 2: Get or create a conversation for the active booking
-            conversation = ConversationService.get_or_create_conversation(booking_id)
-
-            # Step 3: Add the incoming message to the conversation
-            ConversationService.add_message(
-                conversation_id=conversation["id"],
-                sender_id=sender_id,
-                sender_type=sender_type,
-                message_body=message_body,
-            )
-
-            # Step 4: Get context (last 15 messages) for the AI to respond
-            context_messages = ConversationService.get_last_n_messages(
-                conversation_id=conversation["id"], limit=15
-            )
-
-            # Step 5: Generate AI response (if applicable)
-            ai_response = AIService.generate_response(context_messages, booking_id)
-
-            return ai_response  # Returning the AI response if there is one
-        else:
-            print(f"Sender not found for phone number {from_number}")
-            return None
+        if response.data:
+            return Message(**response.data[0])  # Return the created message object
+        return None
 
     @staticmethod
-    def _get_sender_info(phone_number):
-        """
-        Helper method to retrieve the sender (guest or owner) information.
-        """
-        guest = (
-            supabase_client.table("guests")
+    def get_messages_by_booking(
+        booking_id: str, limit: int = 15
+    ) -> Optional[list[Message]]:
+        response = (
+            supabase_client.table("messages")
             .select("*")
-            .eq("phone", phone_number)
-            .single()
+            .eq("booking_id", booking_id)
+            .order("created_at", desc=True)
+            .limit(limit)
             .execute()
         )
 
-        owner = (
-            supabase_client.table("owners")
-            .select("*")
-            .eq("phone", phone_number)
-            .single()
-            .execute()
-        )
-
-        if guest.data:
-            return {"id": guest.data["id"], "type": "guest"}
-        elif owner.data:
-            return {"id": owner.data["id"], "type": "owner"}
+        if response.data:
+            return [Message(**msg) for msg in response.data]
         return None
+
+    @staticmethod
+    def get_booking_id_by_sms_id(sms_id: str) -> Optional[str]:
+
+        response = (
+            supabase_client.table("messages")
+            .select("booking_id")
+            .eq("sms_id", sms_id)
+            .single()
+            .execute()
+        )
+
+        if response.data:
+            return response.data["booking_id"]
+
+        return None
+
+    @staticmethod
+    def update_message_sms_id(message_id: str, sms_id: str) -> bool:
+
+        response = (
+            supabase_client.table("messages")
+            .update(
+                {
+                    "sms_id": sms_id,
+                }
+            )
+            .eq("id", message_id)
+            .execute()
+        )
+
+        return response.status_code == 200

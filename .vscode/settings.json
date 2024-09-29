@@ -16,7 +16,7 @@
     "python.formatting.provider": "black",
     "python.formatting.blackArgs": [
       "--line-length",
-      "88"
+      "400"
     ]
   },
   // Global format on save settings

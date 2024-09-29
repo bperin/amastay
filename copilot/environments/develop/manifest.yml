@@ -12,8 +12,8 @@ type: Environment
 #     id:
 
 # Configure the load balancers in your environment, once created.
-# http:
-#   public:
+http:
+  alias: develop.amastayai.com
 #   private:
 
 # Configure observability for your environment resources.

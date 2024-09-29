@@ -1,15 +1,14 @@
-# models/conversation.py
+# models/renter.py
 
 from pydantic import BaseModel
 from typing import Optional
 from datetime import datetime
 from uuid import UUID
 
-class Conversation(BaseModel):
+
+class Guest(BaseModel):
     id: UUID
-    booking_id: Optional[UUID]
-    sender_type: Optional[str]  # 'owner' or 'renter'
-    sender_id: Optional[UUID]
-    message: str
+    phone: str
+    full_name: str
     created_at: Optional[datetime]
     updated_at: Optional[datetime]

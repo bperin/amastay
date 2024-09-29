@@ -12,8 +12,7 @@ from flask_restx import Api
 from controllers.auth_controller import auth_bp
 from controllers.property_controller import property_bp
 from controllers.scraper_controller import ns_scraper
-from controllers.sms_controller import sms_bp
-from controllers.ai_controller import ai_bp
+from controllers.webhook_controller import wh_bp
 from controllers.health_controller import health_bp
 from controllers.sagemaker_controller import sagemaker_bp
 from auth_utils import jwt_required
@@ -43,13 +42,12 @@ def protected_route():
 # Register Blueprints with unique prefixes
 app.register_blueprint(auth_bp, url_prefix="/api/v1/auth")
 app.register_blueprint(property_bp, url_prefix="/api/v1/properties")
-app.register_blueprint(sms_bp, url_prefix="/api/v1/sms")
-app.register_blueprint(ai_bp, url_prefix="/api/v1/ai")
 app.register_blueprint(health_bp, url_prefix="/api/v1/health")
 app.register_blueprint(sagemaker_bp, url_prefix="/api/v1/sagemaker")
+app.register_blueprint(wh_bp, url_prefix="/api/v1/webhooks")
 
 # Register Namespace with the API
 api.add_namespace(ns_scraper, path="/api/v1/scraper")
 
 if __name__ == "__main__":
-    app.run(debug=True, host="0.0.0.0", port=5001)
+    app.run(debug=True, host="0.0.0.0", port=80)

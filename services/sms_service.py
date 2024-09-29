@@ -1,88 +1,97 @@
-import logging
 import os
-import requests
+from typing import Optional
+from supabase_utils import supabase_client
+from services.booking_service import BookingService
+from models.message import Message
 
-# Define constants for AI and lookup integrations
-AI_ENDPOINT_URL = os.getenv('AI_ENDPOINT_URL', 'http://localhost:5001/api/v1/chat')  # For AI chat processing
-LOOKUP_PROPERTY_URL = os.getenv('LOOKUP_PROPERTY_URL', 'http://localhost:5001/api/v1/properties')  # For property lookup
 
-class SMSService:
-
-    @staticmethod
-    def handle_incoming_sms(phone_number, message):
-        """
-        Main function to handle incoming SMS. This will decide whether the SMS
-        needs to be processed as a regular chat or requires some additional lookup.
-        """
-        logging.info(f"Received SMS from {phone_number}: {message}")
-
-        # Simple logic to determine whether to handle as regular chat or lookup
-        if "property" in message.lower():
-            logging.info("Performing property lookup...")
-            return SMSService.handle_lookup_chat(phone_number, message)
-        else:
-            logging.info("Handling as regular chat...")
-            return SMSService.handle_regular_chat(phone_number, message)
+class SmsService:
 
     @staticmethod
-    def handle_regular_chat(phone_number, message):
+    def notify_guests_by_message(message: Message) -> None:
         """
-        Handle a regular SMS chat. This can forward messages to other participants.
+        Retrieves the guests associated with the booking in the message and sends an SMS to all guests.
+        Args:
+            message (Message): The message object containing the booking and content information.
         """
-        logging.info(f"Processing regular chat for {phone_number}")
-        
-        # Forward the message to AI or participants
-        ai_response = SMSService.forward_to_ai(phone_number, message)
+        # Step 1: Get guests by booking ID
+        guests = BookingService.get_booking_guests(message.booking_id)
 
-        return {
-            "status": "success",
-            "ai_response": ai_response
-        }
+        if not guests:
+            print(f"No guests found for booking ID {message.booking_id}")
+            return
+
+        # Step 2: Notify all guests except the sender
+        for guest in guests:
+            if guest.id != message.sender_id:
+                # Send the SMS and get the SMS ID
+                sms_id = SmsService.send_sms(
+                    guest.phone, os.getenv("SYSTEM_PHONE_NUMBER"), message.content
+                )
+
+                if sms_id:
+                    # Step 3: Update the message with the SMS ID after successfully sending the SMS
+                    SmsService.update_message_sms_id(message.id, sms_id)
+                else:
+                    print(f"Failed to send SMS to {guest.phone}")
 
     @staticmethod
-    def handle_lookup_chat(phone_number, message):
+    def send_sms(
+        phone_number: str, sender_number: str, message_content: str
+    ) -> Optional[str]:
         """
-        Handle an SMS chat that requires looking up property information or other details.
+        Sends an SMS message via AWS Pinpoint and returns the SMS message ID.
+
+        Args:
+            phone_number (str): The recipient's phone number.
+            sender_number (str): The system phone number.
+            message_content (str): The content of the SMS.
+
+        Returns:
+            Optional[str]: The SMS message ID if successful, None otherwise.
         """
-        logging.info(f"Processing lookup chat for {phone_number}")
-
-        # Perform a property lookup using the message content
-        lookup_response = SMSService.lookup_property_info(message)
-
-        return lookup_response
-
-    @staticmethod
-    def forward_to_ai(phone_number, message):
-        """
-        Forward the SMS message to the AI system and return the response.
-        """
-        payload = {
-            "phone_number": phone_number,
-            "message": message
-        }
-
         try:
-            response = requests.post(AI_ENDPOINT_URL, json=payload)
-            response_data = response.json()
-            logging.info(f"AI Response: {response_data}")
-            return response_data
+            response = supabase_client.pinpoint.send_messages(
+                ApplicationId=os.getenv("PINPOINT_APP_ID"),
+                MessageRequest={
+                    "Addresses": {phone_number: {"ChannelType": "SMS"}},
+                    "MessageConfiguration": {
+                        "SMSMessage": {
+                            "Body": message_content,
+                            "MessageType": "TRANSACTIONAL",
+                            "OriginationNumber": sender_number,
+                        }
+                    },
+                },
+            )
+
+            if response["MessageResponse"]["Result"][phone_number]["StatusCode"] == 200:
+                return response["MessageResponse"]["Result"][phone_number]["MessageId"]
+            else:
+                print(f"Failed to send SMS to {phone_number}")
+                return None
+
         except Exception as e:
-            logging.error(f"Error forwarding to AI: {e}")
-            return {"error": "Failed to communicate with AI"}
+            print(f"Error sending SMS: {e}")
+            return None
 
     @staticmethod
-    def lookup_property_info(message):
+    def update_message_sms_id(message_id: str, sms_id: str) -> bool:
         """
-        Simulate looking up property information from a message.
-        """
-        # Extract property details from the message (mock logic)
-        property_id = "1234"  # Mock property ID, this should be extracted from the message
+        Updates the 'sms_id' of a message in the database.
 
-        try:
-            response = requests.get(f"{LOOKUP_PROPERTY_URL}/{property_id}")
-            property_data = response.json()
-            logging.info(f"Property lookup result: {property_data}")
-            return property_data
-        except Exception as e:
-            logging.error(f"Error during property lookup: {e}")
-            return {"error": "Failed to lookup property information"}
+        Args:
+            message_id (str): The ID of the message to update.
+            sms_id (str): The SMS message ID returned by AWS Pinpoint.
+
+        Returns:
+            bool: True if the update was successful, False otherwise.
+        """
+        response = (
+            supabase_client.table("messages")
+            .update({"sms_id": sms_id, "updated_at": datetime.utcnow()})
+            .eq("id", message_id)
+            .execute()
+        )
+
+        return response.status_code == 200
