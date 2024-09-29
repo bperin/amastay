@@ -32,3 +32,4 @@ PyJWT
 pydantic
 uuid
 setuptools
+python-dotenv
