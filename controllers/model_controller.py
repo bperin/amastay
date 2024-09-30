@@ -21,7 +21,6 @@ output_model = ns_model.model(
     },
 )
 
-
 @ns_model.route("/query")
 class QueryModel(Resource):
     @ns_model.doc("query_model")
