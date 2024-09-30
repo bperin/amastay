@@ -2,19 +2,20 @@
 
 import os
 from dotenv import load_dotenv
+from flask import Flask
 
 load_dotenv()  # Load environment variables before imports
 
 import logging
-from flask import Flask, jsonify, g
+
 from flask_cors import CORS
 from flask_restx import Api
-from controllers.auth_controller import auth_bp
-from controllers.property_controller import property_bp
+from controllers.auth_controller import ns_auth
+from controllers.property_controller import ns_property
 from controllers.scraper_controller import ns_scraper
-from controllers.webhook_controller import wh_bp
-from controllers.health_controller import health_bp
-from controllers.sagemaker_controller import sagemaker_bp
+from controllers.webhook_controller import ns_webhooks
+from controllers.health_controller import ns_health
+from controllers.sagemaker_controller import ns_sagemaker
 from auth_utils import jwt_required
 
 
@@ -22,31 +23,20 @@ app = Flask(__name__)
 CORS(app)
 
 # Set up logging
-logging.basicConfig(level=logging.DEBUG)
+logging.basicConfig(level=logging.INFO)
 file_handler = logging.FileHandler("app.log")
-file_handler.setLevel(logging.DEBUG)
+file_handler.setLevel(logging.INFO)
 app.logger.addHandler(file_handler)
 
 # Initialize Flask-RESTX API
-api = Api(app, version="1.0", title="Your API", description="A simple API")
-
-
-# Protected route example
-@app.route("/protected", methods=["GET"])
-@jwt_required
-def protected_route():
-    user_email = g.current_user.get("email") or g.current_user.get("phone")
-    return jsonify({"message": f"Hello {user_email}! This is a protected route."}), 200
-
-
-# Register Blueprints with unique prefixes
-app.register_blueprint(auth_bp, url_prefix="/api/v1/auth")
-app.register_blueprint(property_bp, url_prefix="/api/v1/properties")
-app.register_blueprint(health_bp, url_prefix="/api/v1/health")
-app.register_blueprint(sagemaker_bp, url_prefix="/api/v1/sagemaker")
-app.register_blueprint(wh_bp, url_prefix="/api/v1/webhooks")
+api = Api(app, version="0.1", title="Amastay API", description="Amastay API")
 
 # Register Namespace with the API
+api.add_namespace(ns_auth, path="/api/v1/auth")
+api.add_namespace(ns_property, path="/api/v1/properties")
+api.add_namespace(ns_health, path="/api/v1/health")
+api.add_namespace(ns_sagemaker, path="/api/v1/sagemaker")
+api.add_namespace(ns_webhooks, path="/api/v1/webhooks")
 api.add_namespace(ns_scraper, path="/api/v1/scraper")
 
 if __name__ == "__main__":

@@ -34,8 +34,8 @@ def jwt_required(f):
                 issuer=f"{SUPABASE_URL}/auth/v1",
             )
 
-            session = supabase_client.auth.get_session
-            print(session)
+            g.user_id = payload["sub"]
+            print("Requesting from user ", payload["sub"])
 
             # Check if the token has expired
             exp = payload.get("exp")

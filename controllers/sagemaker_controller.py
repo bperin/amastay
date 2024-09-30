@@ -1,81 +1,83 @@
 import os
 import json
 import boto3
-from flask import Blueprint, request, jsonify
+from flask import request
+from flask_restx import Namespace, Resource, fields
+from auth_utils import jwt_required
+from services.model_service import ModelService
 
-# Load environment variables (Access Key, Secret Key, SageMaker endpoint)
-SAGEMAKER_ACCESS_KEY = os.getenv("SAGEMAKER_ACCESS_KEY")
-SAGEMAKER_SECRET_ACCESS_KEY = os.getenv("SAGEMAKER_SECRET_ACCESS_KEY")
-SAGEMAKER_REGION = os.getenv("SAGEMAKER_REGION", "us-east-1")  # default region
-SAGEMAKER_ENDPOINT = os.getenv("SAGEMAKER_ENDPOINT")
 
-# Initialize boto3 SageMaker client
-sagemaker_client = boto3.client(
-    "sagemaker-runtime",
-    aws_access_key_id=SAGEMAKER_ACCESS_KEY,
-    aws_secret_access_key=SAGEMAKER_SECRET_ACCESS_KEY,
-    region_name=SAGEMAKER_REGION,
+# Create a Flask-RESTX Namespace
+ns_sagemaker = Namespace(
+    "sagemaker", description="SageMaker endpoints for direct model access"
 )
 
-# Create a Flask Blueprint for the SageMaker query routes
-sagemaker_bp = Blueprint("sagemaker_bp", __name__)
+
+# Define input model
+input_model = ns_sagemaker.model(
+    "Input",
+    {
+        "input": fields.String(required=True, description="User input message"),
+        "chat_id": fields.String(required=True, description="Unique chat identifier"),
+    },
+)
+
+# Define output model
+output_model = ns_sagemaker.model(
+    "Output",
+    {
+        "response": fields.String(description="Model response"),
+    },
+)
 
 
-@sagemaker_bp.route("/query_model", methods=["POST"])
-def query_model():
-    """
-    Queries the SageMaker model with user input and context.
-    Expects a JSON body with 'input' field containing the user message.
-    """
-    try:
-        # Get the input from the POST request
-        data = request.json
-        user_input = data.get("input")
+@ns_sagemaker.route("/start_session")
+class StartSession(Resource):
+    @jwt_required
+    def post(self):
+        ModelService.start_session()
 
-        if not user_input:
-            return jsonify({"error": "No input provided"}), 400
 
-        # Define context with system and user messages
-        messages = [
-            {"role": "system", "content": "You are Amastay, an AI concierge."},
-            {
-                "role": "user",
-                "content": "My name is Brian. I am the user interacting with you.",
-            },
-            {"role": "user", "content": user_input},
-        ]
+@ns_sagemaker.route("/query_model")
+class QueryModel(Resource):
+    @ns_sagemaker.doc("query_model")
+    @ns_sagemaker.expect(input_model)
+    @ns_sagemaker.marshal_with(output_model)
+    @jwt_required
+    def post(self):
+        """
+        Queries the SageMaker model.
+        """
+        try:
+            data = request.json
+            user_input = data.get("input")
+            chat_id = data.get("chat_id")
 
-        # Prepare the payload for the SageMaker model
-        payload = {
-            "inputs": json.dumps(messages)
-        }  # Ensure messages are sent as a JSON string
+            if not user_input or not chat_id:
+                return {"error": "Input and chat_id are required"}, 400
 
-        # Send the request to the SageMaker endpoint
-        response = sagemaker_client.invoke_endpoint(
-            EndpointName=SAGEMAKER_ENDPOINT,
-            ContentType="application/json",
-            Body=json.dumps(payload),
-        )
+            # Query the model and get the response
+            result = ModelService.query_model(user_input)
 
-        # Decode and parse response
-        response_body = response["Body"].read().decode("utf-8")
+            return {"response": result}, 200
 
-        # Check if response_body is already a JSON string and parse it
-        if isinstance(response_body, str):
-            model_response = json.loads(response_body)
-        else:
-            model_response = response_body
+        except Exception as e:
+            print(f"Error in query_model: {str(e)}")
+            return {"error": str(e)}, 500
 
-        # Handle response format (assumed as list or dict)
-        if isinstance(model_response, list):
-            result = model_response[0].get("generated_text", "No response received.")
-        elif isinstance(model_response, dict):
-            result = model_response.get("generated_text", "No response received.")
-        else:
-            result = "Unexpected response format received."
 
-        # Return the result to the client
-        return jsonify({"response": result}), 200
-
-    except Exception as e:
-        return jsonify({"error": str(e)}), 500
+@ns_sagemaker.route("/clear_chats")
+class ClearChats(Resource):
+    @ns_sagemaker.doc("clear_chats")
+    @jwt_required
+    def post(self):
+        """
+        Clears all chat histories.
+        """
+        try:
+            # Clear the chat_history dictionary
+            chat_history.clear()
+            return {"message": "All chat histories cleared successfully"}, 200
+        except Exception as e:
+            print(f"Error in clear_chats: {str(e)}")
+            return {"error": str(e)}, 500

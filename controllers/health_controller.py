@@ -1,12 +1,27 @@
-from flask import Blueprint, jsonify
+from flask_restx import Namespace, Resource, fields
 
-# Define the Blueprint with no full URL path yet
-health_bp = Blueprint("health", __name__)
+# Define the Namespace
+ns_health = Namespace("health", description="Health check endpoint")
+
+# Define the response model
+health_model = ns_health.model(
+    "Health",
+    {
+        "status": fields.String(required=True, description="The status of the service"),
+        "message": fields.String(
+            required=True, description="A message describing the status"
+        ),
+    },
+)
 
 
-@health_bp.route("/check", methods=["GET"])
-def health_check():
-    """
-    Health check endpoint that returns the status of the service.
-    """
-    return jsonify({"status": "healthy", "message": "Service is running"}), 200
+@ns_health.route("/check")
+class HealthCheck(Resource):
+
+    @ns_health.doc("health_check")
+    @ns_health.marshal_with(health_model)
+    def get(self):
+        """
+        Health check endpoint that returns the status of the service.
+        """
+        return {"status": "healthy", "message": "Service is running"}, 200

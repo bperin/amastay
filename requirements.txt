@@ -2,6 +2,8 @@
 boto3
 sagemaker
 transformers
+huggingface-hub
+huggingface
 
 # Supabase and Related Dependencies
 supabase

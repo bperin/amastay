@@ -15,11 +15,12 @@ if hugging_face_hub_token is None:
         "You must provide a valid Hugging Face Hub token in the .env file."
     )
 
-# Hub Model configuration. Update with the correct model ID
+# Hub Model configuration
 hub = {
-    "HF_MODEL_ID": "meta-llama/Llama-3.1-8B-Instruct",  # Update to the correct model ID
-    "SM_NUM_GPUS": "1",  # Number of GPUs
-    "HUGGING_FACE_HUB_TOKEN": hugging_face_hub_token,  # Use the token from .env
+    "HF_MODEL_ID": "meta-llama/Llama-3.2-3B-Instruct",
+    "SM_NUM_GPUS": "1",
+    "HUGGING_FACE_HUB_TOKEN": hugging_face_hub_token,
+    "MESSAGES_API_ENABLED": "true",
 }
 
 # Get the image URI for the model (ensure correct image version)
@@ -35,25 +36,29 @@ huggingface_model = HuggingFaceModel(
     role=role_arn,
 )
 
-# Deploy the model to SageMaker Inference using an appropriate instance type
+# Deploy the model to SageMaker Inference
 predictor = huggingface_model.deploy(
     initial_instance_count=1,
-    instance_type="ml.g5.xlarge",  # Adjust instance type as per your use case
-    container_startup_health_check_timeout=300,  # Timeout in seconds for startup health check
+    instance_type="ml.g5.xlarge",
+    container_startup_health_check_timeout=300,
 )
 
-# Optionally, save the deployed endpoint name for future use
+# Save the deployed endpoint name for future use
 endpoint_name = predictor.endpoint_name
 print(f"Deployed endpoint: {endpoint_name}")
 
-# Example usage: send a test request
+# Send request
 response = predictor.predict(
     {
-        "inputs": "Hello, can you tell me more about LLaMA?",
+        "messages": [
+            {"role": "system", "content": "You are a helpful assistant."},
+            {"role": "user", "content": "What is deep learning?"},
+        ]
     }
 )
 
-print(f"Model response: {response}")
+print(response)
+
 
 # Clean up the endpoint when not needed
 # predictor.delete_endpoint()

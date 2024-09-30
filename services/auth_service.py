@@ -1,8 +1,9 @@
 # services/auth_service.py
 
+from typing import Literal, Tuple
 from supabase_utils import supabase_client, supabase_admin_client
 import logging
-from flask import jsonify, make_response, request
+from flask import Response, jsonify, make_response, request
 import requests
 import time
 import secrets
