@@ -7,9 +7,8 @@ authors = ["Brian Perin <bperin42@gmail.com>"]
 readme = "README.md"
 
 [tool.poetry.dependencies]
-python = "^3.12"
+python = "^3.11"
 boto3 = "^1.35.29"
-sagemaker = "^2.232.1"
 transformers = "^4.45.1"
 huggingface-hub = "^0.25.1"
 huggingface = "^0.0.1"
@@ -28,7 +27,13 @@ PyJWT = "^2.9.0"
 uuid = "^1.30"
 python-dotenv = "^1.0.1"
 supabase = "^2.8.0"
+setuptools = "^75.1.0"
+sagemaker = "2.132.0"
+pydantic = "^2.9.2"
 
+
+[tool.poetry.group.dev.dependencies]
+pyright = "^1.1.382.post1"
 
 [build-system]
 requires = ["poetry-core"]

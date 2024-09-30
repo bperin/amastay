@@ -13,13 +13,10 @@ ns_property = Namespace("properties", description="Property management")
 property_model = ns_property.model(
     "Property",
     {
-        "id": fields.String(
-            readonly=True, description="The property unique identifier"
-        ),
         "name": fields.String(required=True, description="The property name"),
         "address": fields.String(required=True, description="The property address"),
-        "price": fields.Float(required=True, description="The property price"),
-        # Add other fields as needed
+        "description": fields.String(required=False, description="The property description"),
+        "property_url": fields.String(required=True, description="The property Url"),
     },
 )
 
@@ -40,16 +37,19 @@ class CreateProperty(Resource):
             if not data:
                 return {"error": "Missing property data"}, 400
 
-            # Create a Property model from the request data
-            property_data = Property(**data)
-
             # Call the PropertyService to create the property
-            new_property = PropertyService.create_property(property_data)
+            new_property = PropertyService.create_property(data)
 
-            return new_property.dict(), 201
+            # Convert the new_property to a dictionary, excluding None values
+            property_dict = {k: v for k, v in new_property.dict().items() if v is not None}
+
+            return property_dict, 201
+        except ValueError as ve:
+            logging.error(f"Validation error in create_property: {ve}")
+            return {"error": str(ve)}, 400
         except Exception as e:
             logging.error(f"Error in create_property: {e}")
-            return {"error": str(e)}, 500
+            return {"error": "An unexpected error occurred"}, 500
 
 
 # Route to get a specific property by its ID

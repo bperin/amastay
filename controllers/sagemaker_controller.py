@@ -1,6 +1,4 @@
-import os
-import json
-import boto3
+
 from flask import request
 from flask_restx import Namespace, Resource, fields
 from auth_utils import jwt_required

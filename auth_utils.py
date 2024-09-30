@@ -35,7 +35,6 @@ def jwt_required(f):
             )
 
             g.user_id = payload["sub"]
-            print("Requesting from user ", payload["sub"])
 
             # Check if the token has expired
             exp = payload.get("exp")

@@ -1,6 +1,5 @@
 # controllers/auth_controller.py
 
-
 from flask import jsonify, request
 from flask_restx import Namespace, Resource, fields
 from auth_utils import jwt_required

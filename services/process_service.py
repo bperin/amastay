@@ -1,12 +1,12 @@
 import os
 from services.booking_service import BookingService
-from services.ai_service import AIService
 from services.message_service import MessageService
 from services.sms_service import SmsService
+from services.model_service import ModelService
 from supabase_utils import supabase_client
 
-
 class ProcessService:
+    model_service = ModelService()
 
     @staticmethod
     def handle_incoming_sms(sms_id, origination_number, message_body):
@@ -49,10 +49,13 @@ class ProcessService:
         # Step 5: Retrieve message history for the booking (including the just-added message)
         message_history = MessageService.get_messages_by_booking(booking.id)
 
-        # Step 6: Generate a response from the AI service
-        ai_response = AIService.generate_response(message_history, booking.id)
+        # Step 6: Prepare messages for the model
+        messages = [{"role": "user" if msg.sender_type == 0 else "assistant", "content": msg.content} for msg in reversed(message_history)]
 
-        # Step 7: Save the AI's response in the database
+        # Step 7: Generate a response from the AI service
+        ai_response = ProcessService.model_service.query_model(messages)
+
+        # Step 8: Save the AI's response in the database
         ai_message = MessageService.add_message(
             booking_id=booking.id,
             sender_id=None,  # AI doesn't have a guest ID
@@ -61,12 +64,12 @@ class ProcessService:
             sms_id=None,  # AI-generated messages won't have an SMS ID
         )
 
-        # Step 8: Send the AI response back to the guest
+        # Step 9: Send the AI response back to the guest
         SmsService.send_sms(
             origination_number, os.getenv("SYSTEM_PHONE_NUMBER"), ai_response
         )
 
-        # Step 9: Once the SMS is successfully sent, update the original guest message with the sms_id
+        # Step 10: Once the SMS is successfully sent, update the original guest message with the sms_id
         if new_message:
             MessageService.update_message_sms_id(new_message.id, sms_id)
 
