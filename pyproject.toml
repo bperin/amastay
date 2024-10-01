@@ -28,7 +28,7 @@ uuid = "^1.30"
 python-dotenv = "^1.0.1"
 supabase = "^2.8.0"
 setuptools = "^75.1.0"
-sagemaker = "2.132.0"
+sagemaker = "2.232.1"
 pydantic = "^2.9.2"
 
 

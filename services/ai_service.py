@@ -28,7 +28,7 @@ class AIService:
             {
                 "role": "system",
                 "content": "You are an AI assistant for managing bookings. "
-                           f"Property information: {property_info}"
+                f"Property information: {property_info}",
             }
         ]
 
@@ -68,7 +68,9 @@ class AIService:
         Sends the formatted conversation to the SageMaker model and retrieves the response.
         """
         # Format messages into a single string
-        conversation = "\n".join([f"{msg['role']}: {msg['content']}" for msg in messages])
+        conversation = "\n".join(
+            [f"{msg['role']}: {msg['content']}" for msg in messages]
+        )
         payload = {"inputs": conversation}
 
         try:
@@ -84,7 +86,11 @@ class AIService:
             model_response = json.loads(response_body)
 
             # Assuming the model returns a string directly
-            return model_response if isinstance(model_response, str) else str(model_response)
+            return (
+                model_response
+                if isinstance(model_response, str)
+                else str(model_response)
+            )
 
         except Exception as e:
             logging.error(f"Error occurred while invoking the model: {str(e)}")

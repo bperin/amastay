@@ -1,4 +1,5 @@
 import logging
+from models.ai_message import AIMessage
 from supabase_utils import supabase_client
 from models.property import Property
 from scraper import Scraper  # Adjust the import path if necessary
@@ -25,33 +26,33 @@ class PropertyService:
             if new_property.address:
                 scraper = Scraper(new_property.property_url)
                 scraped_data = scraper.scrape()
-
+                
                 # Clean the scraped data using AI
                 if scraped_data:
                     from services.model_service import ModelService
 
-                    model_service = ModelService()
-                    messages = [
-                        {
-                            "role": "system",
-                            "content": "You are an expert document editor. Your task is to clean and refine the given text, keeping only relevant information about the property. Remove any extraneous content, advertisements, or irrelevant details. Focus on key aspects such as property description, amenities, location details, and any other important information for potential renters or buyers."
-                        },
-                        {
-                            "role": "user",
-                            "content": f"Please clean and refine the following scraped property data:\n\n{scraped_data}"
-                        }
-                    ]
-                    print(scraped_data)
-                    cleaned_data = model_service.query_model(messages)
+                    # model_service = ModelService()
+                    # messages = [
+                    #     AIMessage(
+                    #         role="system",
+                    #         content="You are an expert document editor. Your task is to clean and refine the given text, keeping only relevant information about the property. Remove any extraneous content, advertisements, or irrelevant details. Focus on key aspects such as property description, amenities, location details, and any other important information for potential renters or buyers."
+                    #     ),
+                    #     AIMessage(
+                    #         role="user",
+                    #         content=f"Please clean and refine the following scraped property data:\n\n{scraped_data}"
+                    #     )
+                    # ]
+                   
+                    # cleaned_data = model_service.query_model(messages)
                     
                     # Replace the original scraped_data with the cleaned version
-                    scraped_data = cleaned_data
 
-                    logging.info(f"Scraped data cleaned successfully for property {new_property.id}")
+
+                logging.info(f"Scraped data cleaned successfully for property {new_property.id}")
 
                 if scraped_data:
                     # Save the scraped data using the scraper's save method
-                    filename = scraper.save_scraped_data(str(new_property.id), cleaned_data)
+                    filename = scraper.save_scraped_data(str(new_property.id), scraped_data)
                     document_data = {
                         "property_id": str(new_property.id),
                         "file_url": filename,

@@ -15,20 +15,26 @@ class ModelService:
         self.sagemaker_endpoint = os.getenv("SAGEMAKER_ENDPOINT")
         self.region_name = os.getenv("AWS_REGION")
         self.endpoint_url = os.getenv("SAGEMAKER_ENDPOINT_URL")
+        self.sagemaker_session = Session(default_bucket="teset-sagemaker-bucket-1234")
         
         # Removed sagemaker_session initialization as it's no longer needed
         self.predictor = Predictor(
             endpoint_name=self.sagemaker_endpoint,
             serializer=JSONSerializer(),
-            deserializer=JSONDeserializer()
+            deserializer=JSONDeserializer(),
+            sagemaker_session=self.sagemaker_session
         )
-
-    def query_model(self, messages: Optional[list[AIMessage]] = None):
+    
+    def query_model(self, messages: Optional[list[AIMessage]] = None, max_new_tokens: int = 2048):
         """
-        Query the SageMaker endpoint with the given messages.
+        Query the SageMaker endpoint with the given messages and max new tokens.
+        The default max_new_tokens is set to 2048, which is a more reasonable limit for generating new tokens.
         """
         try:
-            payload = {"messages": [message.dict() for message in messages] if messages else []}
+            payload = {
+                "messages": [message.dict() for message in messages] if messages else [],
+                "max_new_tokens": max_new_tokens
+            }
             print(payload)
             response = self.predictor.predict(payload)
             print(response)
