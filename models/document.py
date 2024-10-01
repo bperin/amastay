@@ -5,6 +5,7 @@ from typing import Optional
 from datetime import datetime
 from uuid import UUID
 
+
 class Document(BaseModel):
     id: UUID
     property_id: Optional[UUID]
