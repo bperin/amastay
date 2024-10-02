@@ -1,12 +1,13 @@
 import os
+import logging
+import traceback
 from typing import Optional, List
+from flask import g
 from sagemaker.predictor import Predictor
-from sagemaker import Session
 from sagemaker.serializers import JSONSerializer
 from sagemaker.deserializers import JSONDeserializer
-from langchain.memory import ConversationBufferMemory
-from langchain.schema import HumanMessage, AIMessage
-from models.ai_message import AIMessage as CustomAIMessage
+from models.hf_message import HfMessage
+from services.message_service import MessageService
 import re
 
 
@@ -23,56 +24,42 @@ class ModelService:
             deserializer=JSONDeserializer(),
         )
 
-        # Create a dictionary to hold memory for each session
-        self.session_memory = {}
+        # Message service to interact with the database
+        self.message_service = MessageService()
 
-    def get_memory(self, property_id: str) -> ConversationBufferMemory:
-        if property_id not in self.session_memory:
-            self.session_memory[property_id] = ConversationBufferMemory(
-                memory_key="chat_history", return_messages=True
-            )
-        return self.session_memory[property_id]
+    def get_conversation_history(self, booking_id: str) -> List[HfMessage]:
+        # Fetch conversation history from Supabase
+        messages = self.message_service.get_messages_by_booking(booking_id)
 
-    def convert_to_custom_ai_messages(
-        self, messages: List[HumanMessage | AIMessage]
-    ) -> List[CustomAIMessage]:
-        return [
-            CustomAIMessage(
-                role="user" if isinstance(msg, HumanMessage) else "assistant",
+        # Handle case where get_messages_by_booking returns None
+        if messages is None:
+            return []
+
+        # Convert the database messages into HfMessage format for the model
+        custom_messages = [
+            HfMessage(
+                role="user" if msg.sender_type == 0 else "assistant",
                 content=msg.content,
             )
             for msg in messages
         ]
+        return custom_messages
 
-    def query_model(self, property_id: str, prompt: str, max_new_tokens: int = 2048):
+    def query_model(self, booking_id: str, prompt: str, max_new_tokens: int = 2048):
         try:
-            memory = self.get_memory(property_id)
-
-            # Initialize conversation history if it doesn't exist
-            chat_history = memory.chat_memory.messages
-            if not chat_history:
-                initial_system_message = HumanMessage(
-                    content="You are a helpful assistant named amastay. You help with answering questions about short term rentals. and other general information"
-                )
-                initial_assistant_message = AIMessage(
-                    content="Hello! Im Amastay here to help you."
-                )
-                memory.chat_memory.add_message(initial_system_message)
-                memory.chat_memory.add_message(initial_assistant_message)
-
-            # Convert chat history to CustomAIMessage format
-            custom_messages = self.convert_to_custom_ai_messages(chat_history)
+            # Fetch conversation history directly from the database
+            conversation_history = self.get_conversation_history(booking_id)
 
             # Add the new user prompt
-            custom_messages.append(CustomAIMessage(role="user", content=prompt))
-            print(custom_messages)
+            conversation_history.append(HfMessage(role="user", content=prompt))
+            print(f"Conversation History: {conversation_history}")
 
             # Prepare payload for the model
             payload = {
-                "messages": [msg.dict() for msg in custom_messages],
+                "messages": [msg.dict() for msg in conversation_history],
                 "max_new_tokens": max_new_tokens,
             }
-            print(f"Payload for session {property_id}: {payload}")
+            print(f"Payload for session {booking_id}: {payload}")
 
             # Query the model
             response = self.predictor.predict(payload)
@@ -82,16 +69,32 @@ class ModelService:
                 response["choices"][0]["message"]["content"]
             )
 
-            # Save the user's input and assistant's response to memory
-            memory.chat_memory.add_message(HumanMessage(content=prompt))
-            memory.chat_memory.add_message(AIMessage(content=cleaned_response))
+            # Save the user's input and assistant's response directly to the database
+            user_message = self.message_service.add_message(
+                booking_id=booking_id,
+                sender_id=g.user_id,
+                sender_type=0,
+                content=prompt,
+                question_id=None,
+            )
+            self.message_service.add_message(
+                booking_id=booking_id,
+                sender_id=None,
+                sender_type=1,
+                content=cleaned_response,
+                question_id=str(user_message.id),
+            )
 
             return cleaned_response
 
         except Exception as e:
-            print(f"Error querying model: {str(e)}")
+            error_message = f"Error querying model: {str(e)}"
+            logging.exception(error_message)
+            print(error_message)
+            traceback.print_exc()
             return (
-                "I apologize, but I encountered an error while processing your request."
+                "I apologize, but I encountered an error while processing your request. "
+                "The error has been logged for further investigation."
             )
 
     @staticmethod

@@ -1,4 +1,3 @@
-
 from flask import request
 from flask_restx import Namespace, Resource, fields
 from auth_utils import jwt_required
@@ -29,13 +28,6 @@ output_model = ns_sagemaker.model(
 )
 
 
-@ns_sagemaker.route("/start_session")
-class StartSession(Resource):
-    @jwt_required
-    def post(self):
-        ModelService.start_session()
-
-
 @ns_sagemaker.route("/query_model")
 class QueryModel(Resource):
     @ns_sagemaker.doc("query_model")
@@ -61,21 +53,4 @@ class QueryModel(Resource):
 
         except Exception as e:
             print(f"Error in query_model: {str(e)}")
-            return {"error": str(e)}, 500
-
-
-@ns_sagemaker.route("/clear_chats")
-class ClearChats(Resource):
-    @ns_sagemaker.doc("clear_chats")
-    @jwt_required
-    def post(self):
-        """
-        Clears all chat histories.
-        """
-        try:
-            # Clear the chat_history dictionary
-            chat_history.clear()
-            return {"message": "All chat histories cleared successfully"}, 200
-        except Exception as e:
-            print(f"Error in clear_chats: {str(e)}")
             return {"error": str(e)}, 500

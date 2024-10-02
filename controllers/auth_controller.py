@@ -7,18 +7,30 @@ from services.auth_service import AuthService
 import logging
 import time
 
+try:
+    logging.basicConfig(level=logging.DEBUG)
+    logger = logging.getLogger(__name__)
+except Exception as e:
+    print(f"Error setting up logging: {str(e)}")
+
 ns_auth = Namespace("authentication", description="Authentication operations")
 
 # Define models for request/response
 signup_model = ns_auth.model(
     "Signup",
     {
-        "first_name": fields.String(required=True, description="First name"),
-        "last_name": fields.String(required=True, description="Last name"),
-        "estimated_properties": fields.Integer(
-            required=True, description="Estimated number of properties"
+        "first_name": fields.String(
+            required=True, description="First name", type="string"
         ),
-        "phone_number": fields.String(required=True, description="Phone number"),
+        "last_name": fields.String(
+            required=True, description="Last name", type="string"
+        ),
+        "estimated_properties": fields.Integer(
+            required=True, description="Estimated number of properties", type="integer"
+        ),
+        "phone_number": fields.String(
+            required=True, description="Phone number", type="string"
+        ),
     },
 )
 
@@ -52,7 +64,10 @@ class Signup(Resource):
 
         # Validate required fields
         if not all([first_name, last_name, estimated_properties, phone_number]):
-            logging.warning("Signup failed: Missing required fields.")
+            try:
+                logger.warning("Signup failed: Missing required fields.")
+            except Exception as e:
+                print(f"Error logging warning: {str(e)}")
             return {"error": "All fields are required"}, 400
 
         # Call the AuthService to handle sign-up
@@ -78,7 +93,10 @@ class VerifyOTP(Resource):
         otp = data.get("otp")
 
         if not all([phone_number, otp]):
-            logging.warning("OTP verification failed: Missing phone number or OTP.")
+            try:
+                logger.warning("OTP verification failed: Missing phone number or OTP.")
+            except Exception as e:
+                print(f"Error logging warning: {str(e)}")
             return {"error": "Phone number and OTP are required"}, 400
 
         # Call the AuthService to handle OTP verification
@@ -130,7 +148,10 @@ class Login(Resource):
         phone_number = data.get("phone_number")
 
         if not phone_number:
-            logging.warning("Login failed: Missing phone_number.")
+            try:
+                logger.warning("Login failed: Missing phone_number.")
+            except Exception as e:
+                print(f"Error logging warning: {str(e)}")
             return {"error": "phone_number is required"}, 400
 
         return AuthService.login(phone_number)
@@ -147,7 +168,10 @@ class ResendOTP(Resource):
         phone_number = data.get("phone_number")
 
         if not phone_number:
-            logging.warning("Resend OTP failed: Missing phone_number.")
+            try:
+                logger.warning("Resend OTP failed: Missing phone_number.")
+            except Exception as e:
+                print(f"Error logging warning: {str(e)}")
             return {"error": "phone_number is required"}, 400
 
         return AuthService.resend_otp(phone_number)

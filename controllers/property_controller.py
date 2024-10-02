@@ -5,6 +5,8 @@ from models.property import Property
 from services.property_service import PropertyService
 from auth_utils import jwt_required
 from uuid import UUID
+from geopy.geocoders import Nominatim
+from geopy.exc import GeocoderTimedOut, GeocoderServiceError
 
 # Create the Namespace for property-related routes
 ns_property = Namespace("properties", description="Property management")
@@ -15,10 +17,15 @@ property_model = ns_property.model(
     {
         "name": fields.String(required=True, description="The property name"),
         "address": fields.String(required=True, description="The property address"),
-        "description": fields.String(required=False, description="The property description"),
+        "description": fields.String(
+            required=False, description="The property description"
+        ),
         "property_url": fields.String(required=True, description="The property Url"),
     },
 )
+
+# Initialize the geolocator
+geolocator = Nominatim(user_agent="amastay_property_geocoder")
 
 
 # Route to create a new property
@@ -30,18 +37,34 @@ class CreateProperty(Resource):
     @jwt_required
     def post(self):
         """
-        Creates a new property for the owner.
+        Creates a new property for the owner and geocodes the address.
         """
         try:
             data = request.get_json()
             if not data:
                 return {"error": "Missing property data"}, 400
 
+            # Geocode the address
+            address = data.get("address")
+            if address:
+                try:
+                    # This is not a coroutine, it's a synchronous function call
+                    location = geolocator.geocode(address)
+                    if location:
+                        data["lat"] = location.latitude
+                        data["lng"] = location.longitude
+                    else:
+                        logging.warning(f"Failed to geocode address: {address}")
+                except (GeocoderTimedOut, GeocoderServiceError) as e:
+                    logging.error(f"Geocoding error: {e}")
+
             # Call the PropertyService to create the property
             new_property = PropertyService.create_property(data)
 
             # Convert the new_property to a dictionary, excluding None values
-            property_dict = {k: v for k, v in new_property.dict().items() if v is not None}
+            property_dict = {
+                k: v for k, v in new_property.dict().items() if v is not None
+            }
 
             return property_dict, 201
         except ValueError as ve:

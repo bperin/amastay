@@ -1,5 +1,8 @@
 import logging
-from models.ai_message import AIMessage
+import os
+import tempfile
+import time
+from models.hf_message import HfMessage
 from supabase_utils import supabase_client
 from models.property import Property
 from scraper import Scraper  # Adjust the import path if necessary
@@ -22,39 +25,30 @@ class PropertyService:
             data = response.data[0]
             new_property = Property(**data)
 
-            # Proceed to scrape if 'property_url' is provided
-            if new_property.address:
-                scraper = Scraper(new_property.property_url)
+            return new_property
+
+        except Exception as e:
+            logging.error(f"Exception in create_property: {e}")
+            raise
+
+    @staticmethod
+    def scrape_property(property: Property):
+        try:
+            if property.property_url:
+                scraper = Scraper(property.property_url)
                 scraped_data = scraper.scrape()
-                
-                # Clean the scraped data using AI
-                if scraped_data:
-                    from services.model_service import ModelService
 
-                    # model_service = ModelService()
-                    # messages = [
-                    #     AIMessage(
-                    #         role="system",
-                    #         content="You are an expert document editor. Your task is to clean and refine the given text, keeping only relevant information about the property. Remove any extraneous content, advertisements, or irrelevant details. Focus on key aspects such as property description, amenities, location details, and any other important information for potential renters or buyers."
-                    #     ),
-                    #     AIMessage(
-                    #         role="user",
-                    #         content=f"Please clean and refine the following scraped property data:\n\n{scraped_data}"
-                    #     )
-                    # ]
-                   
-                    # cleaned_data = model_service.query_model(messages)
-                    
-                    # Replace the original scraped_data with the cleaned version
-
-
-                logging.info(f"Scraped data cleaned successfully for property {new_property.id}")
+                logging.info(
+                    f"Scraped data cleaned successfully for property {property.id}"
+                )
 
                 if scraped_data:
                     # Save the scraped data using the scraper's save method
-                    filename = scraper.save_scraped_data(str(new_property.id), scraped_data)
+                    filename = PropertyService.save_scraped_data(
+                        str(property.id), scraped_data
+                    )
                     document_data = {
-                        "property_id": str(new_property.id),
+                        "property_id": str(property.id),
                         "file_url": filename,
                     }
                     # Insert the document into the 'documents' table
@@ -63,22 +57,23 @@ class PropertyService:
                         .insert(document_data)
                         .execute()
                     )
-                    
+
                     log_message = (
-                        f"Scraped data saved successfully for property {new_property.id}"
+                        f"Scraped data saved successfully for property {property.id}"
                         if filename
-                        else f"Failed to save scraped data for property {new_property.id}"
+                        else f"Failed to save scraped data for property {property.id}"
                     )
-                    logging.info(log_message) if filename else logging.error(log_message)
+                    (
+                        logging.info(log_message)
+                        if filename
+                        else logging.error(log_message)
+                    )
                 else:
-                    logging.error(f"Failed to scrape data for property {new_property.id}")
+                    logging.error(f"Failed to scrape data for property {property.id}")
             else:
-                logging.info(f"No 'property_url' provided for property {new_property.id}")
-
-            return new_property
-
+                logging.info(f"No 'property_url' provided for property {property.id}")
         except Exception as e:
-            logging.error(f"Exception in create_property: {e}")
+            logging.error(f"Exception in scrape_property: {e}")
             raise
 
     @staticmethod
@@ -172,3 +167,28 @@ class PropertyService:
         except Exception as e:
             logging.error(f"Exception in list_properties: {e}")
             raise e
+
+    @staticmethod
+    def save_scraped_data(property_id, scraped_data):
+        """Save scraped data as a text file to Supabase."""
+        filename = f"{property_id}_{int(time.time())}.txt"
+        try:
+            with tempfile.NamedTemporaryFile(delete=False) as temp_file:
+                temp_file.write(scraped_data.encode("utf-8"))
+                temp_file_path = temp_file.name
+
+            # Upload to Supabase
+            response = supabase_client.storage.from_("properties").upload(
+                filename, temp_file_path
+            )
+
+            if response:
+                logging.info(f"Document uploaded successfully as {filename}")
+                os.remove(temp_file_path)  # Clean up temp file
+                return filename
+            else:
+                logging.error(f"Failed to upload document to Supabase.")
+                return None
+        except Exception as e:
+            logging.error(f"Error uploading document: {e}")
+            return None

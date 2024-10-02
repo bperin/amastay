@@ -1,9 +1,13 @@
+import logging
 import os
+import tempfile
+import time
 from services.booking_service import BookingService
 from services.message_service import MessageService
 from services.sms_service import SmsService
 from services.model_service import ModelService
 from supabase_utils import supabase_client
+
 
 class ProcessService:
     model_service = ModelService()
@@ -50,7 +54,13 @@ class ProcessService:
         message_history = MessageService.get_messages_by_booking(booking.id)
 
         # Step 6: Prepare messages for the model
-        messages = [{"role": "user" if msg.sender_type == 0 else "assistant", "content": msg.content} for msg in reversed(message_history)]
+        messages = [
+            {
+                "role": "user" if msg.sender_type == 0 else "assistant",
+                "content": msg.content,
+            }
+            for msg in reversed(message_history)
+        ]
 
         # Step 7: Generate a response from the AI service
         ai_response = ProcessService.model_service.query_model(messages)

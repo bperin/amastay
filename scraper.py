@@ -85,27 +85,3 @@ class Scraper:
         finally:
             if self.driver:
                 self.driver.quit()
-
-    def save_scraped_data(self, property_id, scraped_data):
-        """Save scraped data as a text file to Supabase."""
-        filename = f"{property_id}_{int(time.time())}.txt"
-        try:
-            with tempfile.NamedTemporaryFile(delete=False) as temp_file:
-                temp_file.write(scraped_data.encode("utf-8"))
-                temp_file_path = temp_file.name
-
-            # Upload to Supabase
-            response = supabase_client.storage.from_("properties").upload(
-                filename, temp_file_path
-            )
-
-            if response:
-                logging.info(f"Document uploaded successfully as {filename}")
-                os.remove(temp_file_path)  # Clean up temp file
-                return filename
-            else:
-                logging.error(f"Failed to upload document to Supabase.")
-                return None
-        except Exception as e:
-            logging.error(f"Error uploading document: {e}")
-            return None

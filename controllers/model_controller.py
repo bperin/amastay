@@ -1,30 +1,16 @@
 from auth_utils import jwt_required
 from flask import request, current_app, g
 from flask_restx import Namespace, Resource, fields
-from models.ai_message import AIMessage
+from models.hf_message import HfMessage
 from services.model_service import ModelService
-import logging
 
 ns_model = Namespace("model", description="Model operations")
-
-# Get the logger for this module
-logger = logging.getLogger(__name__)
-
-# Set the logging level to DEBUG for maximum verbosity
-logger.setLevel(logging.DEBUG)
-
-# We don't need to add handlers here because they are already configured in app.py
-# The log messages from this module will be captured by the root logger
-
-# Add a debug message to confirm logger configuration
-logger.debug("Model controller logger configured.")
-
 
 # Define input model
 input_model = ns_model.model(
     "Input",
     {"message": fields.String(required=True, description="User input message")},
-    {"session_id": fields.String(required=False, description="Session ID")},
+    {"booking_id": fields.String(required=False, description="Booking ID")},
 )
 
 # Define output model
@@ -73,12 +59,12 @@ class QueryModel(Resource):
         try:
             data = request.json
             user_input = data.get("message")
-            session_id = data.get("session_id")
+            booking_id = data.get("booking_id")
 
-            if not user_input or not session_id:
-                return {"error": "Both message and session_id are required"}, 400
+            if not user_input or not booking_id:
+                return {"error": "Both message and booking_id are required"}, 400
 
-            result = model_service.query_model(session_id, user_input)
+            result = model_service.query_model(booking_id, user_input)
 
             return {"response": result}, 200
 

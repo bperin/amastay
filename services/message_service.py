@@ -1,3 +1,4 @@
+from uuid import UUID
 from supabase_utils import supabase_client
 from models.message import Message
 from typing import Optional
@@ -8,14 +9,25 @@ class MessageService:
 
     @staticmethod
     def add_message(
-        booking_id: str, sender_id: str, sender_type: int, content: str
+        booking_id: str,
+        sender_id: Optional[str],
+        sender_type: int,
+        content: str,
+        question_id: Optional[str] = None,
     ) -> Optional[Message]:
         new_message = {
             "booking_id": booking_id,
-            "sender_id": sender_id,
             "sender_type": sender_type,
             "content": content,
         }
+
+        # Only add sender_id to the new_message if it's not None
+        if sender_id is not None:
+            new_message["sender_id"] = sender_id
+
+        # Only add question_id to the new_message if it's not None
+        if question_id is not None:
+            new_message["question_id"] = question_id
 
         response = supabase_client.table("messages").insert(new_message).execute()
 

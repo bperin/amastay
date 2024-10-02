@@ -35,8 +35,10 @@ file_handler.setFormatter(
 )
 app.logger.addHandler(file_handler)
 
-# Initialize Flask-RESTX API
-api = Api(app, version="0.1", title="Amastay API", description="Amastay API")
+# Initialize Flask-RESTX API with Swagger UI
+api = Api(
+    app, version="0.1", title="Amastay API", description="Amastay API", doc="/swagger"
+)
 
 # Register Namespace with the API
 api.add_namespace(ns_auth, path="/api/v1/auth")
