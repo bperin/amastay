@@ -1,4 +1,5 @@
 import logging
+from typing import List
 from flask import request, jsonify
 from flask_restx import Namespace, Resource, fields
 from models.property import Property
@@ -7,6 +8,8 @@ from auth_utils import jwt_required
 from uuid import UUID
 from geopy.geocoders import Nominatim
 from geopy.exc import GeocoderTimedOut, GeocoderServiceError
+from models.property_information import PropertyInformation
+from services.property_information_service import PropertyInformationService
 
 # Create the Namespace for property-related routes
 ns_property = Namespace("properties", description="Property management")
@@ -33,7 +36,6 @@ geolocator = Nominatim(user_agent="amastay_property_geocoder")
 class CreateProperty(Resource):
     @ns_property.doc("create_property")
     @ns_property.expect(property_model)
-    @ns_property.marshal_with(property_model, code=201)
     @jwt_required
     def post(self):
         """
@@ -61,12 +63,7 @@ class CreateProperty(Resource):
             # Call the PropertyService to create the property
             new_property = PropertyService.create_property(data)
 
-            # Convert the new_property to a dictionary, excluding None values
-            property_dict = {
-                k: v for k, v in new_property.dict().items() if v is not None
-            }
-
-            return property_dict, 201
+            return new_property.model_dump(), 201
         except ValueError as ve:
             logging.error(f"Validation error in create_property: {ve}")
             return {"error": str(ve)}, 400
@@ -79,7 +76,6 @@ class CreateProperty(Resource):
 @ns_property.route("/view/<uuid:property_id>")
 class ViewProperty(Resource):
     @ns_property.doc("get_property")
-    @ns_property.marshal_with(property_model)
     @jwt_required
     def get(self, property_id: UUID):
         """
@@ -92,7 +88,7 @@ class ViewProperty(Resource):
             if not property_data:
                 return {"error": "Property not found"}, 404
 
-            return property_data.dict(), 200
+            return property_data.model_dump(), 200
         except Exception as e:
             logging.error(f"Error in get_property: {e}")
             return {"error": str(e)}, 500
@@ -103,7 +99,6 @@ class ViewProperty(Resource):
 class UpdateProperty(Resource):
     @ns_property.doc("update_property")
     @ns_property.expect(property_model)
-    @ns_property.marshal_with(property_model)
     @jwt_required
     def put(self, property_id: UUID):
         """
@@ -121,7 +116,7 @@ class UpdateProperty(Resource):
                 property_id, data, user_id
             )
 
-            return updated_property.dict(), 200
+            return updated_property.model_dump(), 200
         except Exception as e:
             logging.error(f"Error in update_property: {e}")
             return {"error": str(e)}, 500
@@ -155,7 +150,6 @@ class DeleteProperty(Resource):
 @ns_property.route("/list")
 class ListProperties(Resource):
     @ns_property.doc("list_properties")
-    @ns_property.marshal_list_with(property_model)
     @jwt_required
     def get(self):
         """
@@ -167,7 +161,109 @@ class ListProperties(Resource):
             # Call the PropertyService to list properties
             properties = PropertyService.list_properties(owner_id)
 
-            return [property.dict() for property in properties], 200
+            return [property.model_dump() for property in properties], 200
         except Exception as e:
             logging.error(f"Error in list_properties: {e}")
+            return {"error": str(e)}, 500
+
+
+# Define model for property information
+property_info_model = ns_property.model(
+    "PropertyInformation",
+    {
+        "property_id": fields.String(required=True, description="Property id"),
+        "name": fields.String(required=True, description="Information name"),
+        "detail": fields.String(required=True, description="Information detail"),
+        "video_url": fields.String(required=False, description="Information video url"),
+        "category_id": fields.String(
+            required=False, description="Information category_id"
+        ),
+    },
+)
+
+
+# Route to add property information
+@ns_property.route("/information/")
+class AddPropertyInformation(Resource):
+    @ns_property.doc("add_property_information")
+    @ns_property.expect(property_info_model)
+    @jwt_required
+    def post(self):
+        """
+        Adds information to a property.
+        """
+        try:
+            data = request.get_json()
+            if not data:
+                return {"error": "Missing property information data"}, 400
+
+            # Call the PropertyInformationService to add property information
+            property_info = PropertyInformationService.add_property_information(data)
+
+            return property_info.model_dump(), 201
+        except Exception as e:
+            logging.error(f"Error in add_property_information: {e}")
+            return {"error": str(e)}, 500
+
+
+# Route to remove property information
+@ns_property.route("/information/<uuid:info_id>")
+class RemovePropertyInformation(Resource):
+    @ns_property.doc("remove_property_information")
+    @jwt_required
+    def delete(self, info_id: UUID):
+        """
+        Removes specific information from a property.
+        """
+        try:
+            # Call the PropertyInformationService to remove property information
+            success = PropertyInformationService.remove_property_information(info_id)
+
+            if success:
+                return {"message": "Property information removed successfully"}, 200
+            else:
+                return {"error": "Failed to remove property information"}, 400
+        except Exception as e:
+            logging.error(f"Error in remove_property_information: {e}")
+            return {"error": str(e)}, 500
+
+
+# Route to get property information by property ID
+@ns_property.route("/information/<uuid:property_id>")
+class GetPropertyInformation(Resource):
+    @ns_property.doc("get_property_information")
+    @jwt_required
+    def get(self, property_id: UUID):
+        """
+        Get all information for a specific property.
+        """
+        try:
+            # Call the PropertyInformationService to get property information
+            property_info_list = PropertyInformationService.get_property_information(
+                property_id
+            )
+            return [info.model_dump() for info in property_info_list], 200
+        except Exception as e:
+            logging.error(f"Error in get_property_information: {e}")
+            return {"error": str(e)}, 500
+
+
+# Route to get property by ID
+@ns_property.route("/<uuid:property_id>")
+class GetProperty(Resource):
+    @ns_property.doc("get_property")
+    @jwt_required
+    def get(self, property_id: UUID):
+        """
+        Get a specific property by ID.
+        """
+        try:
+            # Call the PropertyService to get the property
+            property = PropertyService.get_property(property_id)
+            if property:
+                return property.dict(), 200
+            else:
+                return {"error": "Property not found"}, 404
+        except Exception as e:
+            logging.error(f"Error in get_property: {e}")
             return {"error": str(e)}, 500

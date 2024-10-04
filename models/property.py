@@ -1,19 +1,19 @@
 # models/property.py
 
-from pydantic import BaseModel
-from uuid import UUID
+from pydantic import BaseModel, Field
 from typing import Optional
-from datetime import datetime
 
 
 class Property(BaseModel):
-    id: Optional[UUID]
-    owner_id: Optional[str]  # Assuming owner_id is a string (user's ID)
+    id: Optional[str] = Field(default=None)
+    owner_id: Optional[str] = Field(
+        default=None
+    )  # Assuming owner_id is a string (user's ID)
     name: str
-    description: Optional[str]
-    address: Optional[str]
-    lat: Optional[float]
-    lng: Optional[float]
-    property_url: Optional[str]
-    created_at: Optional[datetime]
-    updated_at: Optional[datetime]
+    description: Optional[str] = Field(default=None)
+    address: Optional[str] = Field(default=None)
+    lat: Optional[float] = Field(default=None)
+    lng: Optional[float] = Field(default=None)
+    property_url: Optional[str] = Field(default=None)
+    created_at: Optional[str] = Field(default=None)
+    updated_at: Optional[str] = Field(default=None)

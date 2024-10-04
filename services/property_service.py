@@ -2,6 +2,8 @@ import logging
 import os
 import tempfile
 import time
+
+from flask import g
 from models.hf_message import HfMessage
 from supabase_utils import supabase_client
 from models.property import Property
@@ -14,6 +16,7 @@ class PropertyService:
     @staticmethod
     def create_property(property_data: dict) -> Property:
         try:
+            property_data["owner_id"] = g.user_id
             # Insert the property into the 'properties' table
             response = (
                 supabase_client.table("properties").insert(property_data).execute()

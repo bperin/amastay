@@ -1,6 +1,5 @@
 import json
 from sagemaker.huggingface import HuggingFaceModel, get_huggingface_llm_image_uri
-from sagemaker.model_monitor import DataCaptureConfig
 from dotenv import load_dotenv
 import os
 
@@ -19,7 +18,7 @@ if hugging_face_hub_token is None:
 # Hub Model configuration
 hub = {
     "HF_MODEL_ID": "meta-llama/Llama-3.2-3B-Instruct",
-    "SM_NUM_GPUS": "1",
+    "SM_NUM_GPUS": "1",  # Number of GPUs to use
     "HUGGING_FACE_HUB_TOKEN": hugging_face_hub_token,
     "MESSAGES_API_ENABLED": "true",
 }
@@ -30,39 +29,22 @@ image_uri = get_huggingface_llm_image_uri("huggingface", version="2.2.0")
 # Use the correct SageMaker execution role ARN
 role_arn = "arn:aws:iam::422220778159:role/AmazonSageMaker-ExecutionRole"
 
-# S3 bucket for storing captured data
-data_capture_s3_uri = "s3://sagemaker-test-amastay/messages/"
-
-# Data capture configuration: captures 100% of traffic and saves it as JSON
-data_capture_config = DataCaptureConfig(
-    enable_capture=True,
-    sampling_percentage=100,
-    destination_s3_uri=data_capture_s3_uri,
-    capture_options=["Request", "Response"],  # Capture both request and response
-    csv_content_types=[],
-    json_content_types=["application/json"],
-)
-
 # Create Hugging Face Model Class
-huggingface_model = HuggingFaceModel(
-    image_uri=image_uri,
-    env=hub,
-    role=role_arn,
-)
+huggingface_model = HuggingFaceModel(image_uri=image_uri, env=hub, role=role_arn)
 
-# Deploy the model to SageMaker Inference with data capture enabled
+# Update instance type based on GPU requirements
 predictor = huggingface_model.deploy(
     initial_instance_count=1,
     instance_type="ml.g5.xlarge",
     container_startup_health_check_timeout=300,
-    data_capture_config=data_capture_config,  # Enable data capture
+    max_runtime_in_seconds=300,  # Changed to 5 minutes (300 seconds) of inactivity before shutdown
 )
 
 # Save the deployed endpoint name for future use
 endpoint_name = predictor.endpoint_name
 print(f"Deployed endpoint: {endpoint_name}")
 
-# Send request
+# Send request to the deployed model endpoint
 response = predictor.predict(
     {
         "messages": [
@@ -74,5 +56,5 @@ response = predictor.predict(
 
 print(response)
 
-# Clean up the endpoint when not needed
+# Clean up the endpoint when not needed (uncomment this line to delete the endpoint)
 # predictor.delete_endpoint()

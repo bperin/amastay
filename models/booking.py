@@ -5,10 +5,14 @@ from typing import Optional
 from datetime import datetime
 from uuid import UUID
 
+
 class Booking(BaseModel):
-    id: UUID
-    property_id: Optional[UUID]
-    check_in: Optional[datetime]
-    check_out: Optional[datetime]
-    created_at: Optional[datetime]
-    updated_at: Optional[datetime]
+    id: str
+    property_id: Optional[str]
+    check_in: Optional[str]
+    check_out: Optional[str]
+    created_at: Optional[str]
+    updated_at: Optional[str]
+
+    class Config:
+        json_encoders = {UUID: str, datetime: lambda v: v.isoformat() if v else None}

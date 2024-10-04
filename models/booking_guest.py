@@ -6,8 +6,8 @@ from uuid import UUID
 
 
 class BookingGuest(BaseModel):
-    id: UUID
-    booking_id: Optional[UUID]
-    guest_id: Optional[UUID]
-    created_at: Optional[datetime]
-    updated_at: Optional[datetime]
+    id: str
+    booking_id: Optional[str]
+    guest_id: Optional[str]
+    created_at: Optional[str]
+    updated_at: Optional[str]

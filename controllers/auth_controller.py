@@ -42,8 +42,17 @@ otp_model = ns_auth.model(
     },
 )
 
+otp_response = ns_auth.model(
+    "OTPResponse",
+    {
+        "message": fields.String(description="Success message"),
+    },
+)
+
+
 login_model = ns_auth.model(
-    "Login", {"phone_number": fields.String(required=True, description="Phone number")}
+    "Login",
+    {"phone_number": fields.String(required=True, description="Phone number")},
 )
 
 
@@ -81,6 +90,20 @@ class Signup(Resource):
 
 # OTP Verification Route
 @ns_auth.route("/verify_otp")
+@ns_auth.response(
+    200,
+    "Success",
+    otp_response,
+    headers={
+        "x-access-token": {"description": "Access token", "type": "string"},
+        "x-refresh-token": {"description": "Refresh token", "type": "string"},
+        "x-expires-at": {
+            "description": "Token expiration timestamp",
+            "type": "integer",
+        },
+        "x-user-id": {"description": "User ID", "type": "string"},
+    },
+)
 class VerifyOTP(Resource):
     @ns_auth.expect(otp_model)
     def post(self):
@@ -105,6 +128,20 @@ class VerifyOTP(Resource):
 
 # Refresh Token Route
 @ns_auth.route("/refresh_token")
+@ns_auth.response(
+    200,
+    "Success",
+    otp_response,
+    headers={
+        "x-access-token": {"description": "Access token", "type": "string"},
+        "x-refresh-token": {"description": "Refresh token", "type": "string"},
+        "x-expires-at": {
+            "description": "Token expiration timestamp",
+            "type": "integer",
+        },
+        "x-user-id": {"description": "User ID", "type": "string"},
+    },
+)
 class RefreshToken(Resource):
     def post(self):
         """
