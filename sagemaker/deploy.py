@@ -37,7 +37,6 @@ predictor = huggingface_model.deploy(
     initial_instance_count=1,
     instance_type="ml.g5.xlarge",
     container_startup_health_check_timeout=300,
-    max_runtime_in_seconds=300,  # Changed to 5 minutes (300 seconds) of inactivity before shutdown
 )
 
 # Save the deployed endpoint name for future use
