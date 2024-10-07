@@ -43,7 +43,7 @@ class MessageService:
             supabase_client.table("messages")
             .select("*")
             .eq("booking_id", booking_id)
-            .order("created_at", desc=True)
+            .order("created_at", desc=False)
             .limit(limit)
             .execute()
         )

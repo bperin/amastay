@@ -4,6 +4,7 @@ from sagemaker.serverless import ServerlessInferenceConfig  # Import the correct
 from dotenv import load_dotenv
 import os
 
+
 # Load environment variables from .env file
 load_dotenv()
 
@@ -18,7 +19,8 @@ if hugging_face_hub_token is None:
 
 # Hub Model configuration
 hub = {
-    "HF_MODEL_ID": "hugging-quants/Llama-3.2-3B-Instruct-Q8_0-GGUF",
+    "HF_MODEL_ID": "jncraton/Llama-3.2-3B-Instruct-ct2-int8",
+    "HF_TASK": "text-generation",
     "SM_NUM_GPUS": "1",  # Number of GPUs to use
     "HUGGING_FACE_HUB_TOKEN": hugging_face_hub_token,
     "MESSAGES_API_ENABLED": "true",

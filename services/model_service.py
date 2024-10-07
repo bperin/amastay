@@ -1,11 +1,14 @@
 import os
 import logging
 import traceback
+import boto3
 from typing import Optional, List
-from flask import g
+from flask import g, json
 from sagemaker.predictor import Predictor
 from sagemaker.serializers import JSONSerializer
 from sagemaker.deserializers import JSONDeserializer
+
+# from services.documents_service import DocumentsService
 from models.hf_message import HfMessage
 from services.message_service import MessageService
 import re
@@ -16,6 +19,16 @@ class ModelService:
         self.sagemaker_endpoint = os.getenv("SAGEMAKER_ENDPOINT")
         self.region_name = os.getenv("AWS_REGION")
         self.endpoint_url = os.getenv("SAGEMAKER_ENDPOINT_URL")
+        self.inference_arn = "arn:aws:bedrock:us-east-1:422220778159:inference-profile/us.meta.llama3-2-3b-instruct-v1:0"
+
+        self.bedrock_client = boto3.client("bedrock-runtime", region_name="us-east-1")
+
+        self.sagemaker_client = boto3.client("sagemaker", region_name=self.region_name)
+
+        # Create SageMaker Runtime client
+        self.sagemaker_runtime = boto3.client(
+            "sagemaker-runtime", region_name=self.region_name
+        )
 
         # Predictor configuration
         self.predictor = Predictor(
@@ -26,20 +39,21 @@ class ModelService:
 
         # Message service to interact with the database
         self.message_service = MessageService()
+        # self.document_service = DocumentsService()
 
     def get_conversation_history(self, booking_id: str) -> List[HfMessage]:
         # Fetch conversation history from Supabase
         messages = self.message_service.get_messages_by_booking(booking_id)
-
+        # docs = self.document_service.get_documents_by_booking_id(booking_id)
+        # print(f"!!!!!!!!!!!!!!!!!!!Documents: {docs}")
         # Handle case where get_messages_by_booking returns None
         if messages is None:
             return []
 
         # Convert the database messages into HfMessage format for the model
         custom_messages = [
-            HfMessage(
-                role="user" if msg.sender_type == 0 else "assistant",
-                content=msg.content,
+            HfMessage.create(
+                role="user" if msg.sender_type == 0 else "assistant", text=msg.content
             )
             for msg in messages
         ]
@@ -50,40 +64,54 @@ class ModelService:
             # Fetch conversation history directly from the database
             conversation_history = self.get_conversation_history(booking_id)
 
+            # # Add the new user prompt
+            # conversation_history.insert(
+            #     0, HfMessage.create("user", "You are a cool assistant")
+            # )
+
             # Add the new user prompt
-            conversation_history.append(HfMessage(role="user", content=prompt))
+            conversation_history.append(HfMessage.create("user", prompt))
             print(f"Conversation History: {conversation_history}")
 
             # Prepare payload for the model
-            payload = {
-                "messages": [msg.dict() for msg in conversation_history],
-                "max_new_tokens": max_new_tokens,
-            }
+            payload = [msg.dict() for msg in conversation_history]
             print(f"Payload for session {booking_id}: {payload}")
 
-            # Query the model
-            response = self.predictor.predict(payload)
+            response = self.bedrock_client.converse(
+                modelId="us.meta.llama3-2-3b-instruct-v1:0",
+                messages=payload,
+                inferenceConfig={"maxTokens": 80, "temperature": 0.7, "topP": 0.9},
+                additionalModelRequestFields={},
+            )
 
             # Extract and clean the response from the model
-            cleaned_response = self.clean_text(
-                response["choices"][0]["message"]["content"]
-            )
+            if (
+                "output" in response
+                and "message" in response["output"]
+                and "content" in response["output"]["message"]
+            ):
+                cleaned_response = self.clean_text(
+                    response["output"]["message"]["content"][0]["text"]
+                )
+            else:
+                cleaned_response = None
 
-            # Save the user's input and assistant's response directly to the database
-            user_message = self.message_service.add_message(
-                booking_id=booking_id,
-                sender_id=g.user_id,
-                sender_type=0,
-                content=prompt,
-                question_id=None,
-            )
-            self.message_service.add_message(
-                booking_id=booking_id,
-                sender_id=None,
-                sender_type=1,
-                content=cleaned_response,
-                question_id=str(user_message.id),
-            )
+            if cleaned_response:
+                # Save the user's input and assistant's response directly to the database
+                user_message = self.message_service.add_message(
+                    booking_id=booking_id,
+                    sender_id=g.user_id,
+                    sender_type=0,
+                    content=prompt,
+                    question_id=None,
+                )
+                self.message_service.add_message(
+                    booking_id=booking_id,
+                    sender_id=None,
+                    sender_type=1,
+                    content=cleaned_response,
+                    question_id=str(user_message.id),
+                )
 
             return cleaned_response
 
