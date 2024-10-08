@@ -1,7 +1,8 @@
 import os
 import tempfile
 import time
-from supabase_utils import supabase_client
+from models.document import Document
+from supabase_utils import supabase_client, supabase_admin_client
 import logging
 
 
@@ -44,21 +45,79 @@ class DocumentsService:
     def get_documents_by_property_id(property_id):
         """Fetch all documents for a given property ID."""
         try:
-            response = (
+            document_query = (
                 supabase_client.table("documents")
-                .select("*")
-                .eq("property_id", str(property_id))
+                .select("id", "file_url", "created_at", "updated_at")
+                .eq("property_id", property_id)
                 .execute()
             )
-            if response.data:
-                return [
-                    {"id": doc["id"], "file_url": doc["file_url"]}
-                    for doc in response.data
-                ]
-            else:
+
+            if not document_query.data:
+                logging.error(f"No documents found for property_id: {property_id}")
                 return []
+
+            documents = []
+            for doc in document_query.data:
+                # Get the public URL for each document
+                public_url = supabase_client.storage.from_(
+                    DocumentsService.BUCKET_NAME
+                ).get_public_url(doc["file_url"])
+
+                documents.append(
+                    {
+                        "id": doc["id"],
+                        "file_url": public_url,
+                        "created_at": doc["created_at"],
+                        "updated_at": doc["updated_at"],
+                    }
+                )
+
+            return documents
         except Exception as e:
             logging.error(f"Error fetching documents for property {property_id}: {e}")
+            return []
+
+    @staticmethod
+    def get_documents_by_booking_id(booking_id):
+        """Fetch all documents for a given booking ID."""
+        try:
+
+            # Query the bookings table to get the property_id
+            booking_query = (
+                supabase_client.from_("bookings")
+                .select("property_id")
+                .eq("id", booking_id)
+                .execute()
+            )
+            if not booking_query.data:
+                logging.error(f"No booking found for booking_id: {booking_id}")
+                return []
+
+            property_id = booking_query.data[0]["property_id"]
+
+            # Query the documents table using the property_id
+            document_query = (
+                supabase_client.from_("documents")
+                .select("id", "file_url", "created_at", "updated_at")
+                .eq("property_id", property_id)
+                .execute()
+            )
+            if not document_query.data:
+                logging.error(f"No documents found for property_id: {property_id}")
+                return []
+
+            document_urls = []
+            print(document_query.data)
+            for doc in document_query.data:
+                print(f"looking up doc", doc)
+                # Get the public URL for each document
+                public_url = supabase_client.storage.from_(
+                    DocumentsService.BUCKET_NAME
+                ).get_public_url(doc["file_url"])
+            document_urls.append(public_url)
+            return document_urls
+        except Exception as e:
+            logging.error(f"Error fetching documents for booking {booking_id}: {e}")
             return []
 
     @staticmethod

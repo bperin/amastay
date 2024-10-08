@@ -3,14 +3,17 @@ from flask import request, current_app, g
 from flask_restx import Namespace, Resource, fields
 from models.hf_message import HfMessage
 from services.model_service import ModelService
+import logging
 
 ns_model = Namespace("model", description="Model operations")
 
 # Define input model
 input_model = ns_model.model(
     "Input",
-    {"message": fields.String(required=True, description="User input message")},
-    {"booking_id": fields.String(required=False, description="Booking ID")},
+    {
+        "message": fields.String(required=True, description="User input message"),
+        "booking_id": fields.String(required=True, description="Booking ID"),
+    },
 )
 
 # Define output model
@@ -21,8 +24,10 @@ output_model = ns_model.model(
     },
 )
 
-
 model_service = ModelService()
+
+# Get a logger for this module
+logger = logging.getLogger(__name__)
 
 
 @ns_model.route("/create_session")
@@ -38,13 +43,15 @@ class CreateSession(Resource):
             session_id = model_service.create_session()
 
             if session_id:
+                logger.info(f"Session created successfully: {session_id}")
                 return {"session_id": session_id}, 201
             else:
+                logger.error("Failed to create session")
                 return {"error": "Failed to create session"}, 500
 
         except Exception as e:
-            ns_model.logger.error(f"Error in create_session: {str(e)}")
-            return {"error": str(e)}, 500
+            logger.exception(f"Unexpected error in create_session: {str(e)}")
+            return {"error": "An unexpected error occurred"}, 500
 
 
 @ns_model.route("/query")
@@ -53,21 +60,25 @@ class QueryModel(Resource):
     @ns_model.expect(input_model)
     @ns_model.marshal_with(output_model)
     def post(self):
-        """
-        Query the model
-        """
         try:
             data = request.json
             user_input = data.get("message")
             booking_id = data.get("booking_id")
 
             if not user_input or not booking_id:
+                logger.warning(
+                    f"Invalid input: message={user_input}, booking_id={booking_id}"
+                )
                 return {"error": "Both message and booking_id are required"}, 400
 
+            logger.info(f"Querying model for booking_id: {booking_id}")
             result = model_service.query_model(booking_id, user_input)
 
-            return {"response": result}, 200
+            logger.info(f"Model query successful for booking_id: {booking_id}")
+            return result, 200  # Return the dictionary from model_service.query_model
 
         except Exception as e:
-            ns_model.logger.error(f"Error in query_model: {str(e)}")
-            return {"error": str(e)}, 500
+            logger.exception(
+                f"Error in query_model for booking_id {booking_id}: {str(e)}"
+            )
+            return {"error": "An unexpected error occurred"}, 500
