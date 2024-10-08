@@ -27,7 +27,7 @@ class PropertyService:
 
             data = response.data[0]
             new_property = Property(**data)
-
+            PropertyService.scrape_property(new_property)
             return new_property
 
         except Exception as e:

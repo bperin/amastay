@@ -41,38 +41,8 @@ class ProcessService:
             print(f"Guest not found for phone number {origination_number}")
             return
 
-        # Step 4: Save the incoming guest message to the database first
-        new_message = MessageService.add_message(
-            booking_id=booking.id,
-            sender_id=guest.id,
-            sender_type=0,  # 0 for guest
-            content=message_body,
-            sms_id=sms_id,
-        )
-
-        # Step 5: Retrieve message history for the booking (including the just-added message)
-        message_history = MessageService.get_messages_by_booking(booking.id)
-
-        # Step 6: Prepare messages for the model
-        messages = [
-            {
-                "role": "user" if msg.sender_type == 0 else "assistant",
-                "content": msg.content,
-            }
-            for msg in reversed(message_history)
-        ]
-
         # Step 7: Generate a response from the AI service
-        ai_response = ProcessService.model_service.query_model(messages)
-
-        # Step 8: Save the AI's response in the database
-        ai_message = MessageService.add_message(
-            booking_id=booking.id,
-            sender_id=None,  # AI doesn't have a guest ID
-            sender_type=1,  # 1 for AI
-            content=ai_response,
-            sms_id=None,  # AI-generated messages won't have an SMS ID
-        )
+        ai_response = ProcessService.model_service.query_model(booking.id, message_body)
 
         # Step 9: Send the AI response back to the guest
         SmsService.send_sms(

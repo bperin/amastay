@@ -48,12 +48,36 @@ class ModelService:
             return []
 
         # Convert the database messages into HfMessage format for the model
-        custom_messages = [
-            HfMessage.create(
-                role="user" if msg.sender_type == 0 else "assistant", text=msg.content
+        custom_messages = []
+        last_role = None
+        for msg in messages:
+            current_role = "user" if msg.sender_type == 0 else "assistant"
+
+            # Ensure alternating user/assistant pattern
+            if current_role != last_role:
+                custom_messages.append(
+                    HfMessage.create(role=current_role, text=msg.content)
+                )
+                last_role = current_role
+            else:
+                # If same role appears consecutively, combine messages
+                if custom_messages:
+                    custom_messages[-1].text += f"\n{msg.content}"
+                else:
+                    custom_messages.append(
+                        HfMessage.create(role=current_role, text=msg.content)
+                    )
+
+        # Ensure the conversation starts with a user message and ends with an assistant message
+        if custom_messages and custom_messages[0].role == "assistant":
+            custom_messages.insert(0, HfMessage.create(role="user", text="Hello"))
+        if custom_messages and custom_messages[-1].role == "user":
+            custom_messages.append(
+                HfMessage.create(
+                    role="assistant", text="I understand. How can I assist you further?"
+                )
             )
-            for msg in messages
-        ]
+
         return custom_messages
 
     def get_documents_by_booking(self, booking_id: str) -> List[Any]:
@@ -66,8 +90,17 @@ class ModelService:
             # Fetch conversation history directly from the database
             conversation_history = self.get_conversation_history(booking_id)
 
+            system_prompt = [
+                {
+                    "text": "You are an expert question an anaswer chat assistanted that gives clear and concise responses about short term rentals. You are provided with the following documents which may help you answer the users question. If you cannot answer the users question, please ask for more information"
+                }
+            ]
             # Fetch documents related to the booking
-            documents = self.get_documents_by_booking(booking_id)
+            document_urls = self.get_documents_by_booking(booking_id)
+            for url in document_urls:
+                document_content = self.document_service.read_document(url)
+                if document_content:
+                    system_prompt.append({"text": document_content})
 
             # Add the new user prompt
             conversation_history.append(HfMessage.create("user", prompt))
@@ -77,9 +110,12 @@ class ModelService:
             payload = [msg.dict() for msg in conversation_history]
             print(f"Payload for session {booking_id}: {payload}")
 
+            # Define the system prompt as an array of texts
+
             response = self.bedrock_client.converse(
                 modelId="us.meta.llama3-2-3b-instruct-v1:0",
                 messages=payload,
+                system=system_prompt,
                 inferenceConfig={"maxTokens": 360, "temperature": 0.7, "topP": 0.9},
                 additionalModelRequestFields={},
             )

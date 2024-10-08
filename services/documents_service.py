@@ -107,14 +107,8 @@ class DocumentsService:
                 return []
 
             document_urls = []
-            print(document_query.data)
             for doc in document_query.data:
-                print(f"looking up doc", doc)
-                # Get the public URL for each document
-                public_url = supabase_client.storage.from_(
-                    DocumentsService.BUCKET_NAME
-                ).get_public_url(doc["file_url"])
-            document_urls.append(public_url)
+                document_urls.append(doc["file_url"])
             return document_urls
         except Exception as e:
             logging.error(f"Error fetching documents for booking {booking_id}: {e}")
