@@ -7,6 +7,7 @@ from typing import Optional
 class PropertyInformation(BaseModel):
     id: str
     property_id: Optional[str] = None
+    name: Optional[str] = None
     detail: Optional[str] = None
     video_url: Optional[str] = None
     category: Optional[str] = None

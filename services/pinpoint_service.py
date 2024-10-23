@@ -1,40 +1,14 @@
+import logging
 from datetime import datetime
 import os
 from typing import Optional
 from supabase_utils import supabase_client
 from services.booking_service import BookingService
 from models.message import Message
+import boto3
 
 
-class SmsService:
-
-    @staticmethod
-    def notify_guests_by_message(message: Message) -> None:
-        """
-        Retrieves the guests associated with the booking in the message and sends an SMS to all guests.
-        Args:
-            message (Message): The message object containing the booking and content information.
-        """
-        # Step 1: Get guests by booking ID
-        guests = BookingService.get_booking_guests(message.booking_id)
-
-        if not guests:
-            print(f"No guests found for booking ID {message.booking_id}")
-            return
-
-        # Step 2: Notify all guests except the sender
-        for guest in guests:
-            if guest.id != message.sender_id:
-                # Send the SMS and get the SMS ID
-                sms_id = SmsService.send_sms(
-                    guest.phone, os.getenv("SYSTEM_PHONE_NUMBER"), message.content
-                )
-
-                if sms_id:
-                    # Step 3: Update the message with the SMS ID after successfully sending the SMS
-                    SmsService.update_message_sms_id(message.id, sms_id)
-                else:
-                    print(f"Failed to send SMS to {guest.phone}")
+class PinpointService:
 
     @staticmethod
     def send_sms(
@@ -52,8 +26,16 @@ class SmsService:
             Optional[str]: The SMS message ID if successful, None otherwise.
         """
         try:
-            response = supabase_client.pinpoint.send_messages(
-                ApplicationId=os.getenv("PINPOINT_APP_ID"),
+
+            pinpoint = boto3.client(
+                "pinpoint",
+                aws_access_key_id=os.getenv("PINPOINT_ACCESS_KEY"),
+                aws_secret_access_key=os.getenv("PINPOINT_SECRET_ACCESS_KEY"),
+                region_name="us-east-1",  # Assuming the region is us-east-1, adjust if different
+            )
+
+            response = pinpoint.send_messages(
+                ApplicationId=os.getenv("PINPOINT_PROJECT_ID"),
                 MessageRequest={
                     "Addresses": {phone_number: {"ChannelType": "SMS"}},
                     "MessageConfiguration": {
@@ -69,11 +51,11 @@ class SmsService:
             if response["MessageResponse"]["Result"][phone_number]["StatusCode"] == 200:
                 return response["MessageResponse"]["Result"][phone_number]["MessageId"]
             else:
-                print(f"Failed to send SMS to {phone_number}")
+                logging.error(f"Failed to send SMS to {phone_number}")
                 return None
 
         except Exception as e:
-            print(f"Error sending SMS: {e}")
+            logging.error(f"Error sending SMS: {str(e)}")
             return None
 
     @staticmethod

@@ -1,30 +1,38 @@
-# Use the official Python 3.9 image with arm64 architecture
-FROM --platform=linux/arm64 python:3.9-slim
+# Use the official Python 3.11 image
+FROM python:3.11-slim
 
-# Set the working directory in the container
+# Set environment variables for Python and Poetry
+ENV PYTHONUNBUFFERED=1
+ENV PYTHONDONTWRITEBYTECODE=1
+ENV PYTHONPATH="/app"
+ENV POETRY_VERSION=1.7.0
+ENV POETRY_HOME="/opt/poetry"
+ENV PATH="$POETRY_HOME/bin:$PATH"
+ENV FLASK_APP=app.py
+ENV FLASK_ENV=production
+
+# Set the working directory
 WORKDIR /app
 
-# Copy the requirements.txt file to install dependencies
-COPY requirements.txt .
+# Install system dependencies and Poetry
+RUN apt-get update && apt-get install -y curl && \
+    curl -sSL https://install.python-poetry.org | python3 - && \
+    apt-get clean && rm -rf /var/lib/apt/lists/*
 
-# Update pip to the latest version before installing dependencies
-RUN python3 -m pip install --upgrade pip
+# Ensure Poetry installs dependencies globally
+RUN poetry config virtualenvs.create false
 
-# Install the dependencies listed in requirements.txt
-RUN pip install --no-cache-dir -r requirements.txt
+# Copy the myproject.toml file
+COPY pyproject.toml ./
 
-# Copy the current directory contents into the container at /app
+# Install dependencies using Poetry
+RUN poetry install --no-dev --no-interaction
+
+# Copy the rest of your application code
 COPY . .
 
-COPY .env .env
-
-# Expose port 80 for the application
+# Expose the port the app runs on
 EXPOSE 80
 
-ENV FLASK_APP app.py
-
-# Set environment variables (optional)
-ENV PYTHONUNBUFFERED=1
-
 # Run the application
-CMD ["python3", "-m", "flask", "run", "--host=0.0.0.0", "--port=80"]
+CMD ["flask", "run", "--host=0.0.0.0", "--port=80"]

@@ -7,8 +7,9 @@ from uuid import UUID
 
 
 class Guest(BaseModel):
-    id: UUID
+    id: str
     phone: str
-    full_name: str
-    created_at: Optional[datetime]
-    updated_at: Optional[datetime]
+    first_name: str
+    last_name: str
+    created_at: str
+    updated_at: str

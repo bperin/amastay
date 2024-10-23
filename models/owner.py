@@ -5,10 +5,12 @@ from typing import Optional
 from datetime import datetime
 from uuid import UUID
 
+
 class Owner(BaseModel):
     id: UUID
-    user_id: Optional[UUID]
     phone: str
     bio: Optional[str]
-    created_at: Optional[datetime]
-    updated_at: Optional[datetime]
+    first_name: str
+    last_name: str
+    created_at: str
+    updated_at: str

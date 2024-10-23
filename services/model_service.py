@@ -8,17 +8,25 @@ from sagemaker.predictor import Predictor
 from sagemaker.serializers import JSONSerializer
 from sagemaker.deserializers import JSONDeserializer
 from models.hf_message import HfMessage
+from models.property_information import PropertyInformation
 from services.documents_service import DocumentsService
 from services.message_service import MessageService
+from services.property_information_service import PropertyInformationService
 import re
+
+from services.property_service import PropertyService
 
 
 class ModelService:
     def __init__(self):
-        self.sagemaker_endpoint = os.getenv("SAGEMAKER_ENDPOINT")
-        self.region_name = os.getenv("AWS_REGION")
-        self.endpoint_url = os.getenv("SAGEMAKER_ENDPOINT_URL")
-        self.inference_arn = "arn:aws:bedrock:us-east-1:422220778159:inference-profile/us.meta.llama3-2-3b-instruct-v1:0"
+        # self.sagemaker_endpoint = os.getenv("SAGEMAKER_ENDPOINT")
+        # self.region_name = os.getenv("AWS_REGION")
+        # self.endpoint_url = os.getenv("SAGEMAKER_ENDPOINT_URL")
+        # TODO: Replace this hardcoded ARN with an environment variable
+        self.inference_arn = os.getenv(
+            "BEDROCK_INFERENCE_ARN",
+            "arn:aws:bedrock:us-east-1:422220778159:inference-profile/us.meta.llama3-2-3b-instruct-v1:0",
+        )
 
         self.bedrock_client = boto3.client("bedrock-runtime", region_name="us-east-1")
         # self.sagemaker_client = boto3.client("sagemaker", region_name=self.region_name)
@@ -38,6 +46,8 @@ class ModelService:
         # Message service to interact with the database
         self.message_service = MessageService()
         self.document_service = DocumentsService()
+        self.property_service = PropertyService()
+        self.property_information_service = PropertyInformationService()
 
     def get_conversation_history(self, booking_id: str) -> List[HfMessage]:
         # Fetch conversation history from Supabase
@@ -80,6 +90,20 @@ class ModelService:
 
         return custom_messages
 
+    def get_property_information(
+        self,
+        property_id: str,
+    ) -> Optional[List[PropertyInformation]]:
+        try:
+            # Fetch all property information for the given property ID
+            info_response = self.property_information_service.get_property_information(
+                property_id
+            )
+            return info_response
+        except Exception as e:
+            logging.error(f"Error getting property information: {e}")
+            return None
+
     def get_documents_by_booking(self, booking_id: str) -> List[Any]:
         # Fetch documents related to the booking
         docs = self.document_service.get_documents_by_booking_id(booking_id)
@@ -87,28 +111,45 @@ class ModelService:
 
     def query_model(self, booking_id: str, prompt: str, max_new_tokens: int = 2048):
         try:
+
+            property = PropertyService.get_property_by_booking_id(booking_id)
+            property_information = self.get_property_information(property.id)
             # Fetch conversation history directly from the database
             conversation_history = self.get_conversation_history(booking_id)
 
             system_prompt = [
                 {
-                    "text": "You are an expert question an anaswer chat assistanted that gives clear and concise responses about short term rentals. You are provided with the following documents which may help you answer the users question. If you cannot answer the users question, please ask for more information"
+                    "text": "You are an expert question and answer chat assistant that gives clear and concise responses about short term rentals. You are provided with the following documents and property information which may help you answer the user's question. If you cannot answer the user's question, please ask for more information."
                 }
             ]
+
+            # Add property information to system prompt
+            if property_information:
+                for info in property_information:
+                    system_prompt.append(
+                        {"text": f"{info.name}, Detail: {info.detail}"}
+                    )
+            else:
+                logging.warning(
+                    f"No property information found for booking ID: {booking_id}"
+                )
+
             # Fetch documents related to the booking
-            document_urls = self.get_documents_by_booking(booking_id)
-            for url in document_urls:
-                document_content = self.document_service.read_document(url)
-                if document_content:
-                    system_prompt.append({"text": document_content})
+            # document_urls = self.get_documents_by_booking(booking_id)
+            # for url in document_urls:
+            #     document_content = self.document_service.read_document(url)
+            #     if document_content:
+            #         system_prompt.append({"text": document_content})
+
+            print(system_prompt)
 
             # Add the new user prompt
             conversation_history.append(HfMessage.create("user", prompt))
-            print(f"Conversation History: {conversation_history}")
+            # print(f"Conversation History: {conversation_history}")
 
             # Prepare payload for the model
             payload = [msg.dict() for msg in conversation_history]
-            print(f"Payload for session {booking_id}: {payload}")
+            # print(f"Payload for session {booking_id}: {payload}")
 
             # Define the system prompt as an array of texts
 

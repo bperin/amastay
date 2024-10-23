@@ -4,6 +4,7 @@ import tempfile
 import time
 
 from flask import g
+from models.booking import Booking
 from models.hf_message import HfMessage
 from supabase_utils import supabase_client
 from models.property import Property
@@ -93,6 +94,25 @@ class PropertyService:
                 return None
 
             return Property(**response.data[0])
+
+        except Exception as e:
+            logging.error(f"Exception in get_property: {e}")
+            raise e
+
+    @staticmethod
+    def get_property_by_booking_id(booking_id: str) -> Optional[Booking]:
+        try:
+            response = (
+                supabase_client.from_("bookings")
+                .select("*")
+                .eq("id", str(booking_id))
+                .execute()
+            )
+            if not response.data:
+                logging.error(f"No property found with id: {booking_id}")
+                return None
+
+            return Booking(**response.data[0])
 
         except Exception as e:
             logging.error(f"Exception in get_property: {e}")

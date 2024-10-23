@@ -17,7 +17,7 @@ class PropertyInformationService:
                 supabase_client.table("properties")
                 .select("*")
                 .eq("id", str(data["property_id"]))
-                .eq("owner_id", g.user_id)
+                # .eq("owner_id", g.user_id)
                 .execute()
             )
 
@@ -58,11 +58,11 @@ class PropertyInformationService:
             raise
 
     @staticmethod
-    def get_property_information(property_id: UUID) -> List[PropertyInformation]:
+    def get_property_information(property_id: str) -> List[PropertyInformation]:
         try:
             # Fetch all property information for the given property ID
             info_response = (
-                supabase_client.table("property_information")
+                supabase_client.from_("property_information")
                 .select("*")
                 .eq("property_id", str(property_id))
                 .execute()

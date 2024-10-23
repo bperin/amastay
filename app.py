@@ -16,6 +16,7 @@ from controllers.scraper_controller import ns_scraper
 from controllers.webhook_controller import ns_webhooks
 from controllers.health_controller import ns_health
 from controllers.model_controller import ns_model
+from controllers.booking_controller import ns_booking
 from auth_utils import jwt_required
 
 app = Flask(__name__)
@@ -43,6 +44,7 @@ api = Api(
 # Register Namespace with the API
 api.add_namespace(ns_auth, path="/api/v1/auth")
 api.add_namespace(ns_property, path="/api/v1/properties")
+api.add_namespace(ns_booking, path="/api/v1/bookings")
 api.add_namespace(ns_health, path="/api/v1/health")
 api.add_namespace(ns_webhooks, path="/api/v1/webhooks")
 api.add_namespace(ns_scraper, path="/api/v1/scraper")

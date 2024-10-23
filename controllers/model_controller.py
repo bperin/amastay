@@ -1,9 +1,12 @@
 from auth_utils import jwt_required
 from flask import request, current_app, g
 from flask_restx import Namespace, Resource, fields
-from models.hf_message import HfMessage
+from services.guest_service import GuestService
 from services.model_service import ModelService
 import logging
+import pdb
+
+from services.process_service import ProcessService
 
 ns_model = Namespace("model", description="Model operations")
 
@@ -12,7 +15,7 @@ input_model = ns_model.model(
     "Input",
     {
         "message": fields.String(required=True, description="User input message"),
-        "booking_id": fields.String(required=True, description="Booking ID"),
+        "phone": fields.String(required=True, description="Origination number"),
     },
 )
 
@@ -30,30 +33,6 @@ model_service = ModelService()
 logger = logging.getLogger(__name__)
 
 
-@ns_model.route("/create_session")
-class CreateSession(Resource):
-    @ns_model.doc("create_session")
-    @ns_model.response(201, "Session created successfully")
-    @ns_model.response(500, "Internal Server Error")
-    def post(self):
-        """
-        Create a new session for the model
-        """
-        try:
-            session_id = model_service.create_session()
-
-            if session_id:
-                logger.info(f"Session created successfully: {session_id}")
-                return {"session_id": session_id}, 201
-            else:
-                logger.error("Failed to create session")
-                return {"error": "Failed to create session"}, 500
-
-        except Exception as e:
-            logger.exception(f"Unexpected error in create_session: {str(e)}")
-            return {"error": "An unexpected error occurred"}, 500
-
-
 @ns_model.route("/query")
 class QueryModel(Resource):
     @jwt_required
@@ -62,23 +41,13 @@ class QueryModel(Resource):
     def post(self):
         try:
             data = request.json
-            user_input = data.get("message")
-            booking_id = data.get("booking_id")
+            message = data.get("message")
+            phone = data.get("phone")
 
-            if not user_input or not booking_id:
-                logger.warning(
-                    f"Invalid input: message={user_input}, booking_id={booking_id}"
-                )
-                return {"error": "Both message and booking_id are required"}, 400
+            result = ProcessService.handle_incoming_sms(123, phone, message)
 
-            logger.info(f"Querying model for booking_id: {booking_id}")
-            result = model_service.query_model(booking_id, user_input)
-
-            logger.info(f"Model query successful for booking_id: {booking_id}")
             return result, 200  # Return the dictionary from model_service.query_model
 
         except Exception as e:
-            logger.exception(
-                f"Error in query_model for booking_id {booking_id}: {str(e)}"
-            )
+            logger.exception(f"Error in query_model for booking_id {phone}: {str(e)}")
             return {"error": "An unexpected error occurred"}, 500
