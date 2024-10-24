@@ -159,13 +159,11 @@ class GetCurrentUser(Resource):
         Retrieves the current logged-in user's information.
         Requires Authorization header with Bearer token.
         """
-        user_session = AuthService.get_current_user()
-
-        # Ensure the data returned is serializable
-        if isinstance(user_session, dict):  # Ensure it's a dictionary
-            return jsonify(user_session)
+        user_response = AuthService.get_current_user()
+        if "error" in user_response:
+            return user_response.model_dump(), 500
         else:
-            return jsonify({"error": "Failed to retrieve user session"}), 500
+            return user_response.user.model_dump_json(), 200
 
 
 @ns_auth.route("/logout")

@@ -214,31 +214,11 @@ class AuthService:
 
             # Get the user information from Supabase
             user_response = supabase_client.auth.get_user(access_token)
+            return user_response
 
-            if user_response.user:
-                user_data = user_response.user
-                return (
-                    jsonify(
-                        {
-                            "id": user_data.id,
-                            "email": user_data.email,
-                            "phone": user_data.phone,
-                            "user_metadata": user_data.user_metadata,
-                            "app_metadata": user_data.app_metadata,
-                            "created_at": user_data.created_at,
-                            "updated_at": user_data.updated_at,
-                        }
-                    ),
-                    200,
-                )
-            else:
-                error_message = (
-                    user_response.error.message
-                    if user_response.error
-                    else "User not found"
-                )
-                logging.error(f"Failed to retrieve user: {error_message}")
-                return jsonify({"error": error_message}), 401
+        except Exception as e:
+            logging.error(f"Error retrieving current user: {e}")
+            return jsonify({"error": str(e)}), 500
 
         except Exception as e:
             logging.error(f"Error retrieving current user: {e}")

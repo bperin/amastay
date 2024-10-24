@@ -13,6 +13,3 @@ class Booking(BaseModel):
     check_out: Optional[str]
     created_at: Optional[str]
     updated_at: Optional[str]
-
-    class Config:
-        json_encoders = {UUID: str, datetime: lambda v: v.isoformat() if v else None}

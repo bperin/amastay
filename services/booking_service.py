@@ -1,4 +1,5 @@
 from typing import List, Optional, Dict, Any
+import logging
 from datetime import datetime
 from models.booking import Booking
 from models.guest import Guest
@@ -24,31 +25,46 @@ class BookingService:
         Returns:
             Guest: A Guest object, either retrieved or newly created.
         """
-        # Query the guests table by phone number
-        guest_response = (
-            supabase_client.table("guests")
-            .select("*")
-            .eq("phone", phone_number)
-            .single()
-            .execute()
+        logging.info(
+            f"Attempting to retrieve or create guest with phone number: {phone_number}"
         )
 
-        # If guest is found, return it
-        if guest_response.data:
-            return Guest(**guest_response.data)
+        try:
+            # Query the guests table by phone number
+            guest_response = (
+                supabase_client.from_("guests")
+                .select("*")
+                .eq("phone", phone_number)
+                .execute()
+            )
+            breakpoint()
+            # If guest is found, return it
+            if guest_response.data:
+                logging.info(f"Guest found with phone number: {phone_number}")
+                return Guest(**guest_response.data)
 
-        # If no guest is found, create a new one
-        new_guest_data = {
-            "first_name": first_name,
-            "last_name": last_name,
-            "phone": phone_number,
-        }
-        new_guest_response = (
-            supabase_client.table("guests").insert(new_guest_data).execute()
-        )
+            logging.info(
+                f"No guest found with phone number: {phone_number}. Creating a new guest."
+            )
 
-        # Return the newly created guest
-        return Guest(**new_guest_response.data[0])
+            # If no guest is found, create a new one
+            new_guest_data = {
+                "first_name": first_name,
+                "last_name": last_name,
+                "phone": phone_number,
+            }
+            new_guest_response = (
+                supabase_client.table("guests").insert(new_guest_data).execute()
+            )
+            breakpoint()
+            logging.info(f"New guest created with phone number: {phone_number}")
+
+            # Return the newly created guest
+            return Guest(**new_guest_response.data[0])
+
+        except Exception as e:
+            logging.error(f"Error in get_or_create_guest: {e}")
+            raise
 
     @staticmethod
     def get_next_upcoming_booking_by_phone(phone_number: str) -> Optional[Booking]:
@@ -169,7 +185,6 @@ class BookingService:
         phone_number: str,
         first_name: str,
         last_name: Optional[str] = None,
-        greeting_message: Optional[str] = None,
     ) -> Optional[BookingGuest]:
         """
         Adds a guest to a booking.
@@ -189,19 +204,14 @@ class BookingService:
             guest = BookingService.get_or_create_guest(
                 phone_number, first_name, last_name
             )
-
-            # We don't need to insert the guest again, as it's already created or retrieved
-            # Just use the guest.id directly
-            guest_id = guest.id
-            if not guest_id:
+            breakpoint()
+            if not guest:
                 raise ValueError("Failed to create or retrieve guest")
-
-            guest_id = guest_response.data[0]["id"]
 
             # Add the guest to the booking
             booking_guest_data = {
                 "booking_id": booking_id,
-                "guest_id": guest_id,
+                "guest_id": guest.id,
             }
             booking_guest_response = (
                 supabase_client.table("booking_guests")
@@ -216,7 +226,7 @@ class BookingService:
             return BookingGuest(**booking_guest_response.data[0])
 
         except Exception as e:
-            print(f"Error adding guest to booking: {e}")
+            logging.error(f"Error adding guest to booking: {e}")
             return None
 
     @staticmethod

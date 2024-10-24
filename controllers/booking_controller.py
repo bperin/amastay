@@ -37,9 +37,6 @@ guest_model = ns_booking.model(
         "booking_id": fields.String(required=True, description="Booking id"),
         "first_name": fields.String(required=True, description="Guest's first name"),
         "last_name": fields.String(required=False, description="Guest's last name"),
-        "greeting_message": fields.String(
-            required=False, description="Optional greeting message"
-        ),
     },
 )
 
@@ -183,7 +180,6 @@ class AddGuest(Resource):
             booking_id = data.get("booking_id")
             first_name = data.get("first_name")
             last_name = data.get("last_name")
-            greeting_message = data.get("greeting_message")
 
             if not phone_number or not first_name:
                 return {"error": "Phone number and first name are required"}, 400
@@ -193,18 +189,22 @@ class AddGuest(Resource):
                 phone_number,
                 first_name,
                 last_name=last_name,
-                greeting_message=greeting_message,
             )
             if updated_booking:
                 # Send a welcome message to the new guest
                 try:
-                    content = greeting_message or f"Welcome to your stay, {first_name}!"
+                    content = (
+                        f"AmastayAI: You’ve been added to a reservation. "
+                        f"Reply YES to opt-in for updates about your stay. "
+                        f"Msg frequency varies. Msg & data rates may apply. "
+                        f"Text HELP for support, STOP to opt-out. "
+                        f"Booking ID: {booking_id}, Guest: {first_name} {last_name or ''}"
+                    )
                     PinpointService.send_sms(
                         phone_number, os.getenv("SYSTEM_PHONE_NUMBER"), content
                     )
                 except Exception as sms_error:
                     logging.error(f"Error sending welcome SMS: {sms_error}")
-                    # Continue execution even if SMS fails
 
                 return {
                     "message": "Guest added successfully",

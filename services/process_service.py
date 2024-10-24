@@ -2,6 +2,7 @@ import logging
 import os
 import tempfile
 import time
+import requests
 from services.booking_service import BookingService
 from services.message_service import MessageService
 from services.pinpoint_service import PinpointService
@@ -87,23 +88,25 @@ class ProcessService:
             processed_documents = []
             all_document_text = ""
             if property_documents:
+                logging.info(
+                    f"Found {len(property_documents)} documents for property ID {property.id}"
+                )
                 for document in property_documents:
+                    logging.info(f"Attempting to read document: {document['file_url']}")
                     try:
-                        plain_text = DocumentsService.read_document(
-                            document["file_url"]
+                        response = requests.get(document["file_url"])
+                        response.raise_for_status()  # Raise an error for bad responses
+                        plain_text = response.text
+                        processed_documents.append(
+                            {"name": document["file_url"], "content": plain_text}
                         )
-                        if plain_text:
-                            processed_documents.append(
-                                {"name": document["file_url"], "content": plain_text}
-                            )
-                            all_document_text += plain_text + "\n\n"
-                        else:
-                            logging.warning(
-                                f"Could not read content for document: {document['file_url']}"
-                            )
-                    except Exception as doc_error:
-                        logging.error(
-                            f"Error processing document {document['file_url']}: {str(doc_error)}"
+                        all_document_text += plain_text + "\n\n"
+                        logging.info(
+                            f"Successfully read document: {document['file_url']}"
+                        )
+                    except requests.exceptions.RequestException as e:
+                        logging.warning(
+                            f"Could not read content for document: {document['file_url']}, error: {e}"
                         )
 
                 logging.info(

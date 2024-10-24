@@ -7,7 +7,7 @@ from uuid import UUID
 
 
 class Owner(BaseModel):
-    id: UUID
+    id: str
     phone: str
     bio: Optional[str]
     first_name: str
