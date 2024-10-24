@@ -22,10 +22,7 @@ from services.property_service import PropertyService
 
 class ModelService:
     def __init__(self):
-        # self.sagemaker_endpoint = os.getenv("SAGEMAKER_ENDPOINT")
-        # self.region_name = os.getenv("AWS_REGION")
-        # self.endpoint_url = os.getenv("SAGEMAKER_ENDPOINT_URL")
-        # TODO: Replace this hardcoded ARN with an environment variable
+
         self.inference_arn = os.getenv(
             "BEDROCK_INFERENCE_ARN",
             "arn:aws:bedrock:us-east-1:422220778159:inference-profile/us.meta.llama3-2-3b-instruct-v1:0",
@@ -137,7 +134,7 @@ class ModelService:
                 inferenceConfig={"maxTokens": 360, "temperature": 0.7, "topP": 0.9},
                 additionalModelRequestFields={},
             )
-
+            logging.info(f"AI: Response: {response}")
             # Extract the response text
             if (
                 "output" in response

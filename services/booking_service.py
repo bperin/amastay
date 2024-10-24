@@ -37,7 +37,7 @@ class BookingService:
                 .eq("phone", phone_number)
                 .execute()
             )
-            breakpoint()
+
             # If guest is found, return it
             if guest_response.data:
                 logging.info(f"Guest found with phone number: {phone_number}")
@@ -56,7 +56,7 @@ class BookingService:
             new_guest_response = (
                 supabase_client.table("guests").insert(new_guest_data).execute()
             )
-            breakpoint()
+
             logging.info(f"New guest created with phone number: {phone_number}")
 
             # Return the newly created guest
@@ -204,7 +204,7 @@ class BookingService:
             guest = BookingService.get_or_create_guest(
                 phone_number, first_name, last_name
             )
-            breakpoint()
+
             if not guest:
                 raise ValueError("Failed to create or retrieve guest")
 

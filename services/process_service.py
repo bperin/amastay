@@ -114,7 +114,7 @@ class ProcessService:
                 )
             else:
                 logging.info("No property documents to process")
-            breakpoint()
+
             ai_response = ProcessService.model_service.query_model(
                 booking,
                 property,
@@ -123,6 +123,8 @@ class ProcessService:
                 property_information,
                 all_document_text,
             )
+
+            logging.info(f"AI: Response: {ai_response}")
 
             PinpointService.send_sms(
                 origination_number,
