@@ -7,7 +7,10 @@ from flask import g
 from sagemaker.predictor import Predictor
 from sagemaker.serializers import JSONSerializer
 from sagemaker.deserializers import JSONDeserializer
+from models.booking import Booking
+from models.guest import Guest
 from models.hf_message import HfMessage
+from models.property import Property
 from models.property_information import PropertyInformation
 from services.documents_service import DocumentsService
 from services.message_service import MessageService
@@ -90,36 +93,24 @@ class ModelService:
 
         return custom_messages
 
-    def get_property_information(
+    def query_model(
         self,
-        property_id: str,
-    ) -> Optional[List[PropertyInformation]]:
-        try:
-            # Fetch all property information for the given property ID
-            info_response = self.property_information_service.get_property_information(
-                property_id
-            )
-            return info_response
-        except Exception as e:
-            logging.error(f"Error getting property information: {e}")
-            return None
-
-    def get_documents_by_booking(self, booking_id: str) -> List[Any]:
-        # Fetch documents related to the booking
-        docs = self.document_service.get_documents_by_booking_id(booking_id)
-        return docs
-
-    def query_model(self, booking_id: str, prompt: str, max_new_tokens: int = 2048):
+        booking: Booking,
+        property: Property,
+        guest: Guest,
+        prompt: str,
+        property_information: Optional[List[PropertyInformation]] = None,
+        all_document_text: str = "",
+        max_new_tokens: int = 2048,
+    ):
         try:
 
-            property = PropertyService.get_property_by_booking_id(booking_id)
-            property_information = self.get_property_information(property.id)
             # Fetch conversation history directly from the database
-            conversation_history = self.get_conversation_history(booking_id)
+            conversation_history = self.get_conversation_history(booking.id)
 
             system_prompt = [
                 {
-                    "text": "You are an expert question and answer chat assistant that gives clear and concise responses about short term rentals. You are provided with the following documents and property information which may help you answer the user's question. If you cannot answer the user's question, please ask for more information."
+                    "text": f"You are an expert question and answer chat assistant that gives clear and concise responses about short term rentals. You are provided with the following documents and property information which may help you answer the user's question. If you cannot answer the user's question, please ask for more information. The property details are as follows:\n\nProperty Name: {property.name}\nAddress: {property.address}\nDescription: {property.description}"
                 }
             ]
 
@@ -129,30 +120,16 @@ class ModelService:
                     system_prompt.append(
                         {"text": f"{info.name}, Detail: {info.detail}"}
                     )
-            else:
-                logging.warning(
-                    f"No property information found for booking ID: {booking_id}"
-                )
 
-            # Fetch documents related to the booking
-            # document_urls = self.get_documents_by_booking(booking_id)
-            # for url in document_urls:
-            #     document_content = self.document_service.read_document(url)
-            #     if document_content:
-            #         system_prompt.append({"text": document_content})
-
-            print(system_prompt)
-
-            # Add the new user prompt
-            conversation_history.append(HfMessage.create("user", prompt))
-            # print(f"Conversation History: {conversation_history}")
+            # Prepare the new user prompt
+            new_user_message = HfMessage.create("user", prompt)
+            # Add the new user prompt to the conversation history
+            conversation_history.append(new_user_message)
 
             # Prepare payload for the model
             payload = [msg.dict() for msg in conversation_history]
-            # print(f"Payload for session {booking_id}: {payload}")
 
             # Define the system prompt as an array of texts
-
             response = self.bedrock_client.converse(
                 modelId="us.meta.llama3-2-3b-instruct-v1:0",
                 messages=payload,
@@ -177,16 +154,16 @@ class ModelService:
                 )
 
             if cleaned_response:
-                # Save the user's input and assistant's response directly to the database
+                # Save only the new user input and assistant's response directly to the database
                 user_message = self.message_service.add_message(
-                    booking_id=booking_id,
-                    sender_id=g.user_id,
+                    booking_id=booking.id,
+                    sender_id=guest.id,
                     sender_type=0,
                     content=prompt,
                     question_id=None,
                 )
                 self.message_service.add_message(
-                    booking_id=booking_id,
+                    booking_id=booking.id,
                     sender_id=None,
                     sender_type=1,
                     content=cleaned_response,

@@ -11,15 +11,15 @@ ns_webhooks = Namespace("webhooks", description="Webhook for receiving SMS")
 
 # Define models for request/response
 sms_model = ns_webhooks.model(
-    "SMS",
+    "lambda_sms",
     {
-        "OriginationNumber": fields.String(
+        "phone": fields.String(
             required=True, description="The phone number that sent the message"
         ),
-        "MessageBody": fields.String(
+        "message": fields.String(
             required=True, description="The content of the SMS message"
         ),
-        "MessageId": fields.String(
+        "message_id": fields.String(
             required=True, description="AWS Pinpoint message ID"
         ),
     },
@@ -46,9 +46,9 @@ class SMSWebhook(Resource):
             logger.info("Received webhook request: %s", request.json)
 
             data = request.json
-            origination_number = data.get("OriginationNumber")
-            message_body = data.get("MessageBody")
-            sms_id = data.get("MessageId")  # AWS Pinpoint message ID
+            origination_number = data.get("phone")
+            message_body = data.get("message")
+            sms_id = data.get("message_id")  # AWS Pinpoint message ID
 
             # Log incoming SMS data
             logger.info(

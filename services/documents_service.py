@@ -78,43 +78,6 @@ class DocumentsService:
             return []
 
     @staticmethod
-    def get_documents_by_booking_id(booking_id):
-        """Fetch all documents for a given booking ID."""
-        try:
-
-            # Query the bookings table to get the property_id
-            booking_query = (
-                supabase_client.from_("bookings")
-                .select("property_id")
-                .eq("id", booking_id)
-                .execute()
-            )
-            if not booking_query.data:
-                logging.error(f"No booking found for booking_id: {booking_id}")
-                return []
-
-            property_id = booking_query.data[0]["property_id"]
-
-            # Query the documents table using the property_id
-            document_query = (
-                supabase_client.from_("documents")
-                .select("id", "file_url", "created_at", "updated_at")
-                .eq("property_id", property_id)
-                .execute()
-            )
-            if not document_query.data:
-                logging.error(f"No documents found for property_id: {property_id}")
-                return []
-
-            document_urls = []
-            for doc in document_query.data:
-                document_urls.append(doc["file_url"])
-            return document_urls
-        except Exception as e:
-            logging.error(f"Error fetching documents for booking {booking_id}: {e}")
-            return []
-
-    @staticmethod
     def read_document(filename):
         """Read a document from storage and return its content as plain text."""
         try:

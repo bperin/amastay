@@ -1,6 +1,6 @@
 import logging
 from uuid import UUID
-from typing import List
+from typing import List, Optional
 
 from flask import g
 from models.property_information import PropertyInformation
@@ -58,7 +58,9 @@ class PropertyInformationService:
             raise
 
     @staticmethod
-    def get_property_information(property_id: str) -> List[PropertyInformation]:
+    def get_property_information(
+        property_id: str,
+    ) -> Optional[List[PropertyInformation]]:
         try:
             # Fetch all property information for the given property ID
             info_response = (
@@ -69,7 +71,7 @@ class PropertyInformationService:
             )
 
             if not info_response.data:
-                return []
+                return None
 
             return [PropertyInformation(**info) for info in info_response.data]
         except Exception as e:

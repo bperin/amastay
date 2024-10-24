@@ -100,19 +100,19 @@ class PropertyService:
             raise e
 
     @staticmethod
-    def get_property_by_booking_id(booking_id: str) -> Optional[Booking]:
+    def get_property_by_booking_id(property_id: str) -> Optional[Property]:
         try:
             response = (
-                supabase_client.from_("bookings")
+                supabase_client.from_("properties")
                 .select("*")
-                .eq("id", str(booking_id))
+                .eq("id", str(property_id))
                 .execute()
             )
             if not response.data:
-                logging.error(f"No property found with id: {booking_id}")
+                logging.error(f"No property found with id: {property_id}")
                 return None
 
-            return Booking(**response.data[0])
+            return Property(**response.data[0])
 
         except Exception as e:
             logging.error(f"Exception in get_property: {e}")

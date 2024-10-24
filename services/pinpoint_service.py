@@ -26,7 +26,6 @@ class PinpointService:
             Optional[str]: The SMS message ID if successful, None otherwise.
         """
         try:
-
             pinpoint = boto3.client(
                 "pinpoint",
                 aws_access_key_id=os.getenv("PINPOINT_ACCESS_KEY"),
@@ -57,6 +56,8 @@ class PinpointService:
         except Exception as e:
             logging.error(f"Error sending SMS: {str(e)}")
             return None
+
+        # No retry logic implemented. If it fails, it fails.
 
     @staticmethod
     def update_message_sms_id(message_id: str, sms_id: str) -> bool:

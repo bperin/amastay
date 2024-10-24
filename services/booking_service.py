@@ -39,7 +39,6 @@ class BookingService:
 
         # If no guest is found, create a new one
         new_guest_data = {
-            "guest_id": guest_response,
             "first_name": first_name,
             "last_name": last_name,
             "phone": phone_number,
@@ -73,9 +72,7 @@ class BookingService:
             .select("bookings!inner(*)")  # Inner join with the 'bookings' table
             .eq("guest_id", guest.id)  # Filter by guest ID
             .gt("bookings.check_in", current_date)  # Only select future bookings
-            .order(
-                "bookings.check_in", ascending=True
-            )  # Order by the nearest check-in date
+            .order("bookings.check_in", ascending=True)
             .limit(1)  # Get the next upcoming booking
             .single()
             .execute()
