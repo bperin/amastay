@@ -75,23 +75,22 @@ class ModelService:
             # Get the active model parameters
           
             active_model_param = get_active_model_param()
-            breakpoint()
+           
             # Use the prompt from the active model parameters
             system_prompt = [
                 {
                     "text": active_model_param.prompt
                 }
             ]
-            system_prompt = [
-                {
-                    "text": f"You are an expert question and answer chat assistant that gives clear and concise responses about short term rentals. You are provided with the following documents and property information which may help you answer the user's question. If you cannot answer the user's question, please ask for more information. The property details are as follows:\n\nProperty Name: {property.name}\nAddress: {property.address}\nDescription: {property.description}\n\Property Information:\n{all_document_text}"
-                }
-            ]
-
+           
+            # Append property details to system prompt
+            system_prompt[0]["text"] += f"The property details are as follows: Property Name: {property.name} Address: {property.address} Description: {property.description} Property Information: {all_document_text}"
+         
             # Add property information to system prompt
             if property_information:
                 for info in property_information:
                     system_prompt.append({"text": f"{info.name}, Detail: {info.detail}"})
+
 
             # Prepare the new user prompt
             new_user_message = HfMessage.create("user", prompt)
@@ -106,7 +105,7 @@ class ModelService:
                 modelId="us.meta.llama3-2-3b-instruct-v1:0",
                 messages=payload,
                 system=system_prompt,
-                inferenceConfig={"maxTokens": 360, "temperature": 0.7, "topP": 0.9},
+                inferenceConfig={"maxTokens": 360, "temperature": active_model_param.temperature, "topP": active_model_param.top_p},
                 additionalModelRequestFields={},
             )
             logging.info(f"AI: Response: {response}")
