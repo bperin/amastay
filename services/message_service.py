@@ -36,11 +36,9 @@ class MessageService:
         return None
 
     @staticmethod
-    def get_messages_by_booking(
-        booking_id: str, limit: int = 15
-    ) -> Optional[list[Message]]:
+    def get_messages_by_booking(booking_id: str, limit: int = 30) -> Optional[list[Message]]:
         response = (
-            supabase_client.table("messages")
+            supabase_client.from_("messages")
             .select("*")
             .eq("booking_id", booking_id)
             .order("created_at", desc=False)
@@ -50,22 +48,6 @@ class MessageService:
 
         if response.data:
             return [Message(**msg) for msg in response.data]
-        return None
-
-    @staticmethod
-    def get_booking_id_by_sms_id(sms_id: str) -> Optional[str]:
-
-        response = (
-            supabase_client.table("messages")
-            .select("booking_id")
-            .eq("sms_id", sms_id)
-            .single()
-            .execute()
-        )
-
-        if response.data:
-            return response.data["booking_id"]
-
         return None
 
     @staticmethod

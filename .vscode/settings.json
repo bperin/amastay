@@ -13,12 +13,14 @@
     "editor.defaultFormatter": "ms-python.black-formatter",
     "editor.formatOnSave": true,
     "editor.formatOnPaste": true,
-    "python.formatting.provider": "black",
-    "python.formatting.blackArgs": [
-      "--line-length",
-      "400"
-    ]
+    "python.formatting.provider": "black"
   },
   // Global format on save settings
-  "editor.formatOnSave": true
+  "editor.formatOnSave": true,
+  
+  // Black specific arguments
+  "python.formatting.blackArgs": [
+    "--line-length",
+    "400"
+  ]
 }

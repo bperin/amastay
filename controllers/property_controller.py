@@ -27,6 +27,19 @@ property_model = ns_property.model(
     },
 )
 
+# Define update property model for patch operations
+update_property_model = ns_property.model(
+    "UpdateProperty",
+    {
+        "name": fields.String(required=False, description="The property name"),
+        "address": fields.String(required=False, description="The property address"),
+        "description": fields.String(
+            required=False, description="The property description"
+        ),
+        "property_url": fields.String(required=False, description="The property Url"),
+    },
+)
+
 # Initialize the geolocator
 geolocator = Nominatim(user_agent="amastay_property_geocoder")
 
@@ -100,21 +113,17 @@ class UpdateProperty(Resource):
     @ns_property.doc("update_property")
     @ns_property.expect(property_model)
     @jwt_required
-    def put(self, property_id: UUID):
+    def patch(self, property_id: UUID):
         """
-        Updates a property by its ID.
+        Partially updates a property by its ID.
         """
         try:
             data = request.get_json()
             if not data:
                 return {"error": "Missing update data"}, 400
 
-            user_id = request.headers.get("x-user-id")
-
-            # Call the PropertyService to update the property
-            updated_property = PropertyService.update_property(
-                property_id, data, user_id
-            )
+            # Call the PropertyService to partially update the property
+            updated_property = PropertyService.update_property(property_id, data)
 
             return updated_property.model_dump(), 200
         except Exception as e:

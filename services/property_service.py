@@ -119,20 +119,30 @@ class PropertyService:
             raise e
 
     @staticmethod
-    def update_property(
-        property_id: UUID, update_data: dict, user_id: UUID
-    ) -> Property:
+    def update_property(property_id: UUID, update_data: dict) -> Property:
         try:
             # Verify that the user is the owner of the property
             existing_property = PropertyService.get_property(property_id)
             if not existing_property:
                 raise Exception("Property not found")
-            if existing_property.owner_id != user_id:
+            if existing_property.owner_id != g.user_id:
                 raise Exception("Unauthorized: You do not own this property")
+
+            # Only update fields that are different from the existing property
+            fields_to_update = {}
+            for key, value in update_data.items():
+                if (
+                    hasattr(existing_property, key)
+                    and getattr(existing_property, key) != value
+                ):
+                    fields_to_update[key] = value
+
+            if not fields_to_update:
+                return existing_property  # No changes needed
 
             response = (
                 supabase_client.table("properties")
-                .update(update_data)
+                .update(fields_to_update)
                 .eq("id", str(property_id))
                 .execute()
             )

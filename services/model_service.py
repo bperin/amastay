@@ -29,19 +29,6 @@ class ModelService:
         )
 
         self.bedrock_client = boto3.client("bedrock-runtime", region_name="us-east-1")
-        # self.sagemaker_client = boto3.client("sagemaker", region_name=self.region_name)
-
-        # Create SageMaker Runtime client
-        # self.sagemaker_runtime = boto3.client(
-        #     "sagemaker-runtime", region_name=self.region_name
-        # )
-
-        # Predictor configuration
-        # self.predictor = Predictor(
-        #     endpoint_name=self.sagemaker_endpoint,
-        #     serializer=JSONSerializer(),
-        #     deserializer=JSONDeserializer(),
-        # )
 
         # Message service to interact with the database
         self.message_service = MessageService()
