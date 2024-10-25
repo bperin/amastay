@@ -19,18 +19,10 @@ ns_auth = Namespace("authentication", description="Authentication operations")
 signup_model = ns_auth.model(
     "Signup",
     {
-        "first_name": fields.String(
-            required=True, description="First name", type="string"
-        ),
-        "last_name": fields.String(
-            required=True, description="Last name", type="string"
-        ),
-        "estimated_properties": fields.Integer(
-            required=True, description="Estimated number of properties", type="integer"
-        ),
-        "phone_number": fields.String(
-            required=True, description="Phone number", type="string"
-        ),
+        "first_name": fields.String(required=True, description="First name", type="string"),
+        "last_name": fields.String(required=True, description="Last name", type="string"),
+        "estimated_properties": fields.Integer(required=True, description="Estimated number of properties", type="integer"),
+        "phone_number": fields.String(required=True, description="Phone number", type="string"),
     },
 )
 

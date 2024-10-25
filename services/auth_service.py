@@ -51,11 +51,7 @@ class AuthService:
                 res = make_response(jsonify({"message": "OTP sent successfully"}), 200)
                 return res
             else:
-                error_message = (
-                    response.error.message
-                    if response.error
-                    else "Failed to sign up user"
-                )
+                error_message = response.error.message if response.error else "Failed to sign up user"
                 logging.error(f"Failed to sign up user: {error_message}")
                 return make_response(jsonify({"error": error_message}), 400)
 
@@ -68,18 +64,14 @@ class AuthService:
         """Sends an OTP to the user's phone number using Supabase."""
         try:
             # Send OTP to the user's phone number
-            response = supabase_client.auth.sign_in_with_otp(
-                {"phone": phone_number, "type": "sms"}
-            )
+            response = supabase_client.auth.sign_in_with_otp({"phone": phone_number, "type": "sms"})
 
             if response:
                 logging.debug(f"OTP sent successfully to {phone_number}")
                 res = make_response(jsonify({"message": "OTP sent successfully"}), 200)
                 return res
             else:
-                error_message = (
-                    response.error.message if response.error else "Failed to send OTP"
-                )
+                error_message = response.error.message if response.error else "Failed to send OTP"
                 logging.error(f"Failed to send OTP: {error_message}")
                 return make_response(jsonify({"error": error_message}), 400)
 
@@ -92,18 +84,14 @@ class AuthService:
         """Sends an OTP to the user's phone number using Supabase."""
         try:
             # Send OTP to the user's phone number
-            response = supabase_client.auth.resend(
-                {"phone": phone_number, "type": "sms"}
-            )
+            response = supabase_client.auth.resend({"phone": phone_number, "type": "sms"})
 
             if response:
                 logging.debug(f"OTP sent successfully to {phone_number}")
                 res = make_response(jsonify({"message": "OTP sent successfully"}), 200)
                 return res
             else:
-                error_message = (
-                    response.error.message if response.error else "Failed to send OTP"
-                )
+                error_message = response.error.message if response.error else "Failed to send OTP"
                 logging.error(f"Failed to send OTP: {error_message}")
                 return make_response(jsonify({"error": error_message}), 400)
 
@@ -116,9 +104,7 @@ class AuthService:
         """Verifies the OTP and issues session tokens."""
         try:
             # Verify the OTP
-            response = supabase_client.auth.verify_otp(
-                {"phone": phone_number, "token": otp, "type": "sms"}
-            )
+            response = supabase_client.auth.verify_otp({"phone": phone_number, "token": otp, "type": "sms"})
 
             if response.session:
                 access_token = response.session.access_token
@@ -139,9 +125,7 @@ class AuthService:
                 res = AuthService._build_session_response(auth_response)
                 return res
             else:
-                error_message = (
-                    response.error.message if response.error else "Failed to verify OTP"
-                )
+                error_message = response.error.message if response.error else "Failed to verify OTP"
                 logging.error(f"Failed to verify OTP: {error_message}")
                 return make_response(jsonify({"error": error_message}), 400)
 
@@ -163,9 +147,7 @@ class AuthService:
                 return jsonify({"error": "Refresh token is required"}), 400
 
             # Define the URL for Supabase's token refresh endpoint
-            token_url = (
-                f"{supabase_client.supabase_url}/auth/v1/token?grant_type=refresh_token"
-            )
+            token_url = f"{supabase_client.supabase_url}/auth/v1/token?grant_type=refresh_token"
 
             # Set headers for the request
             headers = {
@@ -175,9 +157,7 @@ class AuthService:
             }
 
             # Make the request to the Supabase token endpoint
-            response = requests.post(
-                token_url, json={"refresh_token": refresh_token}, headers=headers
-            )
+            response = requests.post(token_url, json={"refresh_token": refresh_token}, headers=headers)
 
             logging.debug(f"Supabase Response Status: {response.status_code}")
             logging.debug(f"Supabase Response Body: {response.text}")
@@ -187,9 +167,7 @@ class AuthService:
                 logging.debug("Session refreshed successfully")
                 return AuthService._build_session_response(auth_response)
             else:
-                error_message = response.json().get(
-                    "error_description", "Unknown error"
-                )
+                error_message = response.json().get("error_description", "Unknown error")
                 logging.error(f"Failed to refresh session: {error_message}")
                 return jsonify({"error": error_message}), 500
 

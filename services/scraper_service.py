@@ -19,9 +19,7 @@ class ScraperService:
             raise Exception("Failed to scrape the data")
 
         # Upload scraped content to Supabase storage
-        storage_response = scraper.upload_document_to_supabase(
-            property_id, scraped_content
-        )
+        storage_response = scraper.upload_document_to_supabase(property_id, scraped_content)
         if not storage_response:
             raise Exception("Failed to upload the scraped document")
 

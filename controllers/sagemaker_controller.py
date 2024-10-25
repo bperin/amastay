@@ -5,9 +5,7 @@ from services.model_service import ModelService
 
 
 # Create a Flask-RESTX Namespace
-ns_sagemaker = Namespace(
-    "sagemaker", description="SageMaker endpoints for direct model access"
-)
+ns_sagemaker = Namespace("sagemaker", description="SageMaker endpoints for direct model access")
 
 
 # Define input model

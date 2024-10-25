@@ -11,9 +11,7 @@ import boto3
 class PinpointService:
 
     @staticmethod
-    def send_sms(
-        phone_number: str, sender_number: str, message_content: str
-    ) -> Optional[str]:
+    def send_sms(phone_number: str, sender_number: str, message_content: str) -> Optional[str]:
         """
         Sends an SMS message via AWS Pinpoint and returns the SMS message ID.
 
@@ -71,11 +69,6 @@ class PinpointService:
         Returns:
             bool: True if the update was successful, False otherwise.
         """
-        response = (
-            supabase_client.table("messages")
-            .update({"sms_id": sms_id, "updated_at": datetime.utcnow()})
-            .eq("id", message_id)
-            .execute()
-        )
+        response = supabase_client.table("messages").update({"sms_id": sms_id, "updated_at": datetime.utcnow()}).eq("id", message_id).execute()
 
         return response.status_code == 200

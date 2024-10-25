@@ -14,17 +14,13 @@ class DocumentsService:
         """Save scraped data as a text file to Supabase storage."""
         filename = f"{property_id}_{int(time.time())}.txt"
         try:
-            with tempfile.NamedTemporaryFile(
-                delete=False, mode="w", encoding="utf-8"
-            ) as temp_file:
+            with tempfile.NamedTemporaryFile(delete=False, mode="w", encoding="utf-8") as temp_file:
                 temp_file.write(scraped_data)
                 temp_file_path = temp_file.name
 
             # Upload to Supabase
             with open(temp_file_path, "rb") as file:
-                response = supabase_client.storage.from_(
-                    DocumentsService.BUCKET_NAME
-                ).upload(
+                response = supabase_client.storage.from_(DocumentsService.BUCKET_NAME).upload(
                     file=file,
                     path=filename,
                     file_options={"content-type": "text/plain"},
@@ -45,12 +41,7 @@ class DocumentsService:
     def get_documents_by_property_id(property_id):
         """Fetch all documents for a given property ID."""
         try:
-            document_query = (
-                supabase_client.table("documents")
-                .select("id", "file_url", "created_at", "updated_at")
-                .eq("property_id", property_id)
-                .execute()
-            )
+            document_query = supabase_client.table("documents").select("id", "file_url", "created_at", "updated_at").eq("property_id", property_id).execute()
 
             if not document_query.data:
                 logging.error(f"No documents found for property_id: {property_id}")
@@ -59,9 +50,7 @@ class DocumentsService:
             documents = []
             for doc in document_query.data:
                 # Get the public URL for each document
-                public_url = supabase_client.storage.from_(
-                    DocumentsService.BUCKET_NAME
-                ).get_public_url(doc["file_url"])
+                public_url = supabase_client.storage.from_(DocumentsService.BUCKET_NAME).get_public_url(doc["file_url"])
 
                 documents.append(
                     {
@@ -81,9 +70,7 @@ class DocumentsService:
     def read_document(filename):
         """Read a document from storage and return its content as plain text."""
         try:
-            response = supabase_client.storage.from_(
-                DocumentsService.BUCKET_NAME
-            ).download(filename)
+            response = supabase_client.storage.from_(DocumentsService.BUCKET_NAME).download(filename)
             return response.decode("utf-8")
         except Exception as e:
             logging.error(f"Error reading document {filename}: {e}")
@@ -93,9 +80,7 @@ class DocumentsService:
     def delete_document(filename):
         """Delete a document from storage."""
         try:
-            supabase_client.storage.from_(DocumentsService.BUCKET_NAME).remove(
-                [filename]
-            )
+            supabase_client.storage.from_(DocumentsService.BUCKET_NAME).remove([filename])
             logging.info(f"Document {filename} deleted successfully")
             return True
         except Exception as e:

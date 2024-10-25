@@ -13,15 +13,9 @@ ns_webhooks = Namespace("webhooks", description="Webhook for receiving SMS")
 sms_model = ns_webhooks.model(
     "lambda_sms",
     {
-        "phone": fields.String(
-            required=True, description="The phone number that sent the message"
-        ),
-        "message": fields.String(
-            required=True, description="The content of the SMS message"
-        ),
-        "message_id": fields.String(
-            required=True, description="AWS Pinpoint message ID"
-        ),
+        "phone": fields.String(required=True, description="The phone number that sent the message"),
+        "message": fields.String(required=True, description="The content of the SMS message"),
+        "message_id": fields.String(required=True, description="AWS Pinpoint message ID"),
     },
 )
 

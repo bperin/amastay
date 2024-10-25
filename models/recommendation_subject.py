@@ -5,6 +5,7 @@ from typing import Optional
 from datetime import datetime
 from uuid import UUID
 
+
 class RecommendationSubject(BaseModel):
     id: UUID
     name: str

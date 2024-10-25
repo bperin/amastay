@@ -27,8 +27,7 @@ class AIService:
         formatted_messages = [
             {
                 "role": "system",
-                "content": "You are an AI assistant for managing bookings. "
-                f"Property information: {property_info}",
+                "content": "You are an AI assistant for managing bookings. " f"Property information: {property_info}",
             }
         ]
 
@@ -47,18 +46,11 @@ class AIService:
         Queries the 'properties_information' table to get the 'name' and 'detail'.
         """
         # Query the property information associated with the booking
-        response = (
-            supabase_client.table("property_information")
-            .select("name, detail")
-            .eq("property_id", property_id)
-            .execute()
-        )
+        response = supabase_client.table("property_information").select("name, detail").eq("property_id", property_id).execute()
 
         if response.data:
             # Return the concatenated property info (name and detail)
-            return " ".join(
-                [f"{row['name']}: {row['detail']}" for row in response.data]
-            )
+            return " ".join([f"{row['name']}: {row['detail']}" for row in response.data])
         else:
             return None
 
@@ -68,9 +60,7 @@ class AIService:
         Sends the formatted conversation to the SageMaker model and retrieves the response.
         """
         # Format messages into a single string
-        conversation = "\n".join(
-            [f"{msg['role']}: {msg['content']}" for msg in messages]
-        )
+        conversation = "\n".join([f"{msg['role']}: {msg['content']}" for msg in messages])
         payload = {"inputs": conversation}
 
         try:
@@ -86,11 +76,7 @@ class AIService:
             model_response = json.loads(response_body)
 
             # Assuming the model returns a string directly
-            return (
-                model_response
-                if isinstance(model_response, str)
-                else str(model_response)
-            )
+            return model_response if isinstance(model_response, str) else str(model_response)
 
         except Exception as e:
             logging.error(f"Error occurred while invoking the model: {str(e)}")

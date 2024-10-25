@@ -52,28 +52,20 @@ class ModelService:
 
             # Ensure alternating user/assistant pattern
             if current_role != last_role:
-                custom_messages.append(
-                    HfMessage.create(role=current_role, text=msg.content)
-                )
+                custom_messages.append(HfMessage.create(role=current_role, text=msg.content))
                 last_role = current_role
             else:
                 # If same role appears consecutively, combine messages
                 if custom_messages:
                     custom_messages[-1].text += f"\n{msg.content}"
                 else:
-                    custom_messages.append(
-                        HfMessage.create(role=current_role, text=msg.content)
-                    )
+                    custom_messages.append(HfMessage.create(role=current_role, text=msg.content))
 
         # Ensure the conversation starts with a user message and ends with an assistant message
         if custom_messages and custom_messages[0].role == "assistant":
             custom_messages.insert(0, HfMessage.create(role="user", text="Hello"))
         if custom_messages and custom_messages[-1].role == "user":
-            custom_messages.append(
-                HfMessage.create(
-                    role="assistant", text="I understand. How can I assist you further?"
-                )
-            )
+            custom_messages.append(HfMessage.create(role="assistant", text="I understand. How can I assist you further?"))
 
         return custom_messages
 
@@ -101,9 +93,7 @@ class ModelService:
             # Add property information to system prompt
             if property_information:
                 for info in property_information:
-                    system_prompt.append(
-                        {"text": f"{info.name}, Detail: {info.detail}"}
-                    )
+                    system_prompt.append({"text": f"{info.name}, Detail: {info.detail}"})
 
             # Prepare the new user prompt
             new_user_message = HfMessage.create("user", prompt)
@@ -123,19 +113,10 @@ class ModelService:
             )
             logging.info(f"AI: Response: {response}")
             # Extract the response text
-            if (
-                "output" in response
-                and "message" in response["output"]
-                and "content" in response["output"]["message"]
-                and len(response["output"]["message"]["content"]) > 0
-            ):
-                cleaned_response = self.clean_text(
-                    response["output"]["message"]["content"][0]["text"]
-                )
+            if "output" in response and "message" in response["output"] and "content" in response["output"]["message"] and len(response["output"]["message"]["content"]) > 0:
+                cleaned_response = self.clean_text(response["output"]["message"]["content"][0]["text"])
             else:
-                cleaned_response = (
-                    "I apologize, but I couldn't generate a proper response."
-                )
+                cleaned_response = "I apologize, but I couldn't generate a proper response."
 
             if cleaned_response:
                 # Save only the new user input and assistant's response directly to the database
@@ -162,10 +143,7 @@ class ModelService:
             logging.exception(error_message)
             print(error_message)
             traceback.print_exc()
-            return {
-                "error": "I apologize, but I encountered an error while processing your request. "
-                "The error has been logged for further investigation."
-            }
+            return {"error": "I apologize, but I encountered an error while processing your request. " "The error has been logged for further investigation."}
 
     @staticmethod
     def clean_text(text):

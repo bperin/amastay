@@ -18,12 +18,8 @@ booking_model = ns_booking.model(
     "Booking",
     {
         "property_id": fields.String(required=True, description="The property ID"),
-        "check_in": fields.Integer(
-            required=True, description="Check-in date and time as Unix timestamp"
-        ),
-        "check_out": fields.Integer(
-            required=True, description="Check-out date and time as Unix timestamp"
-        ),
+        "check_in": fields.Integer(required=True, description="Check-in date and time as Unix timestamp"),
+        "check_out": fields.Integer(required=True, description="Check-out date and time as Unix timestamp"),
         "status": fields.String(required=False, description="Booking status"),
         # Add other fields as necessary
     },
@@ -193,16 +189,8 @@ class AddGuest(Resource):
             if updated_booking:
                 # Send a welcome message to the new guest
                 try:
-                    content = (
-                        f"AmastayAI: You’ve been added to a reservation. "
-                        f"Reply YES to opt-in for updates about your stay. "
-                        f"Msg frequency varies. Msg & data rates may apply. "
-                        f"Text HELP for support, STOP to opt-out. "
-                        f"Booking ID: {booking_id}, Guest: {first_name} {last_name or ''}"
-                    )
-                    PinpointService.send_sms(
-                        phone_number, os.getenv("SYSTEM_PHONE_NUMBER"), content
-                    )
+                    content = f"AmastayAI: You’ve been added to a reservation. " f"Reply YES to opt-in for updates about your stay. " f"Msg frequency varies. Msg & data rates may apply. " f"Text HELP for support, STOP to opt-out. " f"Booking ID: {booking_id}, Guest: {first_name} {last_name or ''}"
+                    PinpointService.send_sms(phone_number, os.getenv("SYSTEM_PHONE_NUMBER"), content)
                 except Exception as sms_error:
                     logging.error(f"Error sending welcome SMS: {sms_error}")
 

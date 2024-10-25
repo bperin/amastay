@@ -11,9 +11,7 @@ from supabase_utils import supabase_client
 class BookingService:
 
     @staticmethod
-    def get_or_create_guest(
-        phone_number: str, first_name: str, last_name: str
-    ) -> Guest:
+    def get_or_create_guest(phone_number: str, first_name: str, last_name: str) -> Guest:
         """
         Retrieves or creates a guest based on their phone number, first name, and last name.
 
@@ -25,27 +23,18 @@ class BookingService:
         Returns:
             Guest: A Guest object, either retrieved or newly created.
         """
-        logging.info(
-            f"Attempting to retrieve or create guest with phone number: {phone_number}"
-        )
+        logging.info(f"Attempting to retrieve or create guest with phone number: {phone_number}")
 
         try:
             # Query the guests table by phone number
-            guest_response = (
-                supabase_client.from_("guests")
-                .select("*")
-                .eq("phone", phone_number)
-                .execute()
-            )
+            guest_response = supabase_client.from_("guests").select("*").eq("phone", phone_number).execute()
 
             # If guest is found, return it
             if guest_response.data:
                 logging.info(f"Guest found with phone number: {phone_number}")
                 return Guest(**guest_response.data)
 
-            logging.info(
-                f"No guest found with phone number: {phone_number}. Creating a new guest."
-            )
+            logging.info(f"No guest found with phone number: {phone_number}. Creating a new guest.")
 
             # If no guest is found, create a new one
             new_guest_data = {
@@ -53,9 +42,7 @@ class BookingService:
                 "last_name": last_name,
                 "phone": phone_number,
             }
-            new_guest_response = (
-                supabase_client.table("guests").insert(new_guest_data).execute()
-            )
+            new_guest_response = supabase_client.table("guests").insert(new_guest_data).execute()
 
             logging.info(f"New guest created with phone number: {phone_number}")
 
@@ -83,16 +70,7 @@ class BookingService:
 
         # Step 2: Join 'booking_guests' and 'bookings' to get the next upcoming booking
         current_date = datetime.now().date()
-        booking_response = (
-            supabase_client.table("booking_guests")
-            .select("bookings!inner(*)")  # Inner join with the 'bookings' table
-            .eq("guest_id", guest.id)  # Filter by guest ID
-            .gt("bookings.check_in", current_date)  # Only select future bookings
-            .order("bookings.check_in", ascending=True)
-            .limit(1)  # Get the next upcoming booking
-            .single()
-            .execute()
-        )
+        booking_response = supabase_client.table("booking_guests").select("bookings!inner(*)").eq("guest_id", guest.id).gt("bookings.check_in", current_date).order("bookings.check_in", ascending=True).limit(1).single().execute()  # Inner join with the 'bookings' table  # Filter by guest ID  # Only select future bookings  # Get the next upcoming booking
 
         if not booking_response.data:
             print(f"No upcoming bookings found for guest ID: {guest.id}")
@@ -115,13 +93,9 @@ class BookingService:
         try:
             # Parse check_in and check_out to timestamptz
             if "check_in" in booking_data:
-                booking_data["check_in"] = datetime.fromtimestamp(
-                    booking_data["check_in"]
-                ).isoformat()
+                booking_data["check_in"] = datetime.fromtimestamp(booking_data["check_in"]).isoformat()
             if "check_out" in booking_data:
-                booking_data["check_out"] = datetime.fromtimestamp(
-                    booking_data["check_out"]
-                ).isoformat()
+                booking_data["check_out"] = datetime.fromtimestamp(booking_data["check_out"]).isoformat()
 
             response = supabase_client.table("bookings").insert(booking_data).execute()
 
@@ -164,12 +138,7 @@ class BookingService:
             List[Booking]: A list of bookings for the specified property, each cast to a Booking object.
         """
         try:
-            response = (
-                supabase_client.table("bookings")
-                .select("*")
-                .eq("property_id", property_id)
-                .execute()
-            )
+            response = supabase_client.table("bookings").select("*").eq("property_id", property_id).execute()
 
             if not response.data:
                 return []
@@ -201,9 +170,7 @@ class BookingService:
         """
         try:
             # Get guest if not make it
-            guest = BookingService.get_or_create_guest(
-                phone_number, first_name, last_name
-            )
+            guest = BookingService.get_or_create_guest(phone_number, first_name, last_name)
 
             if not guest:
                 raise ValueError("Failed to create or retrieve guest")
@@ -213,11 +180,7 @@ class BookingService:
                 "booking_id": booking_id,
                 "guest_id": guest.id,
             }
-            booking_guest_response = (
-                supabase_client.table("booking_guests")
-                .insert(booking_guest_data)
-                .execute()
-            )
+            booking_guest_response = supabase_client.table("booking_guests").insert(booking_guest_data).execute()
 
             if not booking_guest_response.data:
                 raise ValueError("Failed to add guest to booking")
@@ -242,15 +205,7 @@ class BookingService:
         """
         try:
             current_date = datetime.now().date()
-            booking_response = (
-                supabase_client.from_("booking_guests")
-                .select("bookings!inner(*)")
-                .eq("guest_id", guest_id)
-                .order("check_in", desc=False, foreign_table="bookings")
-                .limit(1)
-                .single()
-                .execute()
-            )
+            booking_response = supabase_client.from_("booking_guests").select("bookings!inner(*)").eq("guest_id", guest_id).order("check_in", desc=False, foreign_table="bookings").limit(1).single().execute()
 
             if not booking_response.data:
                 print(f"No upcoming bookings found for guest ID: {guest_id}")

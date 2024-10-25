@@ -8,8 +8,7 @@ from datetime import datetime
 class MessageService:
 
     @staticmethod
-    def add_message(
-        booking_id: str,
+    def add_message(booking_id: str,
         sender_id: Optional[str],
         sender_type: int,
         content: str,
@@ -37,14 +36,7 @@ class MessageService:
 
     @staticmethod
     def get_messages_by_booking(booking_id: str, limit: int = 30) -> Optional[list[Message]]:
-        response = (
-            supabase_client.from_("messages")
-            .select("*")
-            .eq("booking_id", booking_id)
-            .order("created_at", desc=False)
-            .limit(limit)
-            .execute()
-        )
+        response = supabase_client.from_("messages").select("*").eq("booking_id", booking_id).order("created_at", desc=False).limit(limit).execute()
 
         if response.data:
             return [Message(**msg) for msg in response.data]

@@ -24,9 +24,7 @@ class TestGuestService(unittest.TestCase):
 
         self.assertEqual(result.data, mock_response.data)
         self.mock_supabase.table.assert_called_once_with("guests")
-        self.mock_supabase.table().insert.assert_called_once_with(
-            {"phone": "+11234567890", "first_name": "John", "last_name": "Doe"}
-        )
+        self.mock_supabase.table().insert.assert_called_once_with({"phone": "+11234567890", "first_name": "John", "last_name": "Doe"})
 
     def test_get_guest_by_phone(self):
         mock_response = MagicMock()
@@ -36,17 +34,13 @@ class TestGuestService(unittest.TestCase):
             "first_name": "John",
             "last_name": "Doe",
         }
-        self.mock_supabase.table().select().eq().single().execute.return_value = (
-            mock_response
-        )
+        self.mock_supabase.table().select().eq().single().execute.return_value = mock_response
 
         result = GuestService.get_guest_by_phone("+11234567890")
 
         self.assertEqual(result.data, mock_response.data)
         self.mock_supabase.table.assert_called_once_with("guests")
-        self.mock_supabase.table().select().eq.assert_called_once_with(
-            "phone", "+11234567890"
-        )
+        self.mock_supabase.table().select().eq.assert_called_once_with("phone", "+11234567890")
 
     def test_get_or_create_guest_existing(self):
         mock_response = MagicMock()
@@ -56,9 +50,7 @@ class TestGuestService(unittest.TestCase):
             "first_name": "John",
             "last_name": "Doe",
         }
-        self.mock_supabase.table().select().eq().single().execute.return_value = (
-            mock_response
-        )
+        self.mock_supabase.table().select().eq().single().execute.return_value = mock_response
 
         result = GuestService.get_or_create_guest("+11234567890", "John", "Doe")
 
@@ -66,9 +58,7 @@ class TestGuestService(unittest.TestCase):
         self.mock_supabase.table().insert.assert_not_called()
 
     def test_get_or_create_guest_new(self):
-        self.mock_supabase.table().select().eq().single().execute.return_value = (
-            MagicMock(data=None)
-        )
+        self.mock_supabase.table().select().eq().single().execute.return_value = MagicMock(data=None)
 
         mock_create_response = MagicMock()
         mock_create_response.data = {
@@ -93,15 +83,11 @@ class TestGuestService(unittest.TestCase):
         }
         self.mock_supabase.table().update().eq().execute.return_value = mock_response
 
-        result = GuestService.update_guest(
-            1, name="John Smith", email="john@example.com"
-        )
+        result = GuestService.update_guest(1, name="John Smith", email="john@example.com")
 
         self.assertEqual(result.data, mock_response.data)
         self.mock_supabase.table.assert_called_once_with("guests")
-        self.mock_supabase.table().update.assert_called_once_with(
-            {"name": "John Smith", "email": "john@example.com"}
-        )
+        self.mock_supabase.table().update.assert_called_once_with({"name": "John Smith", "email": "john@example.com"})
         self.mock_supabase.table().update().eq.assert_called_once_with("id", 1)
 
     def test_delete_guest(self):

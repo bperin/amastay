@@ -22,13 +22,9 @@ class PropertyInformationService:
             )
 
             if not property_response.data:
-                raise ValueError(
-                    "Property not found or you don't have permission to add information"
-                )
+                raise ValueError("Property not found or you don't have permission to add information")
 
-            new_info_response = (
-                supabase_client.table("property_information").insert(data).execute()
-            )
+            new_info_response = supabase_client.table("property_information").insert(data).execute()
 
             if not new_info_response.data:
                 raise Exception("Failed to insert property information")
@@ -42,12 +38,7 @@ class PropertyInformationService:
     def remove_property_information(info_id: UUID) -> bool:
         try:
             # Find and delete the property information
-            delete_response = (
-                supabase_client.table("property_information")
-                .delete()
-                .eq("id", str(info_id))
-                .execute()
-            )
+            delete_response = supabase_client.table("property_information").delete().eq("id", str(info_id)).execute()
 
             if not delete_response.data:
                 raise ValueError("Property information not found")
@@ -63,12 +54,7 @@ class PropertyInformationService:
     ) -> Optional[List[PropertyInformation]]:
         try:
             # Fetch all property information for the given property ID
-            info_response = (
-                supabase_client.from_("property_information")
-                .select("*")
-                .eq("property_id", str(property_id))
-                .execute()
-            )
+            info_response = supabase_client.from_("property_information").select("*").eq("property_id", str(property_id)).execute()
 
             if not info_response.data:
                 return None

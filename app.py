@@ -29,17 +29,11 @@ logging.basicConfig(
 )
 file_handler = logging.FileHandler("app.log")
 file_handler.setLevel(logging.DEBUG)
-file_handler.setFormatter(
-    logging.Formatter(
-        "%(asctime)s - %(name)s - %(levelname)s - %(filename)s:%(lineno)d - %(message)s"
-    )
-)
+file_handler.setFormatter(logging.Formatter("%(asctime)s - %(name)s - %(levelname)s - %(filename)s:%(lineno)d - %(message)s"))
 app.logger.addHandler(file_handler)
 
 # Initialize Flask-RESTX API with Swagger UI
-api = Api(
-    app, version="0.1", title="Amastay API", description="Amastay API", doc="/swagger"
-)
+api = Api(app, version="0.1", title="Amastay API", description="Amastay API", doc="/swagger")
 
 # Register Namespace with the API
 api.add_namespace(ns_auth, path="/api/v1/auth")

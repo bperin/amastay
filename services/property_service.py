@@ -19,9 +19,7 @@ class PropertyService:
         try:
             property_data["owner_id"] = g.user_id
             # Insert the property into the 'properties' table
-            response = (
-                supabase_client.table("properties").insert(property_data).execute()
-            )
+            response = supabase_client.table("properties").insert(property_data).execute()
             if not response.data:
                 logging.error("Failed to insert property: No data returned.")
                 raise Exception("Failed to insert property: No data returned.")
@@ -42,36 +40,20 @@ class PropertyService:
                 scraper = Scraper(property.property_url)
                 scraped_data = scraper.scrape()
 
-                logging.info(
-                    f"Scraped data cleaned successfully for property {property.id}"
-                )
+                logging.info(f"Scraped data cleaned successfully for property {property.id}")
 
                 if scraped_data:
                     # Save the scraped data using the scraper's save method
-                    filename = PropertyService.save_scraped_data(
-                        str(property.id), scraped_data
-                    )
+                    filename = PropertyService.save_scraped_data(str(property.id), scraped_data)
                     document_data = {
                         "property_id": str(property.id),
                         "file_url": filename,
                     }
                     # Insert the document into the 'documents' table
-                    document_response = (
-                        supabase_client.table("documents")
-                        .insert(document_data)
-                        .execute()
-                    )
+                    document_response = supabase_client.table("documents").insert(document_data).execute()
 
-                    log_message = (
-                        f"Scraped data saved successfully for property {property.id}"
-                        if filename
-                        else f"Failed to save scraped data for property {property.id}"
-                    )
-                    (
-                        logging.info(log_message)
-                        if filename
-                        else logging.error(log_message)
-                    )
+                    log_message = f"Scraped data saved successfully for property {property.id}" if filename else f"Failed to save scraped data for property {property.id}"
+                    (logging.info(log_message) if filename else logging.error(log_message))
                 else:
                     logging.error(f"Failed to scrape data for property {property.id}")
             else:
@@ -83,12 +65,7 @@ class PropertyService:
     @staticmethod
     def get_property(property_id: UUID) -> Optional[Property]:
         try:
-            response = (
-                supabase_client.table("properties")
-                .select("*")
-                .eq("id", str(property_id))
-                .execute()
-            )
+            response = supabase_client.table("properties").select("*").eq("id", str(property_id)).execute()
             if not response.data:
                 logging.error(f"No property found with id: {property_id}")
                 return None
@@ -102,12 +79,7 @@ class PropertyService:
     @staticmethod
     def get_property_by_booking_id(property_id: str) -> Optional[Property]:
         try:
-            response = (
-                supabase_client.from_("properties")
-                .select("*")
-                .eq("id", str(property_id))
-                .execute()
-            )
+            response = supabase_client.from_("properties").select("*").eq("id", str(property_id)).execute()
             if not response.data:
                 logging.error(f"No property found with id: {property_id}")
                 return None
@@ -131,25 +103,15 @@ class PropertyService:
             # Only update fields that are different from the existing property
             fields_to_update = {}
             for key, value in update_data.items():
-                if (
-                    hasattr(existing_property, key)
-                    and getattr(existing_property, key) != value
-                ):
+                if hasattr(existing_property, key) and getattr(existing_property, key) != value:
                     fields_to_update[key] = value
 
             if not fields_to_update:
                 return existing_property  # No changes needed
 
-            response = (
-                supabase_client.table("properties")
-                .update(fields_to_update)
-                .eq("id", str(property_id))
-                .execute()
-            )
+            response = supabase_client.table("properties").update(fields_to_update).eq("id", str(property_id)).execute()
             if not response.data:
-                logging.error(
-                    f"Failed to update property: No data returned for property {property_id}"
-                )
+                logging.error(f"Failed to update property: No data returned for property {property_id}")
                 raise Exception("Property not found after update")
 
             return Property(**response.data[0])
@@ -168,12 +130,7 @@ class PropertyService:
             if existing_property.owner_id != user_id:
                 raise Exception("Unauthorized: You do not own this property")
 
-            response = (
-                supabase_client.table("properties")
-                .delete()
-                .eq("id", str(property_id))
-                .execute()
-            )
+            response = supabase_client.table("properties").delete().eq("id", str(property_id)).execute()
             if not response.data:
                 logging.error(f"Failed to delete property {property_id}")
                 raise Exception(f"Failed to delete property {property_id}")
@@ -211,9 +168,7 @@ class PropertyService:
                 temp_file_path = temp_file.name
 
             # Upload to Supabase
-            response = supabase_client.storage.from_("properties").upload(
-                filename, temp_file_path
-            )
+            response = supabase_client.storage.from_("properties").upload(filename, temp_file_path)
 
             if response:
                 logging.info(f"Document uploaded successfully as {filename}")

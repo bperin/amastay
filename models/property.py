@@ -6,9 +6,7 @@ from typing import Optional
 
 class Property(BaseModel):
     id: Optional[str] = Field(default=None)
-    owner_id: Optional[str] = Field(
-        default=None
-    )  # Assuming owner_id is a string (user's ID)
+    owner_id: Optional[str] = Field(default=None)  # Assuming owner_id is a string (user's ID)
     name: str
     description: Optional[str] = Field(default=None)
     address: Optional[str] = Field(default=None)

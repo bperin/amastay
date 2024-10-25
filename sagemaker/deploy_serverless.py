@@ -13,9 +13,7 @@ hugging_face_hub_token = os.getenv("HUGGING_FACE_HUB_TOKEN")
 
 # Ensure the token is set properly
 if hugging_face_hub_token is None:
-    raise ValueError(
-        "You must provide a valid Hugging Face Hub token in the .env file."
-    )
+    raise ValueError("You must provide a valid Hugging Face Hub token in the .env file.")
 
 # Hub Model configuration
 hub = {

@@ -5,6 +5,7 @@ from typing import Optional
 from datetime import datetime
 from uuid import UUID
 
+
 class RecommendationSubjectsJoin(BaseModel):
     id: UUID
     recommendation_id: Optional[UUID]

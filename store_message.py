@@ -1,6 +1,7 @@
 from supabase_utils import supabase
 from datetime import datetime
 
+
 def store_message(conversation_id: int, content: str, direction: str) -> dict:
     """
     Stores a message in the messages table.
@@ -14,15 +15,16 @@ def store_message(conversation_id: int, content: str, direction: str) -> dict:
         dict: The inserted message record.
     """
     new_message_data = {
-        'conversation_id': conversation_id,
-        'message_content': content,
-        'direction': direction,  # 'user' or 'ai'
-        'timestamp': datetime.now()
+        "conversation_id": conversation_id,
+        "message_content": content,
+        "direction": direction,  # 'user' or 'ai'
+        "timestamp": datetime.now(),
     }
 
-    response = supabase.table('messages').insert(new_message_data).execute()
+    response = supabase.table("messages").insert(new_message_data).execute()
 
     return response.data[0] if response.data else None
+
 
 # Example usage
 if __name__ == "__main__":

@@ -44,10 +44,7 @@ class Scraper:
             calendar_tag.decompose()
 
         # Remove any specific elements with text patterns like 'Add your travel dates'
-        for tag in soup.find_all(
-            string=lambda text: "Add your travel dates" in text
-            or "Su Mo Tu We Th Fr Sa" in text
-        ):
+        for tag in soup.find_all(string=lambda text: "Add your travel dates" in text or "Su Mo Tu We Th Fr Sa" in text):
             parent_tag = tag.find_parent()
             if parent_tag:
                 parent_tag.decompose()

@@ -20,9 +20,7 @@ property_model = ns_property.model(
     {
         "name": fields.String(required=True, description="The property name"),
         "address": fields.String(required=True, description="The property address"),
-        "description": fields.String(
-            required=False, description="The property description"
-        ),
+        "description": fields.String(required=False, description="The property description"),
         "property_url": fields.String(required=True, description="The property Url"),
     },
 )
@@ -33,9 +31,7 @@ update_property_model = ns_property.model(
     {
         "name": fields.String(required=False, description="The property name"),
         "address": fields.String(required=False, description="The property address"),
-        "description": fields.String(
-            required=False, description="The property description"
-        ),
+        "description": fields.String(required=False, description="The property description"),
         "property_url": fields.String(required=False, description="The property Url"),
     },
 )
@@ -184,9 +180,7 @@ property_info_model = ns_property.model(
         "name": fields.String(required=True, description="Information name"),
         "detail": fields.String(required=True, description="Information detail"),
         "video_url": fields.String(required=False, description="Information video url"),
-        "category_id": fields.String(
-            required=False, description="Information category_id"
-        ),
+        "category_id": fields.String(required=False, description="Information category_id"),
     },
 )
 
@@ -248,9 +242,7 @@ class GetPropertyInformation(Resource):
         """
         try:
             # Call the PropertyInformationService to get property information
-            property_info_list = PropertyInformationService.get_property_information(
-                property_id
-            )
+            property_info_list = PropertyInformationService.get_property_information(property_id)
             return [info.model_dump() for info in property_info_list], 200
         except Exception as e:
             logging.error(f"Error in get_property_information: {e}")

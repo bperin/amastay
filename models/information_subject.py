@@ -5,6 +5,7 @@ from typing import Optional
 from datetime import datetime
 from uuid import UUID
 
+
 class InformationSubject(BaseModel):
     id: UUID
     name: str

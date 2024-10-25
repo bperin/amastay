@@ -8,9 +8,7 @@ health_model = ns_health.model(
     "Health",
     {
         "status": fields.String(required=True, description="The status of the service"),
-        "message": fields.String(
-            required=True, description="A message describing the status"
-        ),
+        "message": fields.String(required=True, description="A message describing the status"),
     },
 )
 
