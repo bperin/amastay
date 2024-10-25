@@ -1,7 +1,5 @@
 import logging
 import os
-import tempfile
-import time
 import requests
 from services.booking_service import BookingService
 from services.message_service import MessageService
@@ -85,14 +83,7 @@ class ProcessService:
             else:
                 logging.info("No property documents to process")
 
-            ai_response = ProcessService.model_service.query_model(
-                booking,
-                property,
-                guest,
-                message_body,
-                property_information,
-                all_document_text,
-            )
+            ai_response = ProcessService.model_service.query_model(booking,property, guest,message_body,property_information,all_document_text)
 
             logging.info(f"AI: Response: {ai_response}")
 

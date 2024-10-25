@@ -15,6 +15,7 @@ from models.property_information import PropertyInformation
 from services.documents_service import DocumentsService
 from services.message_service import MessageService
 from services.property_information_service import PropertyInformationService
+from services.model_params_service import get_active_model_param
 import re
 
 from services.property_service import PropertyService
@@ -23,10 +24,7 @@ from services.property_service import PropertyService
 class ModelService:
     def __init__(self):
 
-        self.inference_arn = os.getenv(
-            "BEDROCK_INFERENCE_ARN",
-            "arn:aws:bedrock:us-east-1:422220778159:inference-profile/us.meta.llama3-2-3b-instruct-v1:0",
-        )
+        self.inference_arn = os.getenv("BEDROCK_INFERENCE_ARN")
 
         self.bedrock_client = boto3.client("bedrock-runtime", region_name="us-east-1")
 
@@ -69,21 +67,21 @@ class ModelService:
 
         return custom_messages
 
-    def query_model(
-        self,
-        booking: Booking,
-        property: Property,
-        guest: Guest,
-        prompt: str,
-        property_information: Optional[List[PropertyInformation]] = None,
-        all_document_text: str = "",
-        max_new_tokens: int = 2048,
-    ):
+    def query_model(self, booking: Booking, property: Property, guest: Guest, prompt: str, property_information: Optional[List[PropertyInformation]] = None, all_document_text: str = "", max_new_tokens: int = 2048):
         try:
 
             # Fetch conversation history directly from the database
             conversation_history = self.get_conversation_history(booking.id)
-
+            # Get the active model parameters
+          
+            active_model_param = get_active_model_param()
+            breakpoint()
+            # Use the prompt from the active model parameters
+            system_prompt = [
+                {
+                    "text": active_model_param.prompt
+                }
+            ]
             system_prompt = [
                 {
                     "text": f"You are an expert question and answer chat assistant that gives clear and concise responses about short term rentals. You are provided with the following documents and property information which may help you answer the user's question. If you cannot answer the user's question, please ask for more information. The property details are as follows:\n\nProperty Name: {property.name}\nAddress: {property.address}\nDescription: {property.description}\n\Property Information:\n{all_document_text}"
