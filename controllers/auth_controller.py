@@ -7,11 +7,8 @@ from services.auth_service import AuthService
 import logging
 import time
 
-try:
-    logging.basicConfig(level=logging.DEBUG)
-    logger = logging.getLogger(__name__)
-except Exception as e:
-    print(f"Error setting up logging: {str(e)}")
+# Configure logging
+logger = logging.getLogger(__name__)
 
 ns_auth = Namespace("authentication", description="Authentication operations")
 
@@ -22,14 +19,14 @@ signup_model = ns_auth.model(
         "first_name": fields.String(required=True, description="First name", type="string"),
         "last_name": fields.String(required=True, description="Last name", type="string"),
         "estimated_properties": fields.Integer(required=True, description="Estimated number of properties", type="integer"),
-        "phone_number": fields.String(required=True, description="Phone number", type="string"),
+        "phone": fields.String(required=True, description="Phone number", type="string"),
     },
 )
 
 otp_model = ns_auth.model(
     "OTP",
     {
-        "phone_number": fields.String(required=True, description="Phone number"),
+        "phone": fields.String(required=True, description="Phone number"),
         "otp": fields.String(required=True, description="One-time password"),
     },
 )
@@ -44,7 +41,7 @@ otp_response = ns_auth.model(
 
 login_model = ns_auth.model(
     "Login",
-    {"phone_number": fields.String(required=True, description="Phone number")},
+    {"phone": fields.String(required=True, description="Phone number")},
 )
 
 
@@ -61,14 +58,11 @@ class Signup(Resource):
         first_name = data.get("first_name")
         last_name = data.get("last_name")
         estimated_properties = data.get("estimated_properties")
-        phone_number = data.get("phone_number")
+        phone_number = data.get("phone")
 
         # Validate required fields
         if not all([first_name, last_name, estimated_properties, phone_number]):
-            try:
-                logger.warning("Signup failed: Missing required fields.")
-            except Exception as e:
-                print(f"Error logging warning: {str(e)}")
+            logger.warning("Signup failed: Missing required fields.")
             return {"error": "All fields are required"}, 400
 
         # Call the AuthService to handle sign-up
@@ -108,10 +102,7 @@ class VerifyOTP(Resource):
         otp = data.get("otp")
 
         if not all([phone_number, otp]):
-            try:
-                logger.warning("OTP verification failed: Missing phone number or OTP.")
-            except Exception as e:
-                print(f"Error logging warning: {str(e)}")
+            logger.warning("OTP verification failed: Missing phone number or OTP.")
             return {"error": "Phone number and OTP are required"}, 400
 
         # Call the AuthService to handle OTP verification
@@ -172,13 +163,10 @@ class Login(Resource):
         Sends a SMS OTP for login
         """
         data = request.get_json()
-        phone_number = data.get("phone_number")
+        phone_number = data.get("phone")
 
         if not phone_number:
-            try:
-                logger.warning("Login failed: Missing phone_number.")
-            except Exception as e:
-                print(f"Error logging warning: {str(e)}")
+            logger.warning("Login failed: Missing phone_number.")
             return {"error": "phone_number is required"}, 400
 
         return AuthService.login(phone_number)
@@ -195,10 +183,7 @@ class ResendOTP(Resource):
         phone_number = data.get("phone_number")
 
         if not phone_number:
-            try:
-                logger.warning("Resend OTP failed: Missing phone_number.")
-            except Exception as e:
-                print(f"Error logging warning: {str(e)}")
+            logger.warning("Resend OTP failed: Missing phone_number.")
             return {"error": "phone_number is required"}, 400
 
         return AuthService.resend_otp(phone_number)

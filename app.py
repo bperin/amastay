@@ -46,19 +46,6 @@ api.add_namespace(ns_webhooks, path="/api/v1/webhooks")
 api.add_namespace(ns_scraper, path="/api/v1/scraper")
 api.add_namespace(ns_model, path="/api/v1/model")
 
-# Error handling for JWT-related issues (optional)
-@app.errorhandler(401)
-def handle_unauthorized(error):
-    return jsonify({"error": "Unauthorized access"}), 401
-
-@app.errorhandler(403)
-def handle_forbidden(error):
-    return jsonify({"error": "Forbidden access"}), 403
-
-@app.errorhandler(Exception)
-def handle_exception(e):
-    app.logger.exception("An unexpected error occurred: %s", str(e))
-    return jsonify({"error": "An unexpected error occurred"}), 500
 
 if __name__ == "__main__":
     app.run(debug=True, host="0.0.0.0", port=5001)

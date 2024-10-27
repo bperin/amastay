@@ -144,22 +144,22 @@ class ModelService:
 
     @staticmethod
     def clean_text(text):
-        # Remove Markdown formatting
-        text = re.sub(r"\*\*|__", "", text)
+        # # Remove Markdown formatting
+        # text = re.sub(r"\*\*|__", "", text)
 
-        # Remove bullet points and numbering
-        text = re.sub(r"^\s*[\d*-]\s*", "", text, flags=re.MULTILINE)
+        # # Remove bullet points and numbering
+        # text = re.sub(r"^\s*[\d*-]\s*", "", text, flags=re.MULTILINE)
 
-        # Remove quotes and parentheses
-        text = re.sub(r"[\"\'()]", "", text)
+        # # Remove quotes and parentheses
+        # text = re.sub(r"[\"\'()]", "", text)
 
-        # Remove backslashes
-        text = text.replace("\\n", " ")
+        # # Remove backslashes
+        # text = text.replace("\\n", " ")
 
-        # Remove extra whitespace and double spaces
-        text = re.sub(r"\s+", " ", text).strip()
+        # # Remove extra whitespace and double spaces
+        # text = re.sub(r"\s+", " ", text).strip()
 
-        # Remove period with two spaces followed by another period
-        text = re.sub(r"\. {2}\.", ".", text)
+        # # Remove period with two spaces followed by another period
+        # text = re.sub(r"\. {2}\.", ".", text)
 
         return text
