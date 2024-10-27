@@ -2,6 +2,8 @@ import logging
 import os
 import tempfile
 import time
+from geopy.geocoders import Nominatim
+from geopy.exc import GeocoderTimedOut, GeocoderServiceError
 
 from flask import g
 from models.booking import Booking
@@ -9,15 +11,43 @@ from models.hf_message import HfMessage
 from supabase_utils import supabase_client
 from models.property import Property
 from scraper import Scraper  # Adjust the import path if necessary
-from typing import List, Optional
+from typing import List, Optional, Tuple
 from uuid import UUID
 
 
 class PropertyService:
     @staticmethod
+    def geocode_address(address: str) -> Tuple[Optional[float], Optional[float]]:
+        geolocator = Nominatim(user_agent="amastay_app")
+        try:
+            location = geolocator.geocode(address)
+            breakpoint()
+            if location:
+                return location.latitude, location.longitude
+            else:
+                logging.warning(f"Could not geocode address: {address}")
+                return None, None
+        except (GeocoderTimedOut, GeocoderServiceError) as e:
+            logging.error(f"Geocoding error for address {address}: {str(e)}")
+            return None, None
+
+    @staticmethod
     def create_property(property_data: dict) -> Property:
         try:
             property_data["owner_id"] = g.user_id
+            
+            # Geocode the address
+            address = property_data.get('address')
+            if not address:
+                raise ValueError("Address is required for property creation")
+            
+            lat, lng = PropertyService.geocode_address(address)
+            if lat is None or lng is None:
+                raise ValueError(f"Failed to geocode address: {address}")
+            if lat and lng:
+                property_data["lat"] = lat
+                property_data["lng"] = lng
+            
             # Insert the property into the 'properties' table
             response = supabase_client.table("properties").insert(property_data).execute()
             if not response.data:
@@ -105,6 +135,14 @@ class PropertyService:
             for key, value in update_data.items():
                 if hasattr(existing_property, key) and getattr(existing_property, key) != value:
                     fields_to_update[key] = value
+
+            # If address is updated, re-geocode
+            if 'address' in fields_to_update:
+                address = fields_to_update['address']
+                lat, lng = PropertyService.geocode_address(address)
+                if lat and lng:
+                    fields_to_update["lat"] = lat
+                    fields_to_update["lng"] = lng
 
             if not fields_to_update:
                 return existing_property  # No changes needed

@@ -45,9 +45,6 @@ class QueryModel(Resource):
             message = data.get("message")
             phone = data.get("phone")
 
-            # Get current model parameters
-            model_params = get_active_model_param()
-
             result = ProcessService.handle_incoming_sms(123, phone, message)
 
             return result, 200  # Return the dictionary from model_service.query_model

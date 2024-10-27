@@ -29,16 +29,39 @@ property_model = ns_property.model(
 update_property_model = ns_property.model(
     "UpdateProperty",
     {
+        "id": fields.String(required=True, description="The property id"),
         "name": fields.String(required=False, description="The property name"),
         "address": fields.String(required=False, description="The property address"),
         "description": fields.String(required=False, description="The property description"),
         "property_url": fields.String(required=False, description="The property Url"),
     },
 )
+# Define model for property information
+property_info_model = ns_property.model(
+    "PropertyInformation",
+    {
+        "property_id": fields.String(required=True, description="Property id"),
+        "name": fields.String(required=True, description="Information name"),
+        "detail": fields.String(required=True, description="Information detail"),
+        "is_recommendation": fields.Boolean(required=True, description="Recommendation"),
+        "metadata_url": fields.String(required=False, description="Information metadata url"),
+        "category_id": fields.String(required=False, description="Information category_id"),
+    },
+)
+
+# Define model for updating property information
+update_property_info_model = ns_property.model(
+    "UpdatePropertyInformation",
+    {
+        "id": fields.String(required=True, description="Property information id"),
+        "name": fields.String(required=False, description="Information name"),
+        "detail": fields.String(required=False, description="Information detail"),
+        "is_recommendation": fields.Boolean(required=False, description="Recommendation"),
+    },
+)
 
 # Initialize the geolocator
 geolocator = Nominatim(user_agent="amastay_property_geocoder")
-
 
 # Route to create a new property
 @ns_property.route("/create")
@@ -104,17 +127,19 @@ class ViewProperty(Resource):
 
 
 # Route to update a property
-@ns_property.route("/update/<uuid:property_id>")
+@ns_property.route("/update")
 class UpdateProperty(Resource):
     @ns_property.doc("update_property")
     @ns_property.expect(property_model)
     @jwt_required
-    def patch(self, property_id: UUID):
+    def patch(self):
         """
         Partially updates a property by its ID.
         """
         try:
             data = request.get_json()
+            property_id = data.get("id")
+         
             if not data:
                 return {"error": "Missing update data"}, 400
 
@@ -172,17 +197,7 @@ class ListProperties(Resource):
             return {"error": str(e)}, 500
 
 
-# Define model for property information
-property_info_model = ns_property.model(
-    "PropertyInformation",
-    {
-        "property_id": fields.String(required=True, description="Property id"),
-        "name": fields.String(required=True, description="Information name"),
-        "detail": fields.String(required=True, description="Information detail"),
-        "video_url": fields.String(required=False, description="Information video url"),
-        "category_id": fields.String(required=False, description="Information category_id"),
-    },
-)
+
 
 
 # Route to add property information
@@ -207,6 +222,28 @@ class AddPropertyInformation(Resource):
         except Exception as e:
             logging.error(f"Error in add_property_information: {e}")
             return {"error": str(e)}, 500
+
+# Route to get all property information
+@ns_property.route("/information/<uuid:property_id>")
+class GetAllPropertyInformation(Resource):
+    @ns_property.doc("get_all_property_information")
+    @jwt_required
+    def get(self, property_id: UUID):
+        """
+        Get all information for a specific property, including recommendations and categories.
+        """
+        try:
+            # Call the PropertyInformationService to get all property information
+            all_property_info = PropertyInformationService.get_property_information(property_id)
+            
+            if all_property_info is None:
+                return {"error": "Property information not found"}, 404
+            
+            return [info.model_dump() for info in all_property_info], 200
+        except Exception as e:
+            logging.error(f"Error in get_all_property_information: {e}")
+            return {"error": str(e)}, 500
+
 
 
 # Route to remove property information
@@ -248,6 +285,34 @@ class GetPropertyInformation(Resource):
             logging.error(f"Error in get_property_information: {e}")
             return {"error": str(e)}, 500
 
+# Route to update property information
+@ns_property.route("/information/update")
+class UpdatePropertyInformation(Resource):
+    @ns_property.doc("update_property_information")
+    @ns_property.expect(update_property_info_model)
+    @jwt_required
+    def patch(self):
+        """
+        Updates specific information for a property.
+        """
+        try:
+            data = request.get_json()
+            if not data:
+                return {"error": "Missing update data"}, 400
+
+            # Call the PropertyInformationService to update property information
+            updated_info = PropertyInformationService.update_property_information(data)
+
+            if updated_info:
+                return updated_info.model_dump(), 200
+            else:
+                return {"error": "Failed to update property information"}, 400
+        except ValueError as ve:
+            logging.error(f"Validation error in update_property_information: {ve}")
+            return {"error": str(ve)}, 400
+        except Exception as e:
+            logging.error(f"Error in update_property_information: {e}")
+            return {"error": str(e)}, 500
 
 # Route to get property by ID
 @ns_property.route("/<uuid:property_id>")
