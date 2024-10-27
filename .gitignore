@@ -87,3 +87,4 @@ docs/_build/
 .dmypy.json
 dmypy.json
 .env
+.vscode/settings.json
