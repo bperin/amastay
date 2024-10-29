@@ -17,6 +17,7 @@ input_model = ns_model.model(
     {
         "message": fields.String(required=True, description="User input message"),
         "phone": fields.String(required=True, description="Origination number"),
+        "message_id": fields.String(required=True, description="Message id"),
     },
 )
 
@@ -44,8 +45,9 @@ class QueryModel(Resource):
             data = request.json
             message = data.get("message")
             phone = data.get("phone")
+            message_id = data.get("message_id")
 
-            result = ProcessService.handle_incoming_sms(123, phone, message)
+            result = ProcessService.handle_incoming_sms(message_id, phone, message)
 
             return result, 200  # Return the dictionary from model_service.query_model
 

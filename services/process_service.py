@@ -15,7 +15,7 @@ class ProcessService:
     model_service = ModelService()
 
     @staticmethod
-    def handle_incoming_sms(sms_id, origination_number, message_body):
+    def handle_incoming_sms(message_id, origination_number, message_body):
         """
         Handles incoming SMS between a guest and the AI.
         Retrieves guest information for sender_id, saves the guest message before querying history,
@@ -29,9 +29,9 @@ class ProcessService:
             from services.guest_service import GuestService
             
             # Check if we've already processed this SMS message
-            existing_message = MessageService.get_message_by_sms_id(sms_id)
+            existing_message = MessageService.get_message_by_sms_id(message_id)
             if existing_message:
-                logging.info(f"Message with SMS ID {sms_id} already processed, skipping")
+                logging.info(f"Message with SMS ID {message_id} already processed, skipping")
                 return
 
             guest = GuestService.get_guest_by_phone(origination_number)
@@ -89,7 +89,7 @@ class ProcessService:
             else:
                 logging.info("No property documents to process")
 
-            ai_response = ProcessService.model_service.query_model(booking,property, guest,message_body,property_information,all_document_text)
+            ai_response = ProcessService.model_service.query_model(booking,property, guest,message_body,message_id,property_information,all_document_text)
 
             logging.info(f"AI: Response: {ai_response}")
 

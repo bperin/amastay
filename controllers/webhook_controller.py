@@ -42,21 +42,21 @@ class SMSWebhook(Resource):
             data = request.json
             origination_number = data.get("phone")
             message_body = data.get("message")
-            sms_id = data.get("sms_id")  # AWS Pinpoint message ID
+            message_id = data.get("message_id")  # AWS Pinpoint message ID
 
             # Log incoming SMS data
             logger.info(
                 "Processing SMS - Origination Number: %s, Message Body: %s, Message ID: %s",
                 origination_number,
                 message_body,
-                sms_id,
+                message_id,
             )
 
             # Delegate to the ProcessService
-            ProcessService.handle_incoming_sms(sms_id, origination_number, message_body)
+            ProcessService.handle_incoming_sms(message_id, origination_number, message_body)
 
             # Log successful processing
-            logger.info("SMS processed successfully for Message ID: %s", sms_id)
+            logger.info("SMS processed successfully for Message ID: %s", message_id)
 
             # Return a success response to AWS Pinpoint
             return {"status": "success"}, 200
