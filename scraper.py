@@ -6,6 +6,7 @@ from selenium.webdriver.chrome.options import Options
 from supabase_utils import supabase_client
 import tempfile
 import os
+import re
 
 # Configure logging
 logging.basicConfig(
@@ -29,6 +30,7 @@ class Scraper:
         options.add_argument("start-maximized")
         options.add_argument("disable-infobars")
         options.add_argument("--disable-extensions")
+        options.add_argument("--enable-javascript")
 
         # Initialize the Chrome driver (Make sure chromedriver is installed)
         self.driver = webdriver.Chrome(options=options)
@@ -63,19 +65,46 @@ class Scraper:
         logging.info(f"Starting Selenium scrape for URL: {self.url}")
 
         try:
-            # Load the page and let it render
-            self.driver.get(self.url)
-            time.sleep(5)  # Adjust sleep time to allow the page to load fully
-
-            # Get the page source and parse it with BeautifulSoup
-            page_source = self.driver.page_source
-            soup = BeautifulSoup(page_source, "html.parser")
-
-            # Filter the content to remove unnecessary parts
-            filtered_text = self.filter_content(soup)
-            logging.info(f"Filtered document length: {len(filtered_text)} characters")
-
-            return filtered_text if filtered_text else "No content found"
+            # Check if URL is an Airbnb listing
+            airbnb_match = re.match(r'https://www\.airbnb\.com/rooms/(\d+)/?$', self.url)
+            
+            if airbnb_match:
+                room_id = airbnb_match.group(1)
+                urls = [
+                    self.url,  # Main listing
+                    f"https://www.airbnb.com/rooms/{room_id}/reviews",  # Reviews
+                    f"https://www.airbnb.com/rooms/{room_id}/amenities"  # Amenities
+                ]
+                combined_text = []
+                
+                for url in urls:
+                    self.driver.get(url)
+                    time.sleep(5)  # Adjust sleep time to allow the page to load fully
+                    
+                    page_source = self.driver.page_source
+                    soup = BeautifulSoup(page_source, "html.parser")
+                    filtered_text = self.filter_content(soup)
+                    
+                    if filtered_text:
+                        section_name = "MAIN LISTING" if url == self.url else "REVIEWS" if "/reviews" in url else "AMENITIES"
+                        combined_text.append(f"\n=== {section_name} ===\n{filtered_text}")
+                
+                final_text = "\n".join(combined_text)
+                logging.info(f"Filtered document length: {len(final_text)} characters")
+                return final_text if final_text else "No content found"
+            
+            else:
+                # Handle non-Airbnb URLs as before
+                self.driver.get(self.url)
+                time.sleep(5)
+                
+                page_source = self.driver.page_source
+                soup = BeautifulSoup(page_source, "html.parser")
+                filtered_text = self.filter_content(soup)
+                
+                logging.info(f"Filtered document length: {len(filtered_text)} characters")
+                return filtered_text if filtered_text else "No content found"
+                
         except Exception as e:
             logging.error(f"Error during scraping: {e}")
             return None

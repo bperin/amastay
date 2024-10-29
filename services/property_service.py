@@ -7,7 +7,9 @@ from geopy.exc import GeocoderTimedOut, GeocoderServiceError
 
 from flask import g
 from models.booking import Booking
+from models.document import Document
 from models.hf_message import HfMessage
+from services.documents_service import DocumentsService
 from supabase_utils import supabase_client
 from models.property import Property
 from scraper import Scraper  # Adjust the import path if necessary
@@ -93,14 +95,14 @@ class PropertyService:
             raise
 
     @staticmethod
-    def get_property(property_id: UUID) -> Optional[Property]:
+    def get_property(id: str) -> Optional[Property]:
         try:
-            response = supabase_client.table("properties").select("*").eq("id", str(property_id)).execute()
+            response = supabase_client.table("properties").select("*").eq("id", id).single().execute()
             if not response.data:
-                logging.error(f"No property found with id: {property_id}")
+                logging.error(f"No property found with id: {id}")
                 return None
 
-            return Property(**response.data[0])
+            return Property(**response.data)
 
         except Exception as e:
             logging.error(f"Exception in get_property: {e}")
@@ -121,8 +123,9 @@ class PropertyService:
             raise e
 
     @staticmethod
-    def update_property(property_id: UUID, update_data: dict) -> Property:
+    def update_property(property_id: str, update_data: dict) -> Property:
         try:
+            breakpoint()
             # Verify that the user is the owner of the property
             existing_property = PropertyService.get_property(property_id)
             if not existing_property:
@@ -143,16 +146,24 @@ class PropertyService:
                 if lat and lng:
                     fields_to_update["lat"] = lat
                     fields_to_update["lng"] = lng
+                    
+            rescrape_needed = False
+            if 'property_url' in fields_to_update and fields_to_update['property_url'] != existing_property.property_url:
+                rescrape_needed = True
 
             if not fields_to_update:
                 return existing_property  # No changes needed
 
-            response = supabase_client.table("properties").update(fields_to_update).eq("id", str(property_id)).execute()
+            response = supabase_client.table("properties").update(fields_to_update).eq("id", existing_property.id).execute()
+         
             if not response.data:
                 logging.error(f"Failed to update property: No data returned for property {property_id}")
                 raise Exception("Property not found after update")
-
-            return Property(**response.data[0])
+         
+            udpated_property = Property(**response.data[0])
+            if(rescrape_needed):
+                PropertyService.scrape_property(udpated_property)
+            return udpated_property
 
         except Exception as e:
             logging.error(f"Exception in update_property: {e}")

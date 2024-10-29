@@ -42,7 +42,7 @@ class SMSWebhook(Resource):
             data = request.json
             origination_number = data.get("phone")
             message_body = data.get("message")
-            sms_id = data.get("message_id")  # AWS Pinpoint message ID
+            sms_id = data.get("sms_id")  # AWS Pinpoint message ID
 
             # Log incoming SMS data
             logger.info(

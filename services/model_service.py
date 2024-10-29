@@ -66,8 +66,8 @@ class ModelService:
             custom_messages.append(HfMessage.create(role="assistant", text="I understand. How can I assist you further?"))
 
         return custom_messages
-
-    def query_model(self, booking: Booking, property: Property, guest: Guest, prompt: str, property_information: Optional[List[PropertyInformation]] = None, all_document_text: str = "", max_new_tokens: int = 2048):
+    
+    def query_model(self, booking: Booking, property: Property, guest: Guest, prompt: str, sms_id: str, property_information: Optional[List[PropertyInformation]] = None, all_document_text: str = "", max_new_tokens: int = 2048):
         try:
 
             # Fetch conversation history directly from the database
@@ -122,6 +122,7 @@ class ModelService:
                     sender_id=guest.id,
                     sender_type=0,
                     content=prompt,
+                    sms_id=sms_id,
                     question_id=None,
                 )
                 self.message_service.add_message(
@@ -129,6 +130,7 @@ class ModelService:
                     sender_id=None,
                     sender_type=1,
                     content=cleaned_response,
+                    sms_id=None,
                     question_id=str(user_message.id),
                 )
 
@@ -142,7 +144,9 @@ class ModelService:
             traceback.print_exc()
             return {"error": "I apologize, but I encountered an error while processing your request. " "The error has been logged for further investigation."}
 
-    @staticmethod
+    def clean_document(document: str) -> str:
+        pass
+    
     def clean_text(text):
         # # Remove Markdown formatting
         # text = re.sub(r"\*\*|__", "", text)

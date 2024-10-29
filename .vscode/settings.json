@@ -1,26 +1,8 @@
 {
-  "deno.enablePaths": [
-    "supabase/functions"
-  ],
-  "deno.lint": true,
-  "deno.unstable": true,
-  // TypeScript specific settings for Deno
-  "[typescript]": {
-    "editor.defaultFormatter": "denoland.vscode-deno"
-  },
-  // Python specific settings for Black
+  "python.formatting.provider": "black",
+  "editor.formatOnSave": true,
   "[python]": {
     "editor.defaultFormatter": "ms-python.black-formatter",
-    "editor.formatOnSave": true,
-    "editor.formatOnPaste": true,
-    "python.formatting.provider": "black"
-  },
-  // Global format on save settings
-  "editor.formatOnSave": true,
-  
-  // Black specific arguments
-  "python.formatting.blackArgs": [
-    "--line-length",
-    "400"
-  ]
+    "editor.formatOnSave": true
+  }
 }

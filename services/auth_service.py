@@ -8,6 +8,7 @@ import requests
 import time
 import secrets
 import string
+from gotrue import UserResponse  # Add this at the top with other imports
 
 
 class AuthService:
@@ -176,7 +177,7 @@ class AuthService:
             return jsonify({"error": str(e)}), 500
 
     @staticmethod
-    def get_current_user():
+    def get_current_user() -> UserResponse | None:
         """Retrieves the current logged-in user's information."""
         try:
             # Get the access token from the Authorization header
@@ -190,7 +191,6 @@ class AuthService:
 
             access_token = auth_header.split(" ")[1]
 
-            # Get the user information from Supabase
             user_response = supabase_client.auth.get_user(access_token)
             return user_response
 
@@ -198,9 +198,6 @@ class AuthService:
             logging.error(f"Error retrieving current user: {e}")
             return jsonify({"error": str(e)}), 500
 
-        except Exception as e:
-            logging.error(f"Error retrieving current user: {e}")
-            return jsonify({"error": str(e)}), 500
 
     @staticmethod
     def _build_session_response(auth_response):

@@ -3,9 +3,11 @@
 from flask import jsonify, request
 from flask_restx import Namespace, Resource, fields
 from auth_utils import jwt_required
+from models.owner import Owner
 from services.auth_service import AuthService
 import logging
 import time
+from gotrue import UserResponse
 
 # Configure logging
 logger = logging.getLogger(__name__)
@@ -30,7 +32,22 @@ otp_model = ns_auth.model(
         "otp": fields.String(required=True, description="One-time password"),
     },
 )
-
+get_me_response = ns_auth.model(
+    "GetMeResponse",
+    {
+        "id": fields.String(description="User ID"),
+        "email": fields.String(description="User email"),
+        "phone": fields.String(description="User phone number"),
+        "created_at": fields.DateTime(description="Account creation timestamp"),
+        "updated_at": fields.DateTime(description="Last update timestamp"),
+        "confirmed_at": fields.DateTime(description="Email confirmation timestamp"),
+        "last_sign_in_at": fields.DateTime(description="Last sign in timestamp"),
+        "role": fields.String(description="User role"),
+        "app_metadata": fields.Raw(description="Application metadata"),
+        "user_metadata": fields.Raw(description="User metadata"),
+        "identities": fields.List(fields.Raw, description="User identities")
+    }
+)
 otp_response = ns_auth.model(
     "OTPResponse",
     {
@@ -98,7 +115,7 @@ class VerifyOTP(Resource):
         Expects JSON data with phone_number and otp.
         """
         data = request.get_json()
-        phone_number = data.get("phone_number")
+        phone_number = data.get("phone")
         otp = data.get("otp")
 
         if not all([phone_number, otp]):
@@ -137,16 +154,17 @@ class RefreshToken(Resource):
 @ns_auth.route("/me")
 class GetCurrentUser(Resource):
     @jwt_required
+    @ns_auth.response(200, "Success", get_me_response)
     def get(self):
         """
         Retrieves the current logged-in user's information.
         Requires Authorization header with Bearer token.
         """
-        user_response = AuthService.get_current_user()
-        if "error" in user_response:
-            return user_response.model_dump(), 500
-        else:
-            return user_response.user.model_dump_json(), 200
+        try:
+            user_response = AuthService.get_current_user()
+            return user_response.model_dump(), 200
+        except Exception as e:
+            return {"error": str(e)}, 500
 
 
 @ns_auth.route("/logout")
@@ -180,7 +198,7 @@ class ResendOTP(Resource):
         Resend account creation SMS OTP
         """
         data = request.get_json()
-        phone_number = data.get("phone_number")
+        phone_number = data.get("phone")
 
         if not phone_number:
             logger.warning("Resend OTP failed: Missing phone_number.")

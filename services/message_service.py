@@ -12,12 +12,14 @@ class MessageService:
         sender_id: Optional[str],
         sender_type: int,
         content: str,
+        sms_id: Optional[str] = None,
         question_id: Optional[str] = None,
     ) -> Optional[Message]:
         new_message = {
             "booking_id": booking_id,
             "sender_type": sender_type,
             "content": content,
+            "sms_id": sms_id,
         }
 
         # Only add sender_id to the new_message if it's not None
@@ -40,6 +42,14 @@ class MessageService:
 
         if response.data:
             return [Message(**msg) for msg in response.data]
+        return None
+    
+    @staticmethod
+    def get_message_by_sms_id(sms_id: str) -> Optional[Message]:
+        response = supabase_client.from_("messages").select("*").eq("sms_id", sms_id).single().execute()
+
+        if response.data:
+            return Message(**response.data)
         return None
 
     @staticmethod

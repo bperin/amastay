@@ -27,6 +27,12 @@ class ProcessService:
                 return
 
             from services.guest_service import GuestService
+            
+            # Check if we've already processed this SMS message
+            existing_message = MessageService.get_message_by_sms_id(sms_id)
+            if existing_message:
+                logging.info(f"Message with SMS ID {sms_id} already processed, skipping")
+                return
 
             guest = GuestService.get_guest_by_phone(origination_number)
             if not guest:

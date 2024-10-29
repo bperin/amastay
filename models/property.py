@@ -1,8 +1,8 @@
 # models/property.py
 
+
 from pydantic import BaseModel, Field
 from typing import Optional
-
 
 class Property(BaseModel):
     id: Optional[str] = Field(default=None)

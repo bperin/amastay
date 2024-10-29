@@ -15,8 +15,8 @@ from services.property_information_service import PropertyInformationService
 ns_property = Namespace("properties", description="Property management")
 
 # Define models for request/response
-property_model = ns_property.model(
-    "Property",
+create_property_model = ns_property.model(
+    "CreateProperty",
     {
         "name": fields.String(required=True, description="The property name"),
         "address": fields.String(required=True, description="The property address"),
@@ -37,8 +37,8 @@ update_property_model = ns_property.model(
     },
 )
 # Define model for property information
-property_info_model = ns_property.model(
-    "PropertyInformation",
+add_property_info_model = ns_property.model(
+    "AddPropertyInformation",
     {
         "property_id": fields.String(required=True, description="Property id"),
         "name": fields.String(required=True, description="Information name"),
@@ -67,7 +67,7 @@ geolocator = Nominatim(user_agent="amastay_property_geocoder")
 @ns_property.route("/create")
 class CreateProperty(Resource):
     @ns_property.doc("create_property")
-    @ns_property.expect(property_model)
+    @ns_property.expect(create_property_model)
     @jwt_required
     def post(self):
         """
@@ -130,7 +130,7 @@ class ViewProperty(Resource):
 @ns_property.route("/update")
 class UpdateProperty(Resource):
     @ns_property.doc("update_property")
-    @ns_property.expect(property_model)
+    @ns_property.expect(update_property_model)
     @jwt_required
     def patch(self):
         """
@@ -204,7 +204,7 @@ class ListProperties(Resource):
 @ns_property.route("/information/")
 class AddPropertyInformation(Resource):
     @ns_property.doc("add_property_information")
-    @ns_property.expect(property_info_model)
+    @ns_property.expect(add_property_info_model)
     @jwt_required
     def post(self):
         """
