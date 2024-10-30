@@ -31,7 +31,7 @@ class PropertyInformationService:
         except Exception as e:
             logging.error(f"Error adding property information: {e}")
             raise
-        
+
     @staticmethod
     def update_property_information(data: dict) -> Optional[PropertyInformation]:
         try:
@@ -41,42 +41,33 @@ class PropertyInformationService:
             id = data.pop("id")
 
             # Check if the property information exists
-            response = supabase_client.table("property_information").select("*").eq("id",id).single().execute()
+            response = supabase_client.table("property_information").select("*").eq("id", id).single().execute()
             # Marshall the property information to the actual model
-            breakpoint()
+
             property_info = PropertyInformation(**response.data)
-            
-            breakpoint()
-         
+
             property = PropertyService.get_property(property_info.property_id)
             if not property or property.owner_id != g.user_id:
                 raise ValueError("You don't have permission to update this property information")
-            
-            breakpoint()
+
             # Create a dictionary with only the fields that can be updated
-            updatable_fields = {
-                "name": data.get("name"),
-                "detail": data.get("detail"),
-                "is_recommendation": data.get("is_recommendation")
-            }
-            
-            
+            updatable_fields = {"name": data.get("name"), "detail": data.get("detail"), "is_recommendation": data.get("is_recommendation")}
+
             updatable_fields = {k: v for k, v in updatable_fields.items() if v is not None}
-            
+
             # Compare with current property_info and only keep changed fields
             update_data = {}
             for field, new_value in updatable_fields.items():
                 current_value = getattr(property_info, field)
                 if new_value != current_value:
                     update_data[field] = new_value
-            
+
             # If there are no changes, return the original property_info
             if not update_data:
                 return property_info
-            
-           
-            update_response = supabase_client.table("property_information").update(update_data).eq("id",id).execute()
-            breakpoint()
+
+            update_response = supabase_client.table("property_information").update(update_data).eq("id", id).execute()
+
             if not update_response.data:
                 raise Exception("Failed to update property information")
 
@@ -103,7 +94,7 @@ class PropertyInformationService:
                 raise ValueError("You don't have permission to remove this property information")
 
             # Delete the property information
-            delete_response = supabase_client.table("property_information").delete().eq("id",id).execute()
+            delete_response = supabase_client.table("property_information").delete().eq("id", id).execute()
 
             if not delete_response.data:
                 raise ValueError("Failed to delete property information")

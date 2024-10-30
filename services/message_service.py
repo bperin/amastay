@@ -8,23 +8,23 @@ from datetime import datetime
 class MessageService:
 
     @staticmethod
-    def add_message(booking_id: str,
+    def add_message(
+        booking_id: str,
         sender_id: Optional[str],
         sender_type: int,
         content: str,
         sms_id: Optional[str] = None,
         question_id: Optional[str] = None,
     ) -> Optional[Message]:
-        new_message = {
-            "booking_id": booking_id,
-            "sender_type": sender_type,
-            "content": content,
-            "sms_id": sms_id,
-        }
+        new_message = {"booking_id": booking_id, "sender_type": sender_type, "content": content}
 
         # Only add sender_id to the new_message if it's not None
         if sender_id is not None:
             new_message["sender_id"] = sender_id
+
+        # Only add sms_id to the new_message if it's not None
+        if sms_id is not None:
+            new_message["sms_id"] = sms_id
 
         # Only add question_id to the new_message if it's not None
         if question_id is not None:
@@ -43,13 +43,13 @@ class MessageService:
         if response.data:
             return [Message(**msg) for msg in response.data]
         return None
-    
+
     @staticmethod
     def get_message_by_sms_id(sms_id: str) -> Optional[Message]:
-        response = supabase_client.from_("messages").select("*").eq("sms_id", sms_id).single().execute()
+        response = supabase_client.from_("messages").select("*").eq("sms_id", sms_id).limit(1).execute()
 
         if response.data:
-            return Message(**response.data)
+            return Message(**response.data[0])
         return None
 
     @staticmethod

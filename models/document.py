@@ -7,8 +7,9 @@ from uuid import UUID
 
 
 class Document(BaseModel):
-    id: UUID
-    property_id: Optional[UUID]
+    id: str
+    property_id: str
+    file_id: str
     file_url: str
-    created_at: Optional[datetime]
-    updated_at: Optional[datetime]
+    created_at: str
+    updated_at: str

@@ -23,7 +23,7 @@ class PropertyService:
         geolocator = Nominatim(user_agent="amastay_app")
         try:
             location = geolocator.geocode(address)
-            breakpoint()
+
             if location:
                 return location.latitude, location.longitude
             else:
@@ -37,19 +37,19 @@ class PropertyService:
     def create_property(property_data: dict) -> Property:
         try:
             property_data["owner_id"] = g.user_id
-            
+
             # Geocode the address
-            address = property_data.get('address')
+            address = property_data.get("address")
             if not address:
                 raise ValueError("Address is required for property creation")
-            
+
             lat, lng = PropertyService.geocode_address(address)
             if lat is None or lng is None:
                 raise ValueError(f"Failed to geocode address: {address}")
             if lat and lng:
                 property_data["lat"] = lat
                 property_data["lng"] = lng
-            
+
             # Insert the property into the 'properties' table
             response = supabase_client.table("properties").insert(property_data).execute()
             if not response.data:
@@ -76,11 +76,14 @@ class PropertyService:
 
                 if scraped_data:
                     # Save the scraped data using the scraper's save method
-                    filename = PropertyService.save_scraped_data(str(property.id), scraped_data)
+                    filename = PropertyService.save_scraped_data(property.id, scraped_data)
                     document_data = {
-                        "property_id": str(property.id),
-                        "file_url": filename,
+                        "property_id": property.id,
+                        "file_id": filename,
                     }
+                    # Get the full URL for the storage object
+                    file_url = supabase_client.storage.from_(DocumentsService.BUCKET_NAME).get_public_url(filename)
+                    document_data["file_url"] = file_url
                     # Insert the document into the 'documents' table
                     document_response = supabase_client.table("documents").insert(document_data).execute()
 
@@ -125,7 +128,7 @@ class PropertyService:
     @staticmethod
     def update_property(property_id: str, update_data: dict) -> Property:
         try:
-            breakpoint()
+
             # Verify that the user is the owner of the property
             existing_property = PropertyService.get_property(property_id)
             if not existing_property:
@@ -140,28 +143,30 @@ class PropertyService:
                     fields_to_update[key] = value
 
             # If address is updated, re-geocode
-            if 'address' in fields_to_update:
-                address = fields_to_update['address']
+            if "address" in fields_to_update:
+                address = fields_to_update["address"]
                 lat, lng = PropertyService.geocode_address(address)
                 if lat and lng:
                     fields_to_update["lat"] = lat
                     fields_to_update["lng"] = lng
-                    
+
             rescrape_needed = False
-            if 'property_url' in fields_to_update and fields_to_update['property_url'] != existing_property.property_url:
+            if "property_url" in fields_to_update and fields_to_update["property_url"] != existing_property.property_url:
                 rescrape_needed = True
+                # Delete existing documents for this property
+                supabase_client.table("documents").delete().eq("property_id", existing_property.id).execute()
 
             if not fields_to_update:
                 return existing_property  # No changes needed
 
             response = supabase_client.table("properties").update(fields_to_update).eq("id", existing_property.id).execute()
-         
+
             if not response.data:
                 logging.error(f"Failed to update property: No data returned for property {property_id}")
                 raise Exception("Property not found after update")
-         
+
             udpated_property = Property(**response.data[0])
-            if(rescrape_needed):
+            if rescrape_needed:
                 PropertyService.scrape_property(udpated_property)
             return udpated_property
 
@@ -208,7 +213,7 @@ class PropertyService:
             raise e
 
     @staticmethod
-    def save_scraped_data(property_id, scraped_data):
+    def save_scraped_data(property_id, scraped_data) -> str:
         """Save scraped data as a text file to Supabase."""
         filename = f"{property_id}_{int(time.time())}.txt"
         try:
@@ -225,7 +230,7 @@ class PropertyService:
                 return filename
             else:
                 logging.error(f"Failed to upload document to Supabase.")
-                return None
+                return ""
         except Exception as e:
             logging.error(f"Error uploading document: {e}")
-            return None
+            return ""

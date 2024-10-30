@@ -15,7 +15,6 @@ load_dotenv()
 # Import controllers and utilities
 from controllers.auth_controller import ns_auth
 from controllers.property_controller import ns_property
-from controllers.scraper_controller import ns_scraper
 from controllers.webhook_controller import ns_webhooks
 from controllers.health_controller import ns_health
 from controllers.model_controller import ns_model
@@ -36,6 +35,7 @@ file_handler.setLevel(logging.DEBUG)
 file_handler.setFormatter(logging.Formatter("%(asctime)s - %(name)s - %(levelname)s - %(filename)s:%(lineno)d - %(message)s"))
 app.logger.addHandler(file_handler)
 
+
 # Configure JSON encoder/decoder to handle datetime
 class CustomJSONEncoder(json.JSONEncoder):
     def default(self, obj):
@@ -44,12 +44,11 @@ class CustomJSONEncoder(json.JSONEncoder):
         return super().default(obj)
 
 
-
 app.json_encoder = CustomJSONEncoder
 
 
 # Update these lines
-app.config['RESTX_JSON'] = {'cls': CustomJSONEncoder}  # Add this line for Flask-RESTX
+app.config["RESTX_JSON"] = {"cls": CustomJSONEncoder}  # Add this line for Flask-RESTX
 
 # Initialize Flask-RESTX API with Swagger UI
 api = Api(app, version="0.1", title="Amastay API", description="Amastay API", doc="/swagger")
@@ -60,7 +59,6 @@ api.add_namespace(ns_property, path="/api/v1/properties")
 api.add_namespace(ns_booking, path="/api/v1/bookings")
 api.add_namespace(ns_health, path="/api/v1/health")
 api.add_namespace(ns_webhooks, path="/api/v1/webhooks")
-api.add_namespace(ns_scraper, path="/api/v1/scraper")
 api.add_namespace(ns_model, path="/api/v1/model")
 
 

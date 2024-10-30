@@ -66,45 +66,41 @@ class Scraper:
 
         try:
             # Check if URL is an Airbnb listing
-            airbnb_match = re.match(r'https://www\.airbnb\.com/rooms/(\d+)/?$', self.url)
-            
+            airbnb_match = re.search(r"https://www\.airbnb\.com/rooms/(\d+)", self.url)
+
             if airbnb_match:
                 room_id = airbnb_match.group(1)
-                urls = [
-                    self.url,  # Main listing
-                    f"https://www.airbnb.com/rooms/{room_id}/reviews",  # Reviews
-                    f"https://www.airbnb.com/rooms/{room_id}/amenities"  # Amenities
-                ]
+                urls = [self.url, f"https://www.airbnb.com/rooms/{room_id}/reviews", f"https://www.airbnb.com/rooms/{room_id}/amenities"]  # Main listing  # Reviews  # Amenities
                 combined_text = []
-                
+
                 for url in urls:
                     self.driver.get(url)
-                    time.sleep(5)  # Adjust sleep time to allow the page to load fully
-                    
+                    time.sleep(2)  # Adjust sleep time to allow the page to load fully
+
                     page_source = self.driver.page_source
                     soup = BeautifulSoup(page_source, "html.parser")
                     filtered_text = self.filter_content(soup)
-                    
+
                     if filtered_text:
                         section_name = "MAIN LISTING" if url == self.url else "REVIEWS" if "/reviews" in url else "AMENITIES"
                         combined_text.append(f"\n=== {section_name} ===\n{filtered_text}")
-                
+
                 final_text = "\n".join(combined_text)
                 logging.info(f"Filtered document length: {len(final_text)} characters")
                 return final_text if final_text else "No content found"
-            
+
             else:
                 # Handle non-Airbnb URLs as before
                 self.driver.get(self.url)
-                time.sleep(5)
-                
+                time.sleep(2)
+
                 page_source = self.driver.page_source
                 soup = BeautifulSoup(page_source, "html.parser")
                 filtered_text = self.filter_content(soup)
-                
+
                 logging.info(f"Filtered document length: {len(filtered_text)} characters")
                 return filtered_text if filtered_text else "No content found"
-                
+
         except Exception as e:
             logging.error(f"Error during scraping: {e}")
             return None

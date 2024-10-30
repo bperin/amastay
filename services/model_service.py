@@ -4,6 +4,7 @@ import traceback
 import boto3
 from typing import Optional, List, Any
 from flask import g
+from botocore.exceptions import ClientError
 from sagemaker.predictor import Predictor
 from sagemaker.serializers import JSONSerializer
 from sagemaker.deserializers import JSONDeserializer
@@ -20,13 +21,18 @@ import re
 
 from services.property_service import PropertyService
 
+from botocore.config import Config
+
 
 class ModelService:
     def __init__(self):
 
         self.inference_arn = os.getenv("BEDROCK_INFERENCE_ARN")
 
-        self.bedrock_client = boto3.client("bedrock-runtime", region_name="us-east-1")
+        # Configure boto3 client with explicit retry config
+        config = Config(retries=dict(max_attempts=0), connect_timeout=5, read_timeout=30)  # Disable retries completely
+
+        self.bedrock_client = boto3.client("bedrock-runtime", region_name="us-east-1", config=config)
 
         # Message service to interact with the database
         self.message_service = MessageService()
@@ -66,31 +72,40 @@ class ModelService:
             custom_messages.append(HfMessage.create(role="assistant", text="I understand. How can I assist you further?"))
 
         return custom_messages
-    
-    def query_model(self, booking: Booking, property: Property, guest: Guest, prompt: str, sms_id: str, property_information: Optional[List[PropertyInformation]] = None, all_document_text: str = "", max_new_tokens: int = 2048):
+
+    def query_model(
+        self,
+        booking: Booking,
+        property: Property,
+        guest: Guest,
+        prompt: str,
+        message_id: str,
+        property_information: Optional[List[PropertyInformation]] = None,
+        all_document_text: str = "",
+        max_new_tokens: int = 2048,
+    ):
         try:
 
             # Fetch conversation history directly from the database
             conversation_history = self.get_conversation_history(booking.id)
             # Get the active model parameters
-          
+
             active_model_param = get_active_model_param()
-           
+
             # Use the prompt from the active model parameters
-            system_prompt = [
-                {
-                    "text": active_model_param.prompt
-                }
-            ]
-           
+            system_prompt = [{"text": active_model_param.prompt}]
+
             # Append property details to system prompt
-            system_prompt[0]["text"] += f"The property details are as follows: Property Name: {property.name} Address: {property.address} Description: {property.description} Property Information: {all_document_text}"
-         
-            # Add property information to system prompt
+            property_info_text = ""
             if property_information:
                 for info in property_information:
-                    system_prompt.append({"text": f"{info.name}, Detail: {info.detail}"})
+                    property_info_text += f"{info.name}: {info.detail}\n"
 
+            system_prompt[0]["text"] += f". The property details are as follows: Longitude: {property.lat} Latitude: {property.lng} Property Name: {property.name} Address: {property.address} Description: {property.description} Property Information: {property_info_text} Additional Information: {all_document_text}"
+
+            # Trim system prompt if too long
+            if len(system_prompt[0]["text"]) > 8000:
+                system_prompt[0]["text"] = system_prompt[0]["text"][:8000]
 
             # Prepare the new user prompt
             new_user_message = HfMessage.create("user", prompt)
@@ -105,9 +120,14 @@ class ModelService:
                 modelId="us.meta.llama3-2-3b-instruct-v1:0",
                 messages=payload,
                 system=system_prompt,
-                inferenceConfig={"maxTokens": 360, "temperature": active_model_param.temperature, "topP": active_model_param.top_p},
+                inferenceConfig={
+                    "maxTokens": 360,
+                    "temperature": active_model_param.temperature,
+                    "topP": active_model_param.top_p,
+                },
                 additionalModelRequestFields={},
             )
+            breakpoint()
             logging.info(f"AI: Response: {response}")
             # Extract the response text
             if "output" in response and "message" in response["output"] and "content" in response["output"]["message"] and len(response["output"]["message"]["content"]) > 0:
@@ -122,7 +142,7 @@ class ModelService:
                     sender_id=guest.id,
                     sender_type=0,
                     content=prompt,
-                    sms_id=sms_id,
+                    sms_id=message_id,
                     question_id=None,
                 )
                 self.message_service.add_message(
@@ -137,16 +157,13 @@ class ModelService:
             # Return the cleaned response
             return {"response": cleaned_response}
 
-        except Exception as e:
-            error_message = f"Error querying model: {str(e)}"
-            logging.exception(error_message)
-            print(error_message)
-            traceback.print_exc()
+        except (ClientError, Exception) as e:
+            print(f"ERROR: Can't invoke model'. Reason: {e}")
             return {"error": "I apologize, but I encountered an error while processing your request. " "The error has been logged for further investigation."}
 
     def clean_document(document: str) -> str:
         pass
-    
+
     def clean_text(text):
         # # Remove Markdown formatting
         # text = re.sub(r"\*\*|__", "", text)

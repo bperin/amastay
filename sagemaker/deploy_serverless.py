@@ -17,7 +17,7 @@ if hugging_face_hub_token is None:
 
 # Hub Model configuration
 hub = {
-    "HF_MODEL_ID": "jncraton/Llama-3.2-3B-Instruct-ct2-int8",
+    "HF_MODEL_ID": "neuralmagic/Llama-3.2-1B-Instruct-FP8-dynamic",
     "HF_TASK": "text-generation",
     "SM_NUM_GPUS": "1",  # Number of GPUs to use
     "HUGGING_FACE_HUB_TOKEN": hugging_face_hub_token,
@@ -25,7 +25,7 @@ hub = {
 }
 
 # Get the image URI for the model
-image_uri = get_huggingface_llm_image_uri("huggingface", version="2.2.0")
+image_uri = get_huggingface_llm_image_uri("huggingface")
 
 # Use the correct SageMaker execution role ARN
 role_arn = "arn:aws:iam::422220778159:role/AmazonSageMaker-ExecutionRole"

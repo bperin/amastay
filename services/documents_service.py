@@ -1,6 +1,7 @@
 import os
 import tempfile
 import time
+from typing import List
 from models.document import Document
 from supabase_utils import supabase_client, supabase_admin_client
 import logging
@@ -38,10 +39,10 @@ class DocumentsService:
             return None
 
     @staticmethod
-    def get_documents_by_property_id(property_id):
+    def get_documents_by_property_id(property_id) -> List[Document]:
         """Fetch all documents for a given property ID."""
         try:
-            document_query = supabase_client.table("documents").select("id", "file_url", "created_at", "updated_at").eq("property_id", property_id).execute()
+            document_query = supabase_client.table("documents").select("*").eq("property_id", property_id).execute()
 
             if not document_query.data:
                 logging.error(f"No documents found for property_id: {property_id}")
@@ -49,32 +50,12 @@ class DocumentsService:
 
             documents = []
             for doc in document_query.data:
-                # Get the public URL for each document
-                public_url = supabase_client.storage.from_(DocumentsService.BUCKET_NAME).get_public_url(doc["file_url"])
-
-                documents.append(
-                    {
-                        "id": doc["id"],
-                        "file_url": public_url,
-                        "created_at": doc["created_at"],
-                        "updated_at": doc["updated_at"],
-                    }
-                )
+                documents.append(Document(**doc))
 
             return documents
         except Exception as e:
             logging.error(f"Error fetching documents for property {property_id}: {e}")
             return []
-
-    @staticmethod
-    def read_document(filename):
-        """Read a document from storage and return its content as plain text."""
-        try:
-            response = supabase_client.storage.from_(DocumentsService.BUCKET_NAME).download(filename)
-            return response.decode("utf-8")
-        except Exception as e:
-            logging.error(f"Error reading document {filename}: {e}")
-            return None
 
     @staticmethod
     def delete_document(filename):
@@ -86,16 +67,3 @@ class DocumentsService:
         except Exception as e:
             logging.error(f"Error deleting document {filename}: {e}")
             return False
-
-    @staticmethod
-    def update_document(property_id, new_content):
-        """Update the document for a property with new content."""
-        # First, get the existing documents for this property
-        existing_docs = DocumentsService.get_documents_by_property_id(property_id)
-
-        # If there are existing documents, delete them
-        for doc in existing_docs:
-            DocumentsService.delete_document(doc)
-
-        # Now save the new content
-        return DocumentsService.save_scraped_data(property_id, new_content)

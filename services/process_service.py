@@ -12,22 +12,31 @@ from supabase_utils import supabase_client
 
 
 class ProcessService:
-    model_service = ModelService()
+    model_service = None
 
-    @staticmethod
-    def handle_incoming_sms(message_id, origination_number, message_body):
+    @classmethod
+    def initialize(cls):
+        """Initialize the singleton ModelService instance"""
+        if cls.model_service is None:
+            cls.model_service = ModelService()
+
+    @classmethod
+    def handle_incoming_sms(cls, message_id, origination_number, message_body):
         """
         Handles incoming SMS between a guest and the AI.
         Retrieves guest information for sender_id, saves the guest message before querying history,
         and saves the AI response after generating it.
         """
         try:
-            if ProcessService.is_message_from_ai(origination_number):
+            if cls.model_service is None:
+                cls.initialize()
+
+            if cls.is_message_from_ai(origination_number):
                 logging.info(f"Message from AI, ignoring: {message_body}")
                 return
 
             from services.guest_service import GuestService
-            
+
             # Check if we've already processed this SMS message
             existing_message = MessageService.get_message_by_sms_id(message_id)
             if existing_message:
@@ -74,22 +83,30 @@ class ProcessService:
             if property_documents:
                 logging.info(f"Found {len(property_documents)} documents for property ID {property.id}")
                 for document in property_documents:
-                    logging.info(f"Attempting to read document: {document['file_url']}")
+                    logging.info(f"Attempting to read document: {document.file_url}")
                     try:
-                        response = requests.get(document["file_url"])
+                        response = requests.get(document.file_url)
                         response.raise_for_status()  # Raise an error for bad responses
                         plain_text = response.text
-                        processed_documents.append({"name": document["file_url"], "content": plain_text})
+                        processed_documents.append({"name": document.file_url, "content": plain_text})
                         all_document_text += plain_text + "\n\n"
-                        logging.info(f"Successfully read document: {document['file_url']}")
+                        logging.info(f"Successfully read document: {document.file_url}")
                     except requests.exceptions.RequestException as e:
-                        logging.warning(f"Could not read content for document: {document['file_url']}, error: {e}")
+                        logging.warning(f"Could not read content for document: {document.file_url}, error: {e}")
 
                 logging.info(f"Processed {len(processed_documents)} documents for property ID {property.id}")
             else:
                 logging.info("No property documents to process")
 
-            ai_response = ProcessService.model_service.query_model(booking,property, guest,message_body,message_id,property_information,all_document_text)
+            ai_response = ProcessService.model_service.query_model(
+                booking,
+                property,
+                guest,
+                message_body,
+                message_id,
+                property_information,
+                all_document_text,
+            )
 
             logging.info(f"AI: Response: {ai_response}")
 
@@ -107,4 +124,7 @@ class ProcessService:
     @staticmethod
     def is_message_from_ai(origination_number: str) -> bool:
         ai_number = os.getenv("SYSTEM_PHONE_NUMBER")
-        return origination_number == ai_number
+        # Strip any leading + from both numbers for comparison
+        cleaned_orig = origination_number.lstrip("+")
+        cleaned_ai = ai_number.lstrip("+")
+        return cleaned_orig == cleaned_ai

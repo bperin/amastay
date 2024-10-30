@@ -63,6 +63,7 @@ update_property_info_model = ns_property.model(
 # Initialize the geolocator
 geolocator = Nominatim(user_agent="amastay_property_geocoder")
 
+
 # Route to create a new property
 @ns_property.route("/create")
 class CreateProperty(Resource):
@@ -139,7 +140,7 @@ class UpdateProperty(Resource):
         try:
             data = request.get_json()
             property_id = data.get("id")
-         
+
             if not data:
                 return {"error": "Missing update data"}, 400
 
@@ -197,9 +198,6 @@ class ListProperties(Resource):
             return {"error": str(e)}, 500
 
 
-
-
-
 # Route to add property information
 @ns_property.route("/information/")
 class AddPropertyInformation(Resource):
@@ -223,6 +221,7 @@ class AddPropertyInformation(Resource):
             logging.error(f"Error in add_property_information: {e}")
             return {"error": str(e)}, 500
 
+
 # Route to get all property information
 @ns_property.route("/information/<uuid:property_id>")
 class GetAllPropertyInformation(Resource):
@@ -235,15 +234,14 @@ class GetAllPropertyInformation(Resource):
         try:
             # Call the PropertyInformationService to get all property information
             all_property_info = PropertyInformationService.get_property_information(property_id)
-            
+
             if all_property_info is None:
                 return {"error": "Property information not found"}, 404
-            
+
             return [info.model_dump() for info in all_property_info], 200
         except Exception as e:
             logging.error(f"Error in get_all_property_information: {e}")
             return {"error": str(e)}, 500
-
 
 
 # Route to remove property information
@@ -285,6 +283,7 @@ class GetPropertyInformation(Resource):
             logging.error(f"Error in get_property_information: {e}")
             return {"error": str(e)}, 500
 
+
 # Route to update property information
 @ns_property.route("/information/update")
 class UpdatePropertyInformation(Resource):
@@ -313,6 +312,7 @@ class UpdatePropertyInformation(Resource):
         except Exception as e:
             logging.error(f"Error in update_property_information: {e}")
             return {"error": str(e)}, 500
+
 
 # Route to get property by ID
 @ns_property.route("/<uuid:property_id>")
