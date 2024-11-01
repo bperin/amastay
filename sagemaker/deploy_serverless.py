@@ -16,13 +16,7 @@ if hugging_face_hub_token is None:
     raise ValueError("You must provide a valid Hugging Face Hub token in the .env file.")
 
 # Hub Model configuration
-hub = {
-    "HF_MODEL_ID": "neuralmagic/Llama-3.2-1B-Instruct-FP8-dynamic",
-    "HF_TASK": "text-generation",
-    "SM_NUM_GPUS": "1",  # Number of GPUs to use
-    "HUGGING_FACE_HUB_TOKEN": hugging_face_hub_token,
-    "MESSAGES_API_ENABLED": "true",
-}
+hub = {"HF_MODEL_ID": "bartowski/Llama-3.2-1B-Instruct-GGUF/Llama-3.2-1B-Instruct-IQ3.gguf", "HF_TASK": "text-generation", "SM_NUM_GPUS": "1", "HUGGING_FACE_HUB_TOKEN": hugging_face_hub_token, "MESSAGES_API_ENABLED": "true", "QUANTIZE": "true"}  # 3-bit quantized  # Number of GPUs to use  # Enable quantization flag
 
 # Get the image URI for the model
 image_uri = get_huggingface_llm_image_uri("huggingface")
@@ -35,7 +29,7 @@ huggingface_model = HuggingFaceModel(image_uri=image_uri, env=hub, role=role_arn
 
 # Create Serverless Inference Config Object (instead of dictionary)
 serverless_config = ServerlessInferenceConfig(
-    memory_size_in_mb=2048,  # 4GB of memory for the serverless endpoint
+    memory_size_in_mb=3072,  # We can potentially use less memory with quantized model
     max_concurrency=5,  # Maximum number of concurrent invocations
 )
 
