@@ -48,24 +48,13 @@ try:
     sagemaker_client.describe_model(ModelName=model_name)
     model_exists = True
     print(f"Model {model_name} already exists")
-except sagemaker_client.exceptions.ClientError:
-    model_exists = False
 
-try:
-    sagemaker_client.describe_endpoint(EndpointName=model_name)
-    endpoint_exists = True
-    print(f"Endpoint {model_name} already exists")
-except sagemaker_client.exceptions.ClientError:
-    endpoint_exists = False
+    # Create HuggingFace model instance even if model exists
+    huggingface_model = HuggingFaceModel(model_data=None, role=os.environ["AWS_ROLE_ARN"], transformers_version="4.28", pytorch_version="2.0", py_version="py310", model_server_workers=1, name=model_name)  # Not needed since model already exists
 
-if not model_exists:
-    # Create the model
-    huggingface_model = HuggingFaceModel(image_uri=image_uri, env=hub, role=role_arn, name=model_name)
-    print(f"Created model: {model_name}")
-
-if not endpoint_exists:
-    # Deploy the model to a provisioned endpoint
+    # Deploy the model
     predictor = huggingface_model.deploy(initial_instance_count=1, instance_type="ml.g5.2xlarge", endpoint_name=model_name, container_startup_health_check_timeout=300)
+
     print(f"Deployed endpoint: {model_name}")
 
     # Send test request to the deployed model endpoint
@@ -82,5 +71,5 @@ if not endpoint_exists:
 
     # Clean up the endpoint when not needed (uncomment this line to delete the endpoint)
     # predictor.delete_endpoint()
-else:
-    print(f"Skipping deployment as endpoint {model_name} already exists")
+except Exception as e:
+    print(f"Error: {str(e)}")

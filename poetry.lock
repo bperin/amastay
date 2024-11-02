@@ -1643,6 +1643,17 @@ files = [
 ]
 
 [[package]]
+name = "openapi-generator-cli"
+version = "4.3.1"
+description = "CLI for openapi generator"
+optional = false
+python-versions = "*"
+files = [
+    {file = "openapi-generator-cli-4.3.1.tar.gz", hash = "sha256:b87f0aeac5b3c23e135253efc46bddc98c72f386b3b2e3df54324d78aa57fd13"},
+    {file = "openapi_generator_cli-4.3.1-py2.py3-none-any.whl", hash = "sha256:1c943f4692c2ae08b714a22347d5dd42b722d509fa30a098dca4b78ec59f75d5"},
+]
+
+[[package]]
 name = "orderedmultidict"
 version = "1.0.1"
 description = "Ordered Multivalue Dictionary"
@@ -3710,4 +3721,4 @@ type = ["pytest-mypy"]
 [metadata]
 lock-version = "2.0"
 python-versions = "^3.11"
-content-hash = "807502f578fb14735be21f91131cf8cec35d45b4ab355308052536e6e561862b"
+content-hash = "6c74b2647d329bcf7164e5d78067ec44c06022c19d9ea6bfd319e813503cbdb4"

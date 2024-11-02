@@ -7,5 +7,13 @@
   "black-formatter.args": [
     "--line-length",
     "400"
-  ]
+  ],
+  "[dockerfile]": {
+    "editor.formatOnSave": false
+  },
+  "[dockercompose]": {
+    "editor.formatOnSave": false
+  },
+  "files.insertFinalNewline": false,
+  "files.trimFinalNewlines": false
 }
