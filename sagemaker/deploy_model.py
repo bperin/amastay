@@ -15,7 +15,7 @@ if hugging_face_hub_token is None:
     raise ValueError("You must provide a valid Hugging Face Hub token in the .env file.")
 
 # Hub Model configuration
-model_id = "meta-llama/Llama-3.2-3B-Instruct"
+model_id = "meta-llama/Llama-3.2-11B-Vision-Instruct"
 hub = {
     "HF_MODEL_ID": model_id,
     "HF_TASK": "text-generation",
@@ -37,39 +37,42 @@ if model_name.startswith("-"):
 if model_name.endswith("-"):
     model_name = model_name + "1"
 
-# Check if model and endpoint already exist
-model_exists = False
-endpoint_exists = False
-
 # Initialize the SageMaker client
 sagemaker_client = boto3.client("sagemaker")
 
 try:
-    sagemaker_client.describe_model(ModelName=model_name)
-    model_exists = True
-    print(f"Model {model_name} already exists")
+    # Check if endpoint config exists and delete it if it does
+    try:
+        sagemaker_client.delete_endpoint_config(EndpointConfigName=model_name)
+        print(f"Deleted existing endpoint config: {model_name}")
+    except sagemaker_client.exceptions.ClientError:
+        pass  # Endpoint config doesn't exist, which is fine
 
-    # Create HuggingFace model instance even if model exists
-    huggingface_model = HuggingFaceModel(model_data=None, role=os.environ["AWS_ROLE_ARN"], transformers_version="4.28", pytorch_version="2.0", py_version="py310", model_server_workers=1, name=model_name)  # Not needed since model already exists
+    # Check if endpoint exists and delete it if it does
+    try:
+        sagemaker_client.delete_endpoint(EndpointName=model_name)
+        print(f"Deleted existing endpoint: {model_name}")
+        # Wait for the endpoint to be deleted
+        waiter = sagemaker_client.get_waiter("endpoint_deleted")
+        waiter.wait(EndpointName=model_name)
+    except sagemaker_client.exceptions.ClientError:
+        pass  # Endpoint doesn't exist, which is fine
 
-    # Deploy the model
-    predictor = huggingface_model.deploy(initial_instance_count=1, instance_type="ml.g5.2xlarge", endpoint_name=model_name, container_startup_health_check_timeout=300)
+    # Create HuggingFace model instance
+    huggingface_model = HuggingFaceModel(image_uri=image_uri, env=hub, role=role_arn, transformers_version="4.28", pytorch_version="2.0", py_version="py310", model_server_workers=1, name=model_name)
 
-    print(f"Deployed endpoint: {model_name}")
+    print(f"Created model: {model_name}")
 
-    # Send test request to the deployed model endpoint
-    response = predictor.predict(
-        {
-            "messages": [
-                {"role": "system", "content": "You are a helpful assistant that can understand images and text."},
-                {"role": "user", "content": "What is deep learning?"},
-            ]
-        }
-    )
+    # Deploy the model to an endpoint
+    predictor = huggingface_model.deploy(initial_instance_count=1, instance_type="ml.g5.2xlarge", endpoint_name=model_name)
 
-    print(response)
+    print(f"Model deployed to endpoint: {predictor.endpoint_name}")
 
-    # Clean up the endpoint when not needed (uncomment this line to delete the endpoint)
-    # predictor.delete_endpoint()
+    # Test the endpoint with a sample request
+    sample_payload = {"messages": [{"role": "system", "content": "You are a helpful assistant."}, {"role": "user", "content": "What is machine learning?"}]}
+
+    response = predictor.predict(sample_payload)
+    print(f"Test response: {response}")
+
 except Exception as e:
-    print(f"Error: {str(e)}")
+    print(f"Error deploying model: {str(e)}")

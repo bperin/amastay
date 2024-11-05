@@ -3,6 +3,8 @@
 import boto3
 import argparse
 import sys
+from apscheduler.schedulers.blocking import BlockingScheduler
+from apscheduler.triggers.interval import IntervalTrigger
 
 
 def delete_endpoints():
@@ -41,11 +43,22 @@ def delete_endpoint_configs():
     return deleted
 
 
+def cleanup_job(endpoints=False, configs=False, all=False):
+    if all or endpoints:
+        deleted = delete_endpoints()
+        print(f"Deleted {deleted} endpoints")
+
+    if all or configs:
+        deleted = delete_endpoint_configs()
+        print(f"Deleted {deleted} endpoint configurations")
+
+
 def main():
     parser = argparse.ArgumentParser(description="Delete SageMaker endpoints and configurations")
     parser.add_argument("--endpoints", action="store_true", help="Delete endpoints")
     parser.add_argument("--configs", action="store_true", help="Delete endpoint configurations")
     parser.add_argument("--all", action="store_true", help="Delete both endpoints and configurations")
+    parser.add_argument("--interval", type=int, help="Run every N seconds", default=3600)
 
     args = parser.parse_args()
 
@@ -53,13 +66,14 @@ def main():
         parser.print_help()
         sys.exit(1)
 
-    if args.all or args.endpoints:
-        deleted = delete_endpoints()
-        print(f"Deleted {deleted} endpoints")
+    scheduler = BlockingScheduler()
+    scheduler.add_job(cleanup_job, trigger=IntervalTrigger(seconds=args.interval), args=[args.endpoints, args.configs, args.all])
 
-    if args.all or args.configs:
-        deleted = delete_endpoint_configs()
-        print(f"Deleted {deleted} endpoint configurations")
+    try:
+        print(f"Starting scheduler, will run every {args.interval} seconds")
+        scheduler.start()
+    except (KeyboardInterrupt, SystemExit):
+        scheduler.shutdown()
 
 
 if __name__ == "__main__":
