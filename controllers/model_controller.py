@@ -2,7 +2,7 @@ from auth_utils import jwt_required
 from flask import request, current_app, g
 from flask_restx import Namespace, Resource, fields
 from services.guest_service import GuestService
-from services.model_service import ModelService
+from services.bedrock_service import BedrockService
 from services.model_params_service import get_active_model_param
 import logging
 import pdb
@@ -29,7 +29,7 @@ output_model = ns_model.model(
     },
 )
 
-model_service = ModelService()
+model_service = BedrockService()
 
 # Get a logger for this module
 logger = logging.getLogger(__name__)
@@ -54,6 +54,7 @@ class QueryModel(Resource):
         except Exception as e:
             logger.exception(f"Error in query_model for booking_id {phone}: {str(e)}")
             return {"error": "An unexpected error occurred"}, 500
+
 
 @ns_model.route("/current")
 class ModelParams(Resource):

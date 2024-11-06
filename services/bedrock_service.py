@@ -24,7 +24,7 @@ from services.property_service import PropertyService
 from botocore.config import Config
 
 
-class ModelService:
+class BedrockService:
     def __init__(self):
 
         self.inference_arn = os.getenv("BEDROCK_INFERENCE_ARN")

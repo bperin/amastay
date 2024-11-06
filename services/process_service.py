@@ -7,7 +7,7 @@ from services.pinpoint_service import PinpointService
 from services.documents_service import DocumentsService
 from services.property_information_service import PropertyInformationService
 from services.property_service import PropertyService
-from services.model_service import ModelService
+from services.bedrock_service import BedrockService
 from supabase_utils import supabase_client
 
 
@@ -18,7 +18,7 @@ class ProcessService:
     def initialize(cls):
         """Initialize the singleton ModelService instance"""
         if cls.model_service is None:
-            cls.model_service = ModelService()
+            cls.model_service = BedrockService()
 
     @classmethod
     def handle_incoming_sms(cls, message_id, origination_number, message_body):
