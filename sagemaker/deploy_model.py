@@ -1,15 +1,7 @@
 import json
-import time
 from sagemaker.huggingface import HuggingFaceModel, get_huggingface_llm_image_uri
 from dotenv import load_dotenv
 import os
-
-
-def generate_unique_name(base_name):
-    """Generate a unique name with timestamp"""
-    timestamp = int(time.time())
-    return f"{base_name}-{timestamp}"
-
 
 # Load environment variables from .env file
 load_dotenv()
@@ -36,14 +28,17 @@ image_uri = get_huggingface_llm_image_uri("huggingface", version="2.2.0")
 role_arn = "arn:aws:iam::422220778159:role/AmazonSageMaker-ExecutionRole"
 
 # Create Hugging Face Model Class
-huggingface_model = HuggingFaceModel(image_uri=image_uri, env=hub, role=role_arn, name=generate_unique_name("llama-3b"))  # Add unique name for model
-
-# Create unique endpoint name
-endpoint_name = generate_unique_name("llama-3b-endpoint")
+huggingface_model = HuggingFaceModel(image_uri=image_uri, env=hub, role=role_arn)
 
 # Update instance type based on GPU requirements
-predictor = huggingface_model.deploy(initial_instance_count=1, instance_type="ml.g5.12xlarge", container_startup_health_check_timeout=300, endpoint_name=endpoint_name)
+predictor = huggingface_model.deploy(
+    initial_instance_count=1,
+    instance_type="ml.g5.xlarge",
+    container_startup_health_check_timeout=300,
+)
 
+# Save the deployed endpoint name for future use
+endpoint_name = predictor.endpoint_name
 print(f"Deployed endpoint: {endpoint_name}")
 
 # Send request to the deployed model endpoint
@@ -58,8 +53,5 @@ response = predictor.predict(
 
 print(response)
 
-# Ask if user wants to clean up
-cleanup = input("\nDo you want to clean up the endpoint and configuration? (y/N): ")
-if cleanup.lower() == "y":
-    print("Cleaning up resources...")
-    predictor.delete_endpoint()
+# Clean up the endpoint when not needed (uncomment this line to delete the endpoint)
+# predictor.delete_endpoint()

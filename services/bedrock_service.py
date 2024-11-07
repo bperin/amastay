@@ -30,7 +30,7 @@ class BedrockService:
         self.inference_arn = os.getenv("BEDROCK_INFERENCE_ARN")
 
         # Configure boto3 client with explicit retry config
-        config = Config(retries=dict(max_attempts=0), connect_timeout=5, read_timeout=30)  # Disable retries completely
+        config = Config(retries=dict(max_attempts=3), connect_timeout=5, read_timeout=30)  # Disable retries completely
 
         self.bedrock_client = boto3.client("bedrock-runtime", region_name="us-east-1", config=config)
 
@@ -130,10 +130,12 @@ class BedrockService:
             breakpoint()
             logging.info(f"AI: Response: {response}")
             # Extract the response text
-            if "output" in response and "message" in response["output"] and "content" in response["output"]["message"] and len(response["output"]["message"]["content"]) > 0:
-                cleaned_response = self.clean_text(response["output"]["message"]["content"][0]["text"])
+            if "content" in response:
+                cleaned_response = self.clean_response(response["message"]["content"][0]["text"])
             else:
                 cleaned_response = "I apologize, but I couldn't generate a proper response."
+
+            logging.info(f"Cleaned response: {cleaned_response}")
 
             if cleaned_response:
                 # Save only the new user input and assistant's response directly to the database
@@ -182,5 +184,21 @@ class BedrockService:
 
         # # Remove period with two spaces followed by another period
         # text = re.sub(r"\. {2}\.", ".", text)
+
+        return text
+
+    def clean_response(text):
+        if not text:
+            return "I apologize, but I couldn't generate a proper response."
+
+        # Extract message content from Bedrock response
+        if isinstance(text, dict):
+            try:
+                # Navigate the response structure to get the actual message
+                message = text.get("output", {}).get("message", {}).get("content", [])
+                if message and isinstance(message, list):
+                    text = message[0].get("text", "")
+            except (KeyError, IndexError, AttributeError):
+                return "I apologize, but I couldn't generate a proper response."
 
         return text

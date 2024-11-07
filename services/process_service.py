@@ -7,18 +7,18 @@ from services.pinpoint_service import PinpointService
 from services.documents_service import DocumentsService
 from services.property_information_service import PropertyInformationService
 from services.property_service import PropertyService
-from services.bedrock_service import BedrockService
+from services.sagemaker_service import SageMakerService
 from supabase_utils import supabase_client
 
 
 class ProcessService:
-    model_service = None
+    _sagemaker_service = None
 
     @classmethod
-    def initialize(cls):
-        """Initialize the singleton ModelService instance"""
-        if cls.model_service is None:
-            cls.model_service = BedrockService()
+    def get_sagemaker_service(cls):
+        if cls._sagemaker_service is None:
+            cls._sagemaker_service = SageMakerService()
+        return cls._sagemaker_service
 
     @classmethod
     def handle_incoming_sms(cls, message_id, origination_number, message_body):
@@ -28,9 +28,6 @@ class ProcessService:
         and saves the AI response after generating it.
         """
         try:
-            if cls.model_service is None:
-                cls.initialize()
-
             if cls.is_message_from_ai(origination_number):
                 logging.info(f"Message from AI, ignoring: {message_body}")
                 return
@@ -97,24 +94,13 @@ class ProcessService:
                 logging.info(f"Processed {len(processed_documents)} documents for property ID {property.id}")
             else:
                 logging.info("No property documents to process")
-
-            ai_response = ProcessService.model_service.query_model(
-                booking,
-                property,
-                guest,
-                message_body,
-                message_id,
-                property_information,
-                all_document_text,
-            )
+            breakpoint()
+            sagemaker_service = cls.get_sagemaker_service()
+            ai_response = sagemaker_service.query_model(booking=booking, property=property, guest=guest, prompt=message_body, message_id=message_id, property_information=property_information, all_document_text=all_document_text)
 
             logging.info(f"AI: Response: {ai_response}")
 
-            PinpointService.send_sms(
-                origination_number,
-                os.getenv("SYSTEM_PHONE_NUMBER"),
-                ai_response["response"],
-            )
+            PinpointService.send_sms(origination_number, os.getenv("SYSTEM_PHONE_NUMBER"), ai_response)
 
         except Exception as e:
             logging.error(f"Error processing incoming SMS: {str(e)}")

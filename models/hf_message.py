@@ -1,18 +1,11 @@
 from pydantic import BaseModel
-from typing import Literal, List
-
-
-class ContentItem(BaseModel):
-    text: str
+from typing import Literal
 
 
 class HfMessage(BaseModel):
-    role: Literal["user", "assistant"]
-    content: List[ContentItem]
-
-    class Config:
-        frozen = True
+    role: Literal["user", "assistant", "system"]
+    content: str
 
     @classmethod
-    def create(cls, role: str, text: str):
-        return cls(role=role, content=[ContentItem(text=text)])
+    def create(cls, role: str, content: str):
+        return cls(role=role, content=content)

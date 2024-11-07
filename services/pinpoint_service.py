@@ -3,8 +3,6 @@ from datetime import datetime
 import os
 from typing import Optional
 from supabase_utils import supabase_client
-from services.booking_service import BookingService
-from models.message import Message
 import boto3
 
 
@@ -26,16 +24,19 @@ class PinpointService:
         try:
             pinpoint = boto3.client("pinpoint", aws_access_key_id=os.getenv("PINPOINT_ACCESS_KEY"), aws_secret_access_key=os.getenv("PINPOINT_SECRET_ACCESS_KEY"), region_name="us-east-1")  # Assuming the region is us-east-1, adjust if different
 
-            response = pinpoint.send_messages(ApplicationId=os.getenv("PINPOINT_PROJECT_ID"), MessageRequest={
-                "Addresses": {phone_number: {"ChannelType": "SMS"}},
-                "MessageConfiguration": {
-                    "SMSMessage": {
-                        "Body": message_content,
-                        "MessageType": "TRANSACTIONAL",
-                        "OriginationNumber": sender_number,
-                    }
+            response = pinpoint.send_messages(
+                ApplicationId=os.getenv("PINPOINT_PROJECT_ID"),
+                MessageRequest={
+                    "Addresses": {phone_number: {"ChannelType": "SMS"}},
+                    "MessageConfiguration": {
+                        "SMSMessage": {
+                            "Body": message_content,
+                            "MessageType": "TRANSACTIONAL",
+                            "OriginationNumber": sender_number,
+                        }
+                    },
                 },
-            })
+            )
 
             if response["MessageResponse"]["Result"][phone_number]["StatusCode"] == 200:
                 return response["MessageResponse"]["Result"][phone_number]["MessageId"]
