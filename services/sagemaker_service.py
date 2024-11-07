@@ -21,7 +21,7 @@ from models.sagemaker_response import SageMakerResponse
 class SageMakerService:
     def __init__(self):
         # Use the endpoint name, not the ARN
-        self.sagemaker_endpoint = "huggingface-pytorch-tgi-inference-2024-11-07-06-05-45-629"
+        self.sagemaker_endpoint = os.getenv("SAGEMAKER_ENDPOINT")
         self.region_name = os.getenv("AWS_REGION", "us-east-1")
 
         # Predictor configuration
@@ -29,15 +29,38 @@ class SageMakerService:
 
         self.message_service = MessageService()
 
-    def get_conversation_history(self, booking_id: str) -> List[dict]:
-        # Start with system message
-        conversation_history = [{"role": "system", "content": "You are a helpful vacation rental assistant. You help guests with their questions about their stay. Keep responses concise and friendly."}]
+    def get_conversation_history(self, booking_id: str, property: Property, property_information: Optional[List[PropertyInformation]], all_document_text: str = "") -> List[dict]:
+        # Create detailed system message with property info
+        system_content = "You are a helpful vacation rental assistant. You help guests with their questions about their stay. Keep responses concise and friendly. Prioritize the guest's questions and provide accurate information. Prioritize ##property details## and ##property information## and lastly fall back on any extra ##Additional details##"
+
+        # Add property details
+        property_info = f"\n##Property Details:##\nName: {property.name}\nAddress: {property.address}\nDescription: {property.description}\nLocation: Lat {property.lat}, Lng {property.lng}"
+
+        # Add property information if available
+        property_info_text = ""
+        if property_information:
+            property_info_text = "\##Property Information:##\n"
+            for info in property_information:
+                property_info_text += f"{info.name}: {info.detail}\n"
+
+        # Add any document text
+        doc_text = f"\n##Additional Details:##\n{all_document_text}" if all_document_text else ""
+
+        # Combine all system information
+        full_system_content = system_content + property_info + property_info_text + doc_text
+
+        # Trim if too long (similar to Bedrock service)
+        if len(full_system_content) > 8000:
+            full_system_content = full_system_content[:8000]
+
+        # Start with detailed system message
+        conversation_history = [{"role": "system", "content": full_system_content}]
 
         # Fetch conversation history from Supabase
         messages = self.message_service.get_messages_by_booking(booking_id)
 
         if messages is None:
-            return conversation_history  # Return just the system message if no history
+            return conversation_history
 
         # Convert database messages to dict format
         for msg in messages:
@@ -47,8 +70,8 @@ class SageMakerService:
 
     def query_model(self, booking: Booking, property: Property, guest: Guest, prompt: str, message_id: str, property_information: Optional[List[PropertyInformation]] = None, all_document_text: str = "") -> str:
         try:
-            # Get conversation history (includes system message)
-            messages = self.get_conversation_history(booking.id)
+            # Get conversation history with property context
+            messages = self.get_conversation_history(booking_id=booking.id, property=property, property_information=property_information, all_document_text=all_document_text)
 
             # Add new prompt
             messages.append({"role": "user", "content": prompt})
@@ -61,7 +84,6 @@ class SageMakerService:
             sagemaker_response = SageMakerResponse(**raw_sagemaker_response)
             logger.debug(f"SageMaker response: {sagemaker_response}")
 
-            breakpoint()
             # Get content directly using model structure
             model_response = sagemaker_response.choices[0].message.content
 

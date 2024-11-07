@@ -127,7 +127,7 @@ class BedrockService:
                 },
                 additionalModelRequestFields={},
             )
-            breakpoint()
+
             logging.info(f"AI: Response: {response}")
             # Extract the response text
             if "content" in response:
