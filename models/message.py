@@ -5,12 +5,12 @@ from typing import Optional
 
 
 class Message(BaseModel):
-    id: UUID
-    booking_id: UUID
-    sender_id: Optional[UUID]
+    id: str
+    booking_id: str
+    sender_id: Optional[str]
     sender_type: int  # 0 for guest, 1 for AI, 2 for owner
     content: str  # Message content
     sms_id: Optional[str]
-    question_id: Optional[UUID]  # SMS message ID, optional if not an SMS message
-    created_at: datetime
-    updated_at: datetime
+    question_id: Optional[str]  # SMS message ID, optional if not an SMS message
+    created_at: str
+    updated_at: str

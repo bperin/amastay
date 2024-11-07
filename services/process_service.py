@@ -94,7 +94,7 @@ class ProcessService:
                 logging.info(f"Processed {len(processed_documents)} documents for property ID {property.id}")
             else:
                 logging.info("No property documents to process")
-            breakpoint()
+
             sagemaker_service = cls.get_sagemaker_service()
             ai_response = sagemaker_service.query_model(booking=booking, property=property, guest=guest, prompt=message_body, message_id=message_id, property_information=property_information, all_document_text=all_document_text)
 
