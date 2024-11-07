@@ -16,18 +16,41 @@ from models.property import Property
 from models.guest import Guest
 from models.property_information import PropertyInformation
 from models.sagemaker_response import SageMakerResponse
+import boto3
 
 
 class SageMakerService:
-    def __init__(self):
-        # Use the endpoint name, not the ARN
+    _instance = None
+
+    def __new__(cls):
+        if cls._instance is None:
+            cls._instance = super(SageMakerService, cls).__new__(cls)
+            cls._instance.initialize()
+        return cls._instance
+
+    def initialize(self):
+        """Initialize the service with endpoint from env var"""
         self.sagemaker_endpoint = os.getenv("SAGEMAKER_ENDPOINT")
+        if not self.sagemaker_endpoint:
+            raise ValueError("SAGEMAKER_ENDPOINT environment variable is required")
+
         self.region_name = os.getenv("AWS_REGION", "us-east-1")
-
-        # Predictor configuration
-        self.predictor = Predictor(endpoint_name=self.sagemaker_endpoint, serializer=JSONSerializer(), deserializer=JSONDeserializer())  # This should be the name, not ARN
-
+        self.predictor = Predictor(endpoint_name=self.sagemaker_endpoint, serializer=JSONSerializer(), deserializer=JSONDeserializer())
         self.message_service = MessageService()
+        logger.info(f"Using SageMaker endpoint: {self.sagemaker_endpoint}")
+
+    @classmethod
+    def reset_instance(cls):
+        """Reset the singleton instance"""
+        if cls._instance:
+            if hasattr(cls._instance, "predictor"):
+                del cls._instance.predictor
+            cls._instance = None
+
+    def __del__(self):
+        """Cleanup when instance is deleted"""
+        if hasattr(self, "predictor"):
+            del self.predictor
 
     def get_conversation_history(self, booking_id: str, property: Property, property_information: Optional[List[PropertyInformation]], all_document_text: str = "") -> List[dict]:
         # Create detailed system message with property info

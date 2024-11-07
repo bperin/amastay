@@ -16,9 +16,7 @@ class ProcessService:
 
     @classmethod
     def get_sagemaker_service(cls):
-        if cls._sagemaker_service is None:
-            cls._sagemaker_service = SageMakerService()
-        return cls._sagemaker_service
+        return SageMakerService()
 
     @classmethod
     def handle_incoming_sms(cls, message_id, origination_number, message_body):

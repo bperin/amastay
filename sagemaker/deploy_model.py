@@ -33,7 +33,7 @@ huggingface_model = HuggingFaceModel(image_uri=image_uri, env=hub, role=role_arn
 # Update instance type based on GPU requirements
 predictor = huggingface_model.deploy(
     initial_instance_count=1,
-    instance_type="ml.g5.xlarge",
+    instance_type="ml.g5.2xlarge",
     container_startup_health_check_timeout=300,
 )
 
