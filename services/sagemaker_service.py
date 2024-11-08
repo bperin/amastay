@@ -29,15 +29,29 @@ class SageMakerService:
         return cls._instance
 
     def initialize(self):
-        """Initialize the service with endpoint from env var"""
+        """Initialize the service with dedicated SageMaker credentials"""
         self.sagemaker_endpoint = os.getenv("SAGEMAKER_ENDPOINT")
         if not self.sagemaker_endpoint:
             raise ValueError("SAGEMAKER_ENDPOINT environment variable is required")
 
+        # Get SageMaker-specific credentials
+        sagemaker_access_key = os.getenv("SAGEMAKER_ACCESS_KEY")
+        sagemaker_secret_key = os.getenv("SAGEMAKER_SECRET_ACCESS_KEY")
+
+        if not sagemaker_access_key or not sagemaker_secret_key:
+            raise ValueError("SAGEMAKER_ACCESS_KEY and SAGEMAKER_SECRET_ACCESS_KEY are required")
+
         self.region_name = os.getenv("AWS_REGION", "us-east-1")
-        self.predictor = Predictor(endpoint_name=self.sagemaker_endpoint, serializer=JSONSerializer(), deserializer=JSONDeserializer())
+
+        # Create session with SageMaker-specific credentials
+        sagemaker_session = boto3.Session(aws_access_key_id=sagemaker_access_key, aws_secret_access_key=sagemaker_secret_key, region_name=self.region_name)
+
+        sagemaker_client = sagemaker_session.client("sagemaker-runtime")
+
+        self.predictor = Predictor(endpoint_name=self.sagemaker_endpoint, serializer=JSONSerializer(), deserializer=JSONDeserializer(), sagemaker_session=sagemaker_client)
+
         self.message_service = MessageService()
-        logger.info(f"Using SageMaker endpoint: {self.sagemaker_endpoint}")
+        logger.info(f"Initialized SageMaker service with endpoint: {self.sagemaker_endpoint}")
 
     @classmethod
     def reset_instance(cls):
