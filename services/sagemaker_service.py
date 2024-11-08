@@ -43,12 +43,11 @@ class SageMakerService:
 
         self.region_name = os.getenv("AWS_REGION", "us-east-1")
 
-        # Create session with SageMaker-specific credentials
-        sagemaker_session = boto3.Session(aws_access_key_id=sagemaker_access_key, aws_secret_access_key=sagemaker_secret_key, region_name=self.region_name)
+        # Create runtime client directly
+        self.runtime_client = boto3.client("sagemaker-runtime", aws_access_key_id=sagemaker_access_key, aws_secret_access_key=sagemaker_secret_key, region_name=self.region_name)
 
-        sagemaker_client = sagemaker_session.client("sagemaker-runtime")
-
-        self.predictor = Predictor(endpoint_name=self.sagemaker_endpoint, serializer=JSONSerializer(), deserializer=JSONDeserializer(), sagemaker_session=sagemaker_client)
+        # Create predictor with runtime client
+        self.predictor = Predictor(endpoint_name=self.sagemaker_endpoint, serializer=JSONSerializer(), deserializer=JSONDeserializer(), sagemaker_runtime_client=self.runtime_client)  # Use runtime_client directly
 
         self.message_service = MessageService()
         logger.info(f"Initialized SageMaker service with endpoint: {self.sagemaker_endpoint}")

@@ -107,11 +107,6 @@ class PropertyInformationService:
     @staticmethod
     def get_property_information(property_id: str) -> Optional[List[PropertyInformation]]:
         try:
-            # Get the property and check ownership
-            property = PropertyService.get_property(UUID(property_id))
-            if not property or property.owner_id != g.user_id:
-                raise ValueError("Property not found or you don't have permission to access this information")
-
             # Fetch all property information for the given property ID
             info_response = supabase_client.from_("property_information").select("*").eq("property_id", str(property_id)).execute()
 

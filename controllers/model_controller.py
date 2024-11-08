@@ -6,7 +6,6 @@ from services.bedrock_service import BedrockService
 from services.model_params_service import get_active_model_param
 import logging
 import pdb
-
 from services.process_service import ProcessService
 
 ns_model = Namespace("model", description="Model operations")
@@ -29,8 +28,6 @@ output_model = ns_model.model(
     },
 )
 
-model_service = BedrockService()
-
 # Get a logger for this module
 logger = logging.getLogger(__name__)
 
@@ -39,7 +36,6 @@ logger = logging.getLogger(__name__)
 class QueryModel(Resource):
     @jwt_required
     @ns_model.expect(input_model)
-    @ns_model.marshal_with(output_model)
     def post(self):
         try:
             data = request.json
@@ -47,12 +43,12 @@ class QueryModel(Resource):
             phone = data.get("phone")
             message_id = data.get("message_id")
 
-            result = ProcessService.handle_incoming_sms(message_id, phone, message)
+            ProcessService.handle_incoming_sms(message_id, phone, message)
 
-            return result, 200  # Return the dictionary from model_service.query_model
+            return {"status": "success"}, 200
 
         except Exception as e:
-            logger.exception(f"Error in query_model for booking_id {phone}: {str(e)}")
+            logger.exception(f"Error in query_model for phone {phone}: {str(e)}")
             return {"error": "An unexpected error occurred"}, 500
 
 
