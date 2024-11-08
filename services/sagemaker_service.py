@@ -17,6 +17,7 @@ from models.guest import Guest
 from models.property_information import PropertyInformation
 from models.sagemaker_response import SageMakerResponse
 import boto3
+from sagemaker.session import Session
 
 
 class SageMakerService:
@@ -29,25 +30,33 @@ class SageMakerService:
         return cls._instance
 
     def initialize(self):
-        """Initialize the service with dedicated SageMaker credentials"""
+        """Initialize the service with AWS credentials"""
         self.sagemaker_endpoint = os.getenv("SAGEMAKER_ENDPOINT")
         if not self.sagemaker_endpoint:
             raise ValueError("SAGEMAKER_ENDPOINT environment variable is required")
 
-        # Get SageMaker-specific credentials
-        sagemaker_access_key = os.getenv("SAGEMAKER_ACCESS_KEY")
-        sagemaker_secret_key = os.getenv("SAGEMAKER_SECRET_ACCESS_KEY")
+        # Get AWS credentials using correct env var names
+        self.region_name = os.getenv("SAGEMAKER_REGION")
+        self.aws_access_key = os.getenv("SAGEMAKER_ACCESS_KEY")
+        self.aws_secret_key = os.getenv("SAGEMAKER_SECRET_ACCESS_KEY")
 
-        if not sagemaker_access_key or not sagemaker_secret_key:
-            raise ValueError("SAGEMAKER_ACCESS_KEY and SAGEMAKER_SECRET_ACCESS_KEY are required")
+        if not all([self.region_name, self.aws_access_key, self.aws_secret_key]):
+            raise ValueError("SageMaker credentials not properly configured")
 
-        self.region_name = os.getenv("AWS_REGION", "us-east-1")
+        # Debug log environment
+        logger.debug(f"Endpoint: {self.sagemaker_endpoint}")
+        logger.debug(f"Region: {self.region_name}")
+        logger.debug(f"Has SageMaker Access Key: {'SAGEMAKER_ACCESS_KEY' in os.environ}")
+        logger.debug(f"Has SageMaker Secret Key: {'SAGEMAKER_SECRET_ACCESS_KEY' in os.environ}")
 
-        # Create runtime client directly
-        self.runtime_client = boto3.client("sagemaker-runtime", aws_access_key_id=sagemaker_access_key, aws_secret_access_key=sagemaker_secret_key, region_name=self.region_name)
+        # Create runtime client with explicit credentials
+        self.runtime_client = boto3.client("sagemaker-runtime", region_name=self.region_name, aws_access_key_id=self.aws_access_key, aws_secret_access_key=self.aws_secret_key)
 
-        # Create predictor with runtime client
-        self.predictor = Predictor(endpoint_name=self.sagemaker_endpoint, serializer=JSONSerializer(), deserializer=JSONDeserializer(), sagemaker_runtime_client=self.runtime_client)  # Use runtime_client directly
+        # Create custom session with our credentials
+        sagemaker_session = Session(boto_session=boto3.Session(region_name=self.region_name, aws_access_key_id=self.aws_access_key, aws_secret_access_key=self.aws_secret_key))
+
+        # Create predictor with runtime client and custom session
+        self.predictor = Predictor(endpoint_name=self.sagemaker_endpoint, serializer=JSONSerializer(), deserializer=JSONDeserializer(), sagemaker_session=sagemaker_session, sagemaker_runtime_client=self.runtime_client)
 
         self.message_service = MessageService()
         logger.info(f"Initialized SageMaker service with endpoint: {self.sagemaker_endpoint}")

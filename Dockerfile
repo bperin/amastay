@@ -14,6 +14,15 @@ ENV FLASK_ENV=production
 # Set the working directory
 WORKDIR /app
 
+# Copy .env file first
+COPY .env .env
+
+# Copy the rest of the application
+COPY . .
+
+# Load env vars from .env
+ENV $(cat .env | xargs)
+
 # Install system dependencies and Poetry
 RUN apt-get update && apt-get install -y curl build-essential && curl -sSL https://install.python-poetry.org | python3 -
 
@@ -25,9 +34,6 @@ COPY pyproject.toml ./
 
 # Install dependencies using Poetry
 RUN poetry install --no-dev --no-interaction
-
-# Copy the rest of your application code
-COPY . .
 
 # Expose the port the app runs on
 EXPOSE 80
