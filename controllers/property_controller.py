@@ -59,6 +59,37 @@ update_property_info_model = ns_property.model(
         "is_recommendation": fields.Boolean(required=False, description="Recommendation"),
     },
 )
+# Define model for property information response
+property_information_response_model = ns_property.model(
+    "PropertyInformationResponse",
+    {
+        "id": fields.String(description="Property information id"),
+        "property_id": fields.String(description="Property id"),
+        "name": fields.String(description="Information name"),
+        "detail": fields.String(description="Information detail"),
+        "is_recommendation": fields.Boolean(description="Recommendation flag"),
+        "metadata_url": fields.String(description="Information metadata url"),
+        "category_id": fields.String(description="Information category id"),
+        "created_at": fields.DateTime(description="Creation timestamp"),
+        "updated_at": fields.DateTime(description="Last update timestamp"),
+    },
+)
+
+property_response_model = ns_property.model(
+    "PropertyResponse",
+    {
+        "id": fields.String(description="The property id"),
+        "name": fields.String(description="The property name"),
+        "address": fields.String(description="The property address"),
+        "description": fields.String(description="The property description"),
+        "property_url": fields.String(description="The property URL"),
+        "lat": fields.Float(description="Property latitude"),
+        "lng": fields.Float(description="Property longitude"),
+        "created_at": fields.DateTime(description="Creation timestamp"),
+        "updated_at": fields.DateTime(description="Last update timestamp"),
+        "owner_id": fields.String(description="Owner ID"),
+    },
+)
 
 # Initialize the geolocator
 geolocator = Nominatim(user_agent="amastay_property_geocoder")
@@ -69,6 +100,7 @@ geolocator = Nominatim(user_agent="amastay_property_geocoder")
 class CreateProperty(Resource):
     @ns_property.doc("create_property")
     @ns_property.expect(create_property_model)
+    @ns_property.response(201, "Success", property_response_model)
     @jwt_required
     def post(self):
         """
@@ -105,33 +137,12 @@ class CreateProperty(Resource):
             return {"error": "An unexpected error occurred"}, 500
 
 
-# Route to get a specific property by its ID
-@ns_property.route("/view/<uuid:property_id>")
-class ViewProperty(Resource):
-    @ns_property.doc("get_property")
-    @jwt_required
-    def get(self, property_id: UUID):
-        """
-        Retrieves a property by its ID.
-        """
-        try:
-            # Get the property using the PropertyService
-            property_data = PropertyService.get_property(property_id)
-
-            if not property_data:
-                return {"error": "Property not found"}, 404
-
-            return property_data.model_dump(), 200
-        except Exception as e:
-            logging.error(f"Error in get_property: {e}")
-            return {"error": str(e)}, 500
-
-
 # Route to update a property
 @ns_property.route("/update")
 class UpdateProperty(Resource):
     @ns_property.doc("update_property")
     @ns_property.expect(update_property_model)
+    @ns_property.response(200, "Success", property_response_model)
     @jwt_required
     def patch(self):
         """
@@ -157,6 +168,7 @@ class UpdateProperty(Resource):
 @ns_property.route("/delete/<uuid:property_id>")
 class DeleteProperty(Resource):
     @ns_property.doc("delete_property")
+    @ns_property.response(204, "Property deleted")
     @jwt_required
     def delete(self, property_id: UUID):
         """
@@ -181,6 +193,7 @@ class DeleteProperty(Resource):
 @ns_property.route("/list")
 class ListProperties(Resource):
     @ns_property.doc("list_properties")
+    @ns_property.response(200, "Success", [property_response_model])
     @jwt_required
     def get(self):
         """
@@ -203,6 +216,7 @@ class ListProperties(Resource):
 class AddPropertyInformation(Resource):
     @ns_property.doc("add_property_information")
     @ns_property.expect(add_property_info_model)
+    @ns_property.response(201, "Success", property_information_response_model)
     @jwt_required
     def post(self):
         """
@@ -226,6 +240,7 @@ class AddPropertyInformation(Resource):
 @ns_property.route("/information/<uuid:property_id>")
 class GetAllPropertyInformation(Resource):
     @ns_property.doc("get_all_property_information")
+    @ns_property.response(200, "Success", [property_information_response_model])
     @jwt_required
     def get(self, property_id: UUID):
         """
@@ -248,6 +263,7 @@ class GetAllPropertyInformation(Resource):
 @ns_property.route("/information/<uuid:info_id>")
 class RemovePropertyInformation(Resource):
     @ns_property.doc("remove_property_information")
+    @ns_property.response(200, "Information removed")
     @jwt_required
     def delete(self, info_id: UUID):
         """
@@ -270,6 +286,7 @@ class RemovePropertyInformation(Resource):
 @ns_property.route("/information/<uuid:property_id>")
 class GetPropertyInformation(Resource):
     @ns_property.doc("get_property_information")
+    @ns_property.response(200, "Success", [property_information_response_model])
     @jwt_required
     def get(self, property_id: UUID):
         """
@@ -289,6 +306,7 @@ class GetPropertyInformation(Resource):
 class UpdatePropertyInformation(Resource):
     @ns_property.doc("update_property_information")
     @ns_property.expect(update_property_info_model)
+    @ns_property.response(200, "Success", property_information_response_model)
     @jwt_required
     def patch(self):
         """
@@ -317,7 +335,8 @@ class UpdatePropertyInformation(Resource):
 # Route to get property by ID
 @ns_property.route("/<uuid:property_id>")
 class GetProperty(Resource):
-    @ns_property.doc("get_property")
+    @ns_property.doc("get_property_details")
+    @ns_property.response(200, "Success", property_response_model)
     @jwt_required
     def get(self, property_id: UUID):
         """

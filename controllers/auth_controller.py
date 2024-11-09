@@ -45,8 +45,8 @@ get_me_response = ns_auth.model(
         "role": fields.String(description="User role"),
         "app_metadata": fields.Raw(description="Application metadata"),
         "user_metadata": fields.Raw(description="User metadata"),
-        "identities": fields.List(fields.Raw, description="User identities")
-    }
+        "identities": fields.List(fields.Raw, description="User identities"),
+    },
 )
 otp_response = ns_auth.model(
     "OTPResponse",
