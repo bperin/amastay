@@ -10,9 +10,13 @@ type: Load Balanced Web Service
 http:
   # Requests to this path will be forwarded to your service.
   # To match all requests you can use the "/" path.
-  path: '/'
+  path: '/api'
   # You can specify a custom health check path. The default is "/".
-  healthcheck: '/api/v1/health/check'
+  healthcheck:
+    path: '/api/v1/health/check'
+  public:
+    certificates:
+      - arn:aws:acm:us-east-1:422220778159:certificate/d1259492-082d-4ad9-b641-b754caef46b5
 
 # Configuration for your containers and service.
 image:
@@ -29,20 +33,32 @@ exec: true     # Enable running commands in your container.
 network:
   connect: true # Enable Service Connect for intra-environment traffic between services.
 
-# storage:
-  # readonly_fs: true       # Limit to read-only access to mounted root filesystems.
+environments:
+  production:
+    count: 2   # Using 2 tasks for high availability in production
+    cpu: 512   # Double CPU for production workloads
+    memory: 1024  # Double memory for production workloads
+    http:
+      alias:
+        - name: 'api.amastay.ai'
+          hosted_zone: Z09051732Y0SGEMJ22C94
 
-# Optional fields for more advanced use-cases.
-#
-#variables:                    # Pass environment variables as key value pairs.
-#  LOG_LEVEL: info
+  staging:
+    count: 1
+    http:
+      alias:
+        - name: 'staging-api.amastay.ai'
+          hosted_zone: Z09051732Y0SGEMJ22C94
+    variables:
+      LOG_LEVEL: debug
+      API_ENDPOINT: https://api.staging.amastay.ai
 
-#secrets:                      # Pass secrets from AWS Systems Manager (SSM) Parameter Store.
-#  GITHUB_TOKEN: GITHUB_TOKEN  # The key is the name of the environment variable, the value is the name of the SSM parameter.
-
-# You can override any of the values defined above by environment.
-#environments:
-#  test:
-#    count: 2               # Number of tasks to run for the "test" environment.
-#    deployment:            # The deployment strategy for the "test" environment.
-#       rolling: 'recreate' # Stops existing tasks before new ones are started for faster deployments.
+  develop:
+    count: 1
+    http:
+      alias:
+        - name: 'develop-api.amastay.ai'
+          hosted_zone: Z09051732Y0SGEMJ22C94
+    variables:
+      LOG_LEVEL: debug
+      API_ENDPOINT: https://api.develop.amastay.ai
