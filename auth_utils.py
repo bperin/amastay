@@ -5,6 +5,7 @@ from flask import request, jsonify, g
 from functools import wraps
 from datetime import datetime, timezone
 from supabase_utils import supabase_client
+from supabase import create_client, Client
 
 from dotenv import load_dotenv
 
@@ -18,11 +19,12 @@ SUPABASE_URL = os.getenv("SUPABASE_URL")
 logging.basicConfig(level=logging.DEBUG)
 logger = logging.getLogger(__name__)
 
+
 def jwt_required(f):
     @wraps(f)
     def decorated(*args, **kwargs):
         auth_header = request.headers.get("Authorization")
-       
+
         if not auth_header or not auth_header.startswith("Bearer "):
             logger.warning("Missing or invalid JWT token")
             return jsonify({"error": "Missing or invalid JWT token"}), 401
@@ -49,6 +51,9 @@ def jwt_required(f):
 
             # Note: We don't need to manually check for token expiration
             # jwt.decode() will raise jwt.ExpiredSignatureError if the token has expired
+
+            # After successful JWT validation, set up Supabase session
+            supabase_client.auth.set_session(access_token=jwt_token, refresh_token=None)  # We don't have refresh token from the JWT alone
 
             # Store user information in Flask's `g` object
             g.current_user = {
