@@ -1,7 +1,7 @@
 import logging
 from flask import request
 from flask_restx import Namespace, Resource, fields
-from services.process_service import ProcessService
+from services.process_service import handle_incoming_sms
 
 # Create logger instance
 logging.basicConfig(level=logging.INFO)
@@ -35,7 +35,7 @@ class SMSWebhook(Resource):
             message_body = data.get("message")
             message_id = data.get("message_id")
 
-            ProcessService.handle_incoming_sms(message_id, origination_number, message_body)
+            handle_incoming_sms(message_id, origination_number, message_body)
 
             return {"status": "success"}, 200
 

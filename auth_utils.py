@@ -53,7 +53,9 @@ def jwt_required(f):
             # jwt.decode() will raise jwt.ExpiredSignatureError if the token has expired
 
             # After successful JWT validation, set up Supabase session
-            supabase_client.auth.set_session(access_token=jwt_token, refresh_token=None)  # We don't have refresh token from the JWT alone
+            refresh_token = request.headers.get("x-refresh-token")
+            if refresh_token:
+                supabase_client.auth.set_session(access_token=jwt_token, refresh_token=refresh_token)
 
             # Store user information in Flask's `g` object
             g.current_user = {

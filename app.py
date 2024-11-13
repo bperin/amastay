@@ -20,6 +20,7 @@ from controllers.health_controller import ns_health
 from controllers.model_controller import ns_model
 from controllers.booking_controller import ns_booking
 from auth_utils import jwt_required
+from services.sagemaker_service import SageMakerService
 
 # Initialize Flask app and CORS
 app = Flask(__name__)
@@ -53,14 +54,30 @@ app.config["RESTX_JSON"] = {"cls": CustomJSONEncoder}  # Add this line for Flask
 # Initialize Flask-RESTX API with Swagger UI
 api = Api(app, version="0.1", title="Amastay API", description="Amastay API", doc="/swagger")
 
-# Register Namespaces with the API
-api.add_namespace(ns_auth, path="/api/v1/auth")
-api.add_namespace(ns_property, path="/api/v1/properties")
-api.add_namespace(ns_booking, path="/api/v1/bookings")
-api.add_namespace(ns_health, path="/api/v1/health")
-api.add_namespace(ns_webhooks, path="/api/v1/webhooks")
-api.add_namespace(ns_model, path="/api/v1/model")
 
+def create_app():
+    """Create and configure the Flask application"""
+    # Initialize services
+    try:
+        SageMakerService.initialize()
+        app.logger.info("SageMaker service initialized successfully")
+    except Exception as e:
+        app.logger.error(f"Failed to initialize SageMaker service: {str(e)}")
+        raise
+
+    # Register Namespaces with the API
+    api.add_namespace(ns_auth, path="/api/v1/auth")
+    api.add_namespace(ns_property, path="/api/v1/properties")
+    api.add_namespace(ns_booking, path="/api/v1/bookings")
+    api.add_namespace(ns_health, path="/api/v1/health")
+    api.add_namespace(ns_webhooks, path="/api/v1/webhooks")
+    api.add_namespace(ns_model, path="/api/v1/model")
+
+    return app
+
+
+# Create the application instance
+app = create_app()
 
 if __name__ == "__main__":
     app.run(debug=True, host="0.0.0.0", port=5001)

@@ -1,12 +1,9 @@
 from auth_utils import jwt_required
 from flask import request, current_app, g
 from flask_restx import Namespace, Resource, fields
-from services.guest_service import GuestService
-from services.bedrock_service import BedrockService
 from services.model_params_service import get_active_model_param
-import logging
-import pdb
-from services.process_service import ProcessService
+from services.process_service import handle_incoming_sms
+
 
 ns_model = Namespace("model", description="Model operations")
 
@@ -28,9 +25,6 @@ output_model = ns_model.model(
     },
 )
 
-# Get a logger for this module
-logger = logging.getLogger(__name__)
-
 
 @ns_model.route("/query")
 class QueryModel(Resource):
@@ -43,7 +37,7 @@ class QueryModel(Resource):
             phone = data.get("phone")
             message_id = data.get("message_id")
 
-            ProcessService.handle_incoming_sms(message_id, phone, message)
+            handle_incoming_sms(message_id, phone, message)
 
             return {"status": "success"}, 200
 
