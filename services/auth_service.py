@@ -198,7 +198,6 @@ class AuthService:
             logging.error(f"Error retrieving current user: {e}")
             return jsonify({"error": str(e)}), 500
 
-
     @staticmethod
     def _build_session_response(auth_response):
         """Helper function to build the response with session tokens and user ID in headers."""
