@@ -27,7 +27,7 @@ jobs:
 
       - name: Install Copilot CLI
         run: |
-          rm -rf copilot
+          rm -f /usr/local/bin/copilot
           curl -Lo ./copilot-linux https://github.com/aws/copilot-cli/releases/latest/download/copilot-linux
           chmod +x ./copilot-linux
           sudo mv ./copilot-linux /usr/local/bin/copilot
@@ -35,10 +35,16 @@ jobs:
 
       - name: Deploy to AWS
         run: |
+          # First, check if we need to init the app
+          if [ ! -d ".copilot" ]; then
+            copilot app init ${{ env.APP_NAME }} --domain amastay.ai
+          fi
+          
+          # Then deploy based on branch
           if [ "${{ github.ref }}" = "refs/heads/master" ]; then
-            copilot deploy --env production
+            copilot svc deploy --name api --env production
           elif [ "${{ github.ref }}" = "refs/heads/staging" ]; then
-            copilot deploy --env staging
+            copilot svc deploy --name api --env staging
           elif [ "${{ github.ref }}" = "refs/heads/develop" ]; then
-            copilot deploy --env develop
+            copilot svc deploy --name api --env develop
           fi
