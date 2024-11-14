@@ -1,44 +1,44 @@
-name: Deploy to AWS
+# name: Deploy to AWS
 
-on:
-  push:
-    branches:
-      - master
-      - staging
-      - develop
+# on:
+#   push:
+#     branches:
+#       - master
+#       - staging
+#       - develop
 
-env:
-  AWS_REGION: us-east-1
-  APP_NAME: amastay
+# env:
+#   AWS_REGION: us-east-1
+#   APP_NAME: amastay
 
-jobs:
-  deploy:
-    runs-on: ubuntu-latest
+# jobs:
+#   deploy:
+#     runs-on: ubuntu-latest
     
-    steps:
-      - uses: actions/checkout@v2
+#     steps:
+#       - uses: actions/checkout@v2
 
-      - name: Configure AWS credentials
-        uses: aws-actions/configure-aws-credentials@v1
-        with:
-          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY }}
-          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          aws-region: ${{ env.AWS_REGION }}
+#       - name: Configure AWS credentials
+#         uses: aws-actions/configure-aws-credentials@v1
+#         with:
+#           aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY }}
+#           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+#           aws-region: ${{ env.AWS_REGION }}
 
-      - name: Install Copilot CLI
-        run: |
-          rm -f /usr/local/bin/copilot
-          curl -Lo ./copilot-linux https://github.com/aws/copilot-cli/releases/latest/download/copilot-linux
-          chmod +x ./copilot-linux
-          sudo mv ./copilot-linux /usr/local/bin/copilot
-          copilot --version
+#       - name: Install Copilot CLI
+#         run: |
+#           rm -f /usr/local/bin/copilot
+#           curl -Lo ./copilot-linux https://github.com/aws/copilot-cli/releases/latest/download/copilot-linux
+#           chmod +x ./copilot-linux
+#           sudo mv ./copilot-linux /usr/local/bin/copilot
+#           copilot --version
 
-      - name: Deploy to AWS
-        run: |
-          if [ "${{ github.ref }}" = "refs/heads/master" ]; then
-            copilot svc deploy --name api --env production
-          elif [ "${{ github.ref }}" = "refs/heads/staging" ]; then
-            copilot svc deploy --name api --env staging
-          elif [ "${{ github.ref }}" = "refs/heads/develop" ]; then
-            copilot svc deploy --name api --env develop
-          fi
+#       - name: Deploy to AWS
+#         run: |
+#           if [ "${{ github.ref }}" = "refs/heads/master" ]; then
+#             copilot svc deploy --name api --env production
+#           elif [ "${{ github.ref }}" = "refs/heads/staging" ]; then
+#             copilot svc deploy --name api --env staging
+#           elif [ "${{ github.ref }}" = "refs/heads/develop" ]; then
+#             copilot svc deploy --name api --env develop
+#           fi
