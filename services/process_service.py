@@ -26,7 +26,7 @@ def is_message_from_ai(origination_number: str) -> bool:
 def handle_incoming_sms(message_id: str, origination_number: str, message_body: str) -> None:
     """Handle incoming SMS between a guest and the AI"""
     try:
-        logger.info(f"Processing SMS - ID: {message_id}, From: {origination_number}, Message: {message_body}")
+        logger.info(f"Processing SMS - ID: {message_id}, Fromm: {origination_number}, Message: {message_body}")
 
         if is_message_from_ai(origination_number):
             logger.info(f"Message from AI, ignoring: {message_body}")
@@ -35,7 +35,7 @@ def handle_incoming_sms(message_id: str, origination_number: str, message_body: 
         # Check for existing message
         existing_message = MessageService.get_message_by_sms_id(message_id)
         if existing_message:
-            logger.info(f"Message with SMS ID {message_id} already processed, skipping")
+            logger.info(f"Message with SMS ID {essage_id} already processed, skipping")
             return
 
         # Guest lookup
