@@ -5,7 +5,7 @@ on:
     branches:
       - master
       - staging
-      - develop  # Trigger on pushes to master, staging, and develop branches
+      - develop
 
 env:
   AWS_REGION: us-east-1
@@ -27,14 +27,14 @@ jobs:
 
       - name: Install Copilot CLI
         run: |
-          curl -Lo copilot https://github.com/aws/copilot-cli/releases/latest/download/copilot-linux
-          chmod +x copilot
-          sudo mv copilot /usr/local/bin/copilot
+          rm -rf copilot
+          curl -Lo ./copilot-linux https://github.com/aws/copilot-cli/releases/latest/download/copilot-linux
+          chmod +x ./copilot-linux
+          sudo mv ./copilot-linux /usr/local/bin/copilot
           copilot --version
 
       - name: Deploy to AWS
         run: |
-          # Deploy to different environments based on branch
           if [ "${{ github.ref }}" = "refs/heads/master" ]; then
             copilot deploy --env production
           elif [ "${{ github.ref }}" = "refs/heads/staging" ]; then
