@@ -11,49 +11,6 @@ from supabase_utils import supabase_client
 class BookingService:
 
     @staticmethod
-    def get_or_create_guest(phone_number: str, first_name: str, last_name: str) -> Guest:
-        """
-        Retrieves or creates a guest based on their phone number, first name, and last name.
-
-        Args:
-            phone_number (str): The phone number of the guest.
-            first_name (str): The first name of the guest.
-            last_name (str): The last name of the guest.
-
-        Returns:
-            Guest: A Guest object, either retrieved or newly created.
-        """
-        logging.info(f"Attempting to retrieve or create guest with phone number: {phone_number}")
-
-        try:
-            # Query the guests table by phone number
-            guest_response = supabase_client.from_("guests").select("*").eq("phone", phone_number).execute()
-
-            # If guest is found, return it
-            if guest_response.data:
-                logging.info(f"Guest found with phone number: {phone_number}")
-                return Guest(**guest_response.data)
-
-            logging.info(f"No guest found with phone number: {phone_number}. Creating a new guest.")
-
-            # If no guest is found, create a new one
-            new_guest_data = {
-                "first_name": first_name,
-                "last_name": last_name,
-                "phone": phone_number,
-            }
-            new_guest_response = supabase_client.table("guests").insert(new_guest_data).execute()
-
-            logging.info(f"New guest created with phone number: {phone_number}")
-
-            # Return the newly created guest
-            return Guest(**new_guest_response.data[0])
-
-        except Exception as e:
-            logging.error(f"Error in get_or_create_guest: {e}")
-            raise
-
-    @staticmethod
     def get_next_upcoming_booking_by_phone(phone_number: str) -> Optional[Booking]:
         """
         Retrieves the next upcoming booking for a guest based on their phone number by joining
@@ -150,46 +107,47 @@ class BookingService:
 
     @staticmethod
     def add_guest(
+        guest_id: str,
         booking_id: str,
-        phone_number: str,
-        first_name: str,
-        last_name: Optional[str] = None,
     ) -> Optional[BookingGuest]:
         """
-        Adds a guest to a booking.
-
-        Args:
-            booking_id (str): The ID of the booking to add the guest to.
-            phone_number (str): The phone number of the guest.
-            first_name (str): The first name of the guest.
-            last_name (Optional[str]): The last name of the guest (optional).
-            greeting_message (Optional[str]): A greeting message for the guest (optional).
-
-        Returns:
-            Optional[BookingGuest]: The created BookingGuest object if successful, None otherwise.
+        Adds a guest to a booking after verifying both exist.
         """
         try:
-            # Get guest if not make it
-            guest = BookingService.get_or_create_guest(phone_number, first_name, last_name)
+            # Verify booking exists
+            booking_check = supabase_client.table("bookings").select("*").eq("id", booking_id).execute()
+            if not booking_check.data:
+                error_message = f"Booking with ID {booking_id} not found"
+                logging.error(error_message)
+                raise ValueError(error_message)
 
-            if not guest:
-                raise ValueError("Failed to create or retrieve guest")
+            # Verify guest exists
+            guest_check = supabase_client.table("guests").select("*").eq("id", guest_id).execute()
+            if not guest_check.data:  # Simplified check for guest existence
+                error_message = f"Guest with ID {guest_id} not found"
+                logging.error(error_message)
+                raise ValueError(error_message)
+
+            # Check if booking_guest already exists
+            existing_guest_check = supabase_client.table("booking_guests").select("*").eq("booking_id", booking_id).eq("guest_id", guest_id).execute()
+            if existing_guest_check.data:  # If a booking_guest exists
+                # Return the existing BookingGuest instead of raising an error
+                return BookingGuest(**existing_guest_check.data[0])  # Return existing guest
 
             # Add the guest to the booking
             booking_guest_data = {
                 "booking_id": booking_id,
-                "guest_id": guest.id,
+                "guest_id": guest_id,
             }
             booking_guest_response = supabase_client.table("booking_guests").insert(booking_guest_data).execute()
 
             if not booking_guest_response.data:
                 raise ValueError("Failed to add guest to booking")
 
-            # Create and return the BookingGuest object
             return BookingGuest(**booking_guest_response.data[0])
 
         except Exception as e:
-            logging.error(f"Error adding guest to booking: {e}")
+            logging.error(f"Error in add_guest: {e}")
             return None
 
     @staticmethod
@@ -214,3 +172,8 @@ class BookingService:
         except Exception as e:
             print(f"Error retrieving next booking for guest ID {guest_id}: {e}")
             return None
+
+    @staticmethod
+    def get_booking_by_id(booking_id: str) -> Optional[Booking]:
+        response = supabase_client.table("bookings").select("*").eq("id", booking_id).single().execute()
+        return Booking(**response.data) if response.data else None

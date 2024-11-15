@@ -25,17 +25,6 @@ booking_model = ns_booking.model(
     },
 )
 
-# Define model for adding a guest
-guest_model = ns_booking.model(
-    "Guest",
-    {
-        "phone": fields.String(required=True, description="Guest's phone number"),
-        "booking_id": fields.String(required=True, description="Booking id"),
-        "first_name": fields.String(required=True, description="Guest's first name"),
-        "last_name": fields.String(required=False, description="Guest's last name"),
-    },
-)
-
 
 # Route to create a new booking
 @ns_booking.route("/create")
@@ -154,52 +143,4 @@ class PropertyBookings(Resource):
             return [booking.model_dump() for booking in bookings], 200
         except Exception as e:
             logging.error(f"Error in get_property_bookings: {e}")
-            return {"error": str(e)}, 500
-
-
-# Route to add a guest to a booking
-@ns_booking.route("/add_guest")
-class AddGuest(Resource):
-    @ns_booking.doc("add_guest")
-    @ns_booking.expect(guest_model)
-    @jwt_required
-    def post(self):
-        """
-        Adds a guest to a booking.
-        """
-        try:
-            data = request.get_json()
-            if not data:
-                return {"error": "Missing guest data"}, 400
-
-            phone_number = data.get("phone")
-            booking_id = data.get("booking_id")
-            first_name = data.get("first_name")
-            last_name = data.get("last_name")
-
-            if not phone_number or not first_name:
-                return {"error": "Phone number and first name are required"}, 400
-
-            updated_booking = BookingService.add_guest(
-                booking_id,
-                phone_number,
-                first_name,
-                last_name=last_name,
-            )
-            if updated_booking:
-                # Send a welcome message to the new guest
-                try:
-                    content = f"AmastayAI: You’ve been added to a reservation. " f"Reply YES to opt-in for updates about your stay. " f"Msg frequency varies. Msg & data rates may apply. " f"Text HELP for support, STOP to opt-out. " f"Booking ID: {booking_id}, Guest: {first_name} {last_name or ''}"
-                    PinpointService.send_sms(phone_number, os.getenv("SYSTEM_PHONE_NUMBER"), content)
-                except Exception as sms_error:
-                    logging.error(f"Error sending welcome SMS: {sms_error}")
-
-                return {
-                    "message": "Guest added successfully",
-                    "booking": updated_booking.model_dump(),
-                }, 200
-            else:
-                return {"error": "Failed to add guest"}, 400
-        except Exception as e:
-            logging.error(f"Error in add_guest: {e}")
             return {"error": str(e)}, 500

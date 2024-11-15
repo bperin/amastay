@@ -1,9 +1,12 @@
 from auth_utils import jwt_required
+import logging
 from flask import request, current_app, g
 from flask_restx import Namespace, Resource, fields
 from services.model_params_service import get_active_model_param
 from services.process_service import handle_incoming_sms
 
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
 ns_model = Namespace("model", description="Model operations")
 

@@ -15,6 +15,7 @@ from models.guest import Guest
 from models.property_information import PropertyInformation
 from models.sagemaker_response import SageMakerResponse
 from services.message_service import MessageService
+from services.model_params_service import get_active_model_param
 
 logger = logging.getLogger(__name__)
 
@@ -61,6 +62,11 @@ class SageMakerService:
             raise RuntimeError("SageMaker service not initialized")
 
         try:
+
+            model_params = get_active_model_param()
+
+            system_content = model_params.prompt
+
             # Create detailed system message
             system_content = "You are a helpful vacation rental assistant. You help guests with " "their questions about their stay. Keep responses concise and friendly. " "Prioritize the guest's questions and provide accurate information. " "Prioritize ##property details## and ##property information## and " "lastly fall back on any extra ##Additional details##"
 

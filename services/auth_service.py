@@ -145,7 +145,7 @@ class AuthService:
 
             if not refresh_token:
                 logging.warning("No refresh token provided in the request")
-                return jsonify({"error": "Refresh token is required"}), 400
+                return {"error": "Refresh token is required"}, 400
 
             # Define the URL for Supabase's token refresh endpoint
             token_url = f"{supabase_client.supabase_url}/auth/v1/token?grant_type=refresh_token"
@@ -170,11 +170,11 @@ class AuthService:
             else:
                 error_message = response.json().get("error_description", "Unknown error")
                 logging.error(f"Failed to refresh session: {error_message}")
-                return jsonify({"error": error_message}), 500
+                return {"error": error_message}, 500
 
         except Exception as e:
             logging.error(f"Error refreshing token: {e}")
-            return jsonify({"error": str(e)}), 500
+            return {"error": str(e)}, 500
 
     @staticmethod
     def get_current_user() -> UserResponse | None:
