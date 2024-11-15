@@ -66,10 +66,6 @@ class SageMakerService:
             model_params = get_active_model_param()
 
             system_content = model_params.prompt
-
-            # Create detailed system message
-            system_content = "You are a helpful vacation rental assistant. You help guests with " "their questions about their stay. Keep responses concise and friendly. " "Prioritize the guest's questions and provide accurate information. " "Prioritize ##property details## and ##property information## and " "lastly fall back on any extra ##Additional details##"
-
             # Build context
             property_info = f"\n##Property Details:##\nName: {property.name}\n" f"Address: {property.address}\nDescription: {property.description}\n" f"Location: Lat {property.lat}, Lng {property.lng}"
 
