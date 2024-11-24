@@ -8,6 +8,7 @@ from services.auth_service import AuthService
 import logging
 import time
 from gotrue import UserResponse
+from gotrue.types import Provider
 
 # Configure logging
 logger = logging.getLogger(__name__)
@@ -60,6 +61,11 @@ otp_response = ns_auth.model(
 login_model = ns_auth.model(
     "Login",
     {"phone": fields.String(required=True, description="Phone number")},
+)
+
+google_signin_model = ns_auth.model(
+    "GoogleSignIn",
+    {"credential": fields.String(required=True, description="Google ID token"), "nonce": fields.String(required=False, description="Optional nonce for verification")},
 )
 
 
@@ -220,3 +226,20 @@ class ResendOTP(Resource):
             return {"error": "phone_number is required"}, 400
 
         return AuthService.resend_otp(phone_number)
+
+
+@ns_auth.route("/google")
+class GoogleSignIn(Resource):
+    @ns_auth.expect(google_signin_model)
+    def post(self):
+        """
+        Signs in or signs up a user with Google credentials
+        """
+        data = request.get_json()
+        credential = data.get("credential")
+        nonce = data.get("nonce")  # Optional
+
+        if not credential:
+            return {"error": "Google credential is required"}, 400
+
+        return AuthService.sign_in_with_google(credential, nonce)

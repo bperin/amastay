@@ -9,6 +9,7 @@ import time
 import secrets
 import string
 from gotrue import UserResponse  # Add this at the top with other imports
+from gotrue.types import Provider
 
 
 class AuthService:
@@ -226,3 +227,23 @@ class AuthService:
     @staticmethod
     def logout():
         return supabase_client.auth.sign_out()
+
+    @staticmethod
+    def sign_in_with_google(credential: str, nonce: str = None):
+        """Signs in or signs up a user with Google credentials."""
+        try:
+            # Sign in with Google ID token
+            response = supabase_client.auth.sign_in_with_id_token({"provider": Provider.google, "token": credential, "nonce": nonce})
+
+            if response.session:
+                # Build response similar to OTP verification
+                auth_response = {"access_token": response.session.access_token, "refresh_token": response.session.refresh_token, "expires_in": response.session.expires_in, "user": {"id": response.session.user.id}}
+                return AuthService._build_session_response(auth_response)
+            else:
+                error_message = "Failed to authenticate with Google"
+                logging.error(error_message)
+                return make_response(jsonify({"error": error_message}), 400)
+
+        except Exception as e:
+            logging.error(f"Error during Google sign in: {e}")
+            return make_response(jsonify({"error": str(e)}), 500)
