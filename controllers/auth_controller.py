@@ -20,7 +20,8 @@ signup_model = ns_auth.model(
     {
         "first_name": fields.String(required=True, description="First name", type="string"),
         "last_name": fields.String(required=True, description="Last name", type="string"),
-        "estimated_properties": fields.Integer(required=True, description="Estimated number of properties", type="integer"),
+        "email": fields.String(required=True, description="Last name", type="string"),
+        "password": fields.String(required=True, description="Password", type="string"),
         "phone": fields.String(required=True, description="Phone number", type="string"),
     },
 )
@@ -69,26 +70,40 @@ class Signup(Resource):
     def post(self):
         """
         Signs up a new user and sends an OTP to their phone number.
-        Expects JSON data with first_name, last_name, estimated_properties, and phone_number.
+        Expects JSON data with first_name, last_name, email, password, and phone_number.
         """
         data = request.get_json()
-        first_name = data.get("first_name")
-        last_name = data.get("last_name")
-        estimated_properties = data.get("estimated_properties")
-        phone_number = data.get("phone")
 
-        # Validate required fields
-        if not all([first_name, last_name, estimated_properties, phone_number]):
-            logger.warning("Signup failed: Missing required fields.")
-            return {"error": "All fields are required"}, 400
+        # Extract fields with proper default handling
+        first_name = data.get("first_name", "").strip()
+        last_name = data.get("last_name", "").strip()
+        email = data.get("email", "").strip()
+        password = data.get("password", "").strip()
+        phone_number = data.get("phone", "").strip()
+        print(f"first_name: {first_name}, last_name: {last_name}, email: {email}, password: {password}, phone_number: {phone_number}")
+        # Validate each field individually for better error messages
+        errors = {}
+        if not first_name:
+            errors["first_name"] = "First name is required"
+        if not last_name:
+            errors["last_name"] = "Last name is required"
+        if not email:
+            errors["email"] = "Email is required"
+        if not password:
+            errors["password"] = "Password is required"
+        if not phone_number:
+            errors["phone"] = "Phone number is required"
+
+        if errors:
+            logger.warning(f"Signup failed: {errors}")
+            return {"errors": errors}, 400
+
+        # Add basic password validation
+        if len(password) < 8:
+            return {"error": "Password must be at least 8 characters long"}, 400
 
         # Call the AuthService to handle sign-up
-        return AuthService.signup(
-            phone_number,
-            first_name,
-            last_name,
-            estimated_properties,
-        )
+        return AuthService.signup(first_name, last_name, email, password, phone_number)
 
 
 # OTP Verification Route

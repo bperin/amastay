@@ -40,7 +40,6 @@ def jwt_required(f):
                 audience="authenticated",
                 issuer=f"{SUPABASE_URL}/auth/v1",
             )
-
             logger.debug(f"JWT Payload: {payload}")
 
             # Check if the role is 'authenticated'

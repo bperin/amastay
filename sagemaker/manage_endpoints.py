@@ -3,39 +3,50 @@ import argparse
 from datetime import datetime
 
 
-def list_endpoints(status_filter=None, verbose=True):
+def list_endpoints(status_filter=None):
     """
     List all SageMaker endpoints with their details
     Args:
         status_filter (str, optional): Filter endpoints by status ('InService', 'Creating', etc.)
-        verbose (bool): Whether to print the output
     Returns:
         list: List of endpoint details
     """
     sagemaker_client = boto3.client("sagemaker")
-    endpoints = sagemaker_client.list_endpoints()["Endpoints"]
+    endpoints = []
+    paginator = sagemaker_client.get_paginator("list_endpoints")
 
-    if verbose:
-        print("\n{:<40} {:<15} {:<20} {:<25}".format("Endpoint Name", "Status", "Instance Type", "Creation Time"))
-        print("-" * 100)
+    for page in paginator.paginate():
+        for endpoint in page["Endpoints"]:
+            try:
+                endpoint_name = endpoint["EndpointName"]
+                status = endpoint["EndpointStatus"]
 
-    endpoint_details = []
-    for endpoint in endpoints:
-        desc = sagemaker_client.describe_endpoint(EndpointName=endpoint["EndpointName"])
+                if status_filter and status.lower() != status_filter.lower():
+                    continue
 
-        if status_filter and desc["EndpointStatus"] != status_filter:
-            continue
+                # Get endpoint details first
+                endpoint_desc = sagemaker_client.describe_endpoint(EndpointName=endpoint_name)
+                config_name = endpoint_desc.get("EndpointConfigName")
 
-        config = sagemaker_client.describe_endpoint_config(EndpointConfigName=desc["EndpointConfigName"])
-        instance_type = config["ProductionVariants"][0]["InstanceType"]
-        creation_time = desc["CreationTime"].strftime("%Y-%m-%d %H:%M:%S")
+                if not config_name:
+                    instance_type = "Unknown"
+                else:
+                    # Get endpoint config
+                    try:
+                        config_response = sagemaker_client.describe_endpoint_config(EndpointConfigName=config_name)
+                        variant = config_response["ProductionVariants"][0]
+                        instance_type = variant.get("InstanceType", "Serverless") if "ServerlessConfig" in variant else variant.get("InstanceType", "Unknown")
+                    except Exception as e:
+                        print(f"Warning: Could not get config for {endpoint_name}: {str(e)}")
+                        instance_type = "Unknown"
 
-        if verbose:
-            print("{:<40} {:<15} {:<20} {:<25}".format(desc["EndpointName"], desc["EndpointStatus"], instance_type, creation_time))
+                creation_time = endpoint["CreationTime"]
+                endpoints.append({"name": endpoint_name, "status": status, "instance_type": instance_type, "creation_time": creation_time})
+            except Exception as e:
+                print(f"Warning: Error processing endpoint {endpoint.get('EndpointName', 'unknown')}: {str(e)}")
+                continue
 
-        endpoint_details.append({"name": desc["EndpointName"], "status": desc["EndpointStatus"], "instance_type": instance_type, "creation_time": creation_time})
-
-    return endpoint_details
+    return endpoints
 
 
 def list_endpoint_configs():

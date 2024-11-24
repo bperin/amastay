@@ -20,41 +20,42 @@ class AuthService:
         return "".join(secrets.choice(alphabet) for _ in range(length))
 
     @staticmethod
-    def signup(
-        phone_number,
-        first_name,
-        last_name,
-        estimated_properties,
-    ):
+    def signup(first_name, last_name, email, password, phone_number):
         """Signs up a new user and sends an OTP."""
         try:
             # Prepare the user metadata
-            user_metadata = {
-                "first_name": first_name,
-                "last_name": last_name,
-                "estimated_properties": estimated_properties,
-            }
+            user_metadata = {"first_name": first_name, "last_name": last_name, "phone": phone_number}
 
-            random_password = AuthService.generate_random_password(24)
-
-            # Sign up the user with the phone number and user metadata
+            # Manually sign up the user with the phone number and user metadata
             response = supabase_client.auth.sign_up(
                 {
-                    "phone": phone_number,
+                    "email": email,
                     "options": {"data": user_metadata},
-                    "password": random_password,
+                    "password": password,
                 }
             )
 
-            if response.user:
-                logging.debug(f"User signed up with ID: {response.user.id}")
-                # Return response indicating OTP has been sent
-                res = make_response(jsonify({"message": "OTP sent successfully"}), 200)
-                return res
-            else:
+            if not response.user:
                 error_message = response.error.message if response.error else "Failed to sign up user"
                 logging.error(f"Failed to sign up user: {error_message}")
                 return make_response(jsonify({"error": error_message}), 400)
+
+            logging.debug(f"User signed up with ID: {response.user.id}")
+
+            # Update phone number using admin client since user was just created
+            try:
+                supabase_admin_client.auth.admin.update_user_by_id(response.user.id, {"phone": phone_number})
+                logging.debug(f"Updated phone number for user {response.user.id}")
+            except Exception as e:
+                logging.error(f"Failed to update phone number: {e}")
+                # Continue since user was still created successfully
+
+            # Send OTP for initial login after signup
+            otp_response = supabase_client.auth.sign_in_with_otp({"phone": phone_number, "type": "sms"})
+            if not otp_response:
+                logging.error("Failed to send initial OTP after signup")
+
+            return make_response(jsonify({"message": "OTP sent successfully"}), 200)
 
         except Exception as e:
             logging.error(f"Error during sign-up: {e}")
