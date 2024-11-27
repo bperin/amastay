@@ -22,8 +22,8 @@ signup_model = ns_auth.model(
         "first_name": fields.String(required=True, description="First name", type="string"),
         "last_name": fields.String(required=True, description="Last name", type="string"),
         "email": fields.String(required=True, description="Last name", type="string"),
+        "phone": fields.String(required=True, description="Phone", type="string"),
         "password": fields.String(required=True, description="Password", type="string"),
-        "phone": fields.String(required=True, description="Phone number", type="string"),
     },
 )
 
@@ -60,12 +60,28 @@ otp_response = ns_auth.model(
 
 login_model = ns_auth.model(
     "Login",
-    {"phone": fields.String(required=True, description="Phone number")},
+    {"email": fields.String(required=True, description="User email"), "password": fields.String(required=True, description="User password")},
 )
 
 google_signin_model = ns_auth.model(
     "GoogleSignIn",
     {"credential": fields.String(required=True, description="Google ID token"), "nonce": fields.String(required=False, description="Optional nonce for verification")},
+)
+
+# Define shared auth response model
+auth_response = ns_auth.response(
+    200,
+    "Success",
+    otp_response,
+    headers={
+        "x-access-token": {"description": "Access token", "type": "string"},
+        "x-refresh-token": {"description": "Refresh token", "type": "string"},
+        "x-expires-at": {
+            "description": "Token expiration timestamp",
+            "type": "integer",
+        },
+        "x-user-id": {"description": "User ID", "type": "string"},
+    },
 )
 
 
@@ -80,13 +96,20 @@ class Signup(Resource):
         """
         data = request.get_json()
 
-        # Extract fields with proper default handling
+        # Extract fields with proper default handling and sanitize
         first_name = data.get("first_name", "").strip()
         last_name = data.get("last_name", "").strip()
         email = data.get("email", "").strip()
         password = data.get("password", "").strip()
-        phone_number = data.get("phone", "").strip()
-        print(f"first_name: {first_name}, last_name: {last_name}, email: {email}, password: {password}, phone_number: {phone_number}")
+        phone = data.get("phone", "").strip()
+        # Set sanitized values back in the data object
+        data["first_name"] = first_name
+        data["last_name"] = last_name
+        data["email"] = email
+        data["password"] = password
+        data["phone"] = phone
+
+        print(f"first_name: {first_name}, last_name: {last_name}, email: {email}, password: {password}, phone: {phone}")
         # Validate each field individually for better error messages
         errors = {}
         if not first_name:
@@ -97,8 +120,8 @@ class Signup(Resource):
             errors["email"] = "Email is required"
         if not password:
             errors["password"] = "Password is required"
-        if not phone_number:
-            errors["phone"] = "Phone number is required"
+        if not phone:
+            errors["phone"] = "Phone is required"
 
         if errors:
             logger.warning(f"Signup failed: {errors}")
@@ -109,25 +132,12 @@ class Signup(Resource):
             return {"error": "Password must be at least 8 characters long"}, 400
 
         # Call the AuthService to handle sign-up
-        return AuthService.signup(first_name, last_name, email, password, phone_number)
+        return AuthService.signup(first_name=data["first_name"], last_name=data["last_name"], email=data["email"], password=data["password"], phone=data["phone"], user_type="owner")
 
 
 # OTP Verification Route
 @ns_auth.route("/verify_otp")
-@ns_auth.response(
-    200,
-    "Success",
-    otp_response,
-    headers={
-        "x-access-token": {"description": "Access token", "type": "string"},
-        "x-refresh-token": {"description": "Refresh token", "type": "string"},
-        "x-expires-at": {
-            "description": "Token expiration timestamp",
-            "type": "integer",
-        },
-        "x-user-id": {"description": "User ID", "type": "string"},
-    },
-)
+@auth_response
 class VerifyOTP(Resource):
     @ns_auth.expect(otp_model)
     def post(self):
@@ -149,20 +159,7 @@ class VerifyOTP(Resource):
 
 # Refresh Token Route
 @ns_auth.route("/refresh_token")
-@ns_auth.response(
-    200,
-    "Success",
-    otp_response,
-    headers={
-        "x-access-token": {"description": "Access token", "type": "string"},
-        "x-refresh-token": {"description": "Refresh token", "type": "string"},
-        "x-expires-at": {
-            "description": "Token expiration timestamp",
-            "type": "integer",
-        },
-        "x-user-id": {"description": "User ID", "type": "string"},
-    },
-)
+@auth_response
 class RefreshToken(Resource):
     def post(self):
         """
@@ -199,16 +196,17 @@ class Login(Resource):
     @ns_auth.expect(login_model)
     def post(self):
         """
-        Sends a SMS OTP for login
+        Logs in a user with email and password.
         """
         data = request.get_json()
-        phone_number = data.get("phone")
+        email = data.get("email")
+        password = data.get("password")
+        breakpoint()
+        if not email or not password:
+            logger.warning("Login failed: Missing email or password.")
+            return {"error": "Email and password are required"}, 400
 
-        if not phone_number:
-            logger.warning("Login failed: Missing phone_number.")
-            return {"error": "phone_number is required"}, 400
-
-        return AuthService.login(phone_number)
+        return AuthService.login(email, password)
 
 
 @ns_auth.route("/resend")
@@ -231,6 +229,7 @@ class ResendOTP(Resource):
 @ns_auth.route("/google")
 class GoogleSignIn(Resource):
     @ns_auth.expect(google_signin_model)
+    @ns_auth.doc(responses={200: "Success", 400: "Invalid request", 500: "Server error"}, description="Sign in with Google")
     def post(self):
         """
         Signs in or signs up a user with Google credentials

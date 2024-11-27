@@ -23,7 +23,7 @@ def is_message_from_ai(origination_number: str) -> bool:
     return cleaned_orig == cleaned_ai
 
 
-def handle_incoming_sms(message_id: str, origination_number: str, message_body: str) -> None:
+def handle_incoming_sms(message_id: str, origination_number: str, message_body: str, send_message: bool = True) -> str:
     """Handle incoming SMS between a guest and the AI"""
     try:
         logger.info(f"Processing SMS - ID: {message_id}, From: {origination_number}, Message: {message_body}")
@@ -79,9 +79,12 @@ def handle_incoming_sms(message_id: str, origination_number: str, message_body: 
         logger.info(f"AI Response received: {ai_response[:100]}...")
 
         # Send response
-        logger.info("Sending SMS response...")
-        PinpointService.send_sms(origination_number, os.getenv("SYSTEM_PHONE_NUMBER"), ai_response)
-        logger.info("SMS response sent successfully")
+        if send_message:
+            logger.info("Sending SMS response...")
+            PinpointService.send_sms(origination_number, os.getenv("SYSTEM_PHONE_NUMBER"), ai_response)
+            logger.info("SMS response sent successfully")
+
+        return ai_response
 
     except Exception as e:
         handle_error(e, message_id, origination_number, message_body)

@@ -8,7 +8,7 @@ import requests
 import time
 import secrets
 import string
-from gotrue import UserResponse  # Add this at the top with other imports
+from gotrue import UserResponse, AuthResponse  # Add this at the top with other imports
 from gotrue.types import Provider
 
 
@@ -21,20 +21,22 @@ class AuthService:
         return "".join(secrets.choice(alphabet) for _ in range(length))
 
     @staticmethod
-    def signup(first_name, last_name, email, password, phone_number):
-        """Signs up a new user and sends an OTP."""
-        try:
-            # Prepare the user metadata
-            user_metadata = {"first_name": first_name, "last_name": last_name, "phone": phone_number}
+    def signup(first_name: str, last_name: str, email: str, password: str, phone: str, user_type: str):
+        """
+        Signs up a new user with user type metadata.
 
-            # Manually sign up the user with the phone number and user metadata
-            response = supabase_client.auth.sign_up(
-                {
-                    "email": email,
-                    "options": {"data": user_metadata},
-                    "password": password,
-                }
-            )
+        Args:
+            first_name: User's first name
+            last_name: User's last name
+            email: User's email address
+            password: User's password
+            phone: User's phone number
+            user_type: User's type (e.g., owner)
+        """
+        try:
+            user_metadata = {"first_name": first_name, "last_name": last_name, "phone": phone, "user_type": user_type}
+
+            response = supabase_client.auth.sign_up({"email": email, "options": {"data": user_metadata, "emailRedirectTo": "http://localhost:3000"}, "password": password})
 
             if not response.user:
                 error_message = response.error.message if response.error else "Failed to sign up user"
@@ -42,98 +44,26 @@ class AuthService:
                 return make_response(jsonify({"error": error_message}), 400)
 
             logging.debug(f"User signed up with ID: {response.user.id}")
-
-            # Update phone number using admin client since user was just created
-            try:
-                supabase_admin_client.auth.admin.update_user_by_id(response.user.id, {"phone": phone_number})
-                logging.debug(f"Updated phone number for user {response.user.id}")
-            except Exception as e:
-                logging.error(f"Failed to update phone number: {e}")
-                # Continue since user was still created successfully
-
-            # Send OTP for initial login after signup
-            otp_response = supabase_client.auth.sign_in_with_otp({"phone": phone_number, "type": "sms"})
-            if not otp_response:
-                logging.error("Failed to send initial OTP after signup")
-
-            return make_response(jsonify({"message": "OTP sent successfully"}), 200)
+            return make_response(jsonify({"message": "User created successfully"}), 200)
 
         except Exception as e:
             logging.error(f"Error during sign-up: {e}")
             return make_response(jsonify({"error": str(e)}), 500)
 
     @staticmethod
-    def login(phone_number):
-        """Sends an OTP to the user's phone number using Supabase."""
+    def login(email: str, password: str):
+        """Logs in a user with email and password."""
         try:
-            # Send OTP to the user's phone number
-            response = supabase_client.auth.sign_in_with_otp({"phone": phone_number, "type": "sms"})
-
-            if response:
-                logging.debug(f"OTP sent successfully to {phone_number}")
-                res = make_response(jsonify({"message": "OTP sent successfully"}), 200)
-                return res
-            else:
-                error_message = response.error.message if response.error else "Failed to send OTP"
-                logging.error(f"Failed to send OTP: {error_message}")
-                return make_response(jsonify({"error": error_message}), 400)
-
-        except Exception as e:
-            logging.error(f"Error sending OTP: {e}")
-            return make_response(jsonify({"error": str(e)}), 500)
-
-    @staticmethod
-    def resend_otp(phone_number):
-        """Sends an OTP to the user's phone number using Supabase."""
-        try:
-            # Send OTP to the user's phone number
-            response = supabase_client.auth.resend({"phone": phone_number, "type": "sms"})
-
-            if response:
-                logging.debug(f"OTP sent successfully to {phone_number}")
-                res = make_response(jsonify({"message": "OTP sent successfully"}), 200)
-                return res
-            else:
-                error_message = response.error.message if response.error else "Failed to send OTP"
-                logging.error(f"Failed to send OTP: {error_message}")
-                return make_response(jsonify({"error": error_message}), 400)
-
-        except Exception as e:
-            logging.error(f"Error sending OTP: {e}")
-            return make_response(jsonify({"error": str(e)}), 500)
-
-    @staticmethod
-    def verify_otp(phone_number, otp):
-        """Verifies the OTP and issues session tokens."""
-        try:
-            # Verify the OTP
-            response = supabase_client.auth.verify_otp({"phone": phone_number, "token": otp, "type": "sms"})
-
+            response = supabase_client.auth.sign_in_with_password({"email": email, "password": password})
             if response.session:
-                access_token = response.session.access_token
-                refresh_token = response.session.refresh_token
-                expires_in = response.session.expires_in  # Expires in seconds
-                user_id = response.session.user.id
-
-                # Compute expires_at timestamp
-                expires_at = int(time.time()) + expires_in
-
-                # Build the auth response
-                auth_response = {
-                    "access_token": access_token,
-                    "refresh_token": refresh_token,
-                    "expires_at": expires_at,
-                    "user": {"id": user_id},
-                }
-                res = AuthService._build_session_response(auth_response)
-                return res
+                breakpoint()
+                return AuthService._build_session_response(response.session)
             else:
-                error_message = response.error.message if response.error else "Failed to verify OTP"
-                logging.error(f"Failed to verify OTP: {error_message}")
+                error_message = response.error.message if response.error else "Failed to sign in user"
+                logging.error(f"Failed to sign in user: {error_message}")
                 return make_response(jsonify({"error": error_message}), 400)
-
         except Exception as e:
-            logging.error(f"Error during OTP verification: {e}")
+            logging.error(f"Error during login: {e}")
             return make_response(jsonify({"error": str(e)}), 500)
 
     @staticmethod
@@ -247,3 +177,34 @@ class AuthService:
         except Exception as e:
             logging.error(f"Error during Google sign in: {e}")
             return make_response(jsonify({"error": str(e)}), 500)
+
+    @staticmethod
+    def create_manager_invitation(owner_id: str, email: str, team_id: str) -> Tuple[Response, int]:
+        """
+        Creates an invitation for a manager to join a team.
+
+        Args:
+            owner_id: ID of the owner creating the invitation
+            email: Email address of the invited manager
+            team_id: ID of the team the manager is being invited to
+        """
+        try:
+            # Generate a temporary password for the manager
+            temp_password = AuthService.generate_random_password()
+
+            # Create the user account with manager role
+            user_metadata = {"role": "manager", "owner_id": owner_id, "team_id": team_id, "invitation_pending": True}
+
+            response = supabase_admin_client.auth.admin.create_user({"email": email, "password": temp_password, "email_confirm": True, "user_metadata": user_metadata})
+
+            if not response.user:
+                return jsonify({"error": "Failed to create manager account"}), 400
+
+            # Here you would typically send an email to the manager with their credentials
+            # and a link to set up their account
+
+            return jsonify({"message": "Manager invitation created successfully", "user_id": response.user.id}), 200
+
+        except Exception as e:
+            logging.error(f"Error creating manager invitation: {e}")
+            return jsonify({"error": str(e)}), 500

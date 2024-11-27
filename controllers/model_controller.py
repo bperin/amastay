@@ -4,6 +4,7 @@ from flask import request, current_app, g
 from flask_restx import Namespace, Resource, fields
 from services.model_params_service import get_active_model_param
 from services.process_service import handle_incoming_sms
+import uuid
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -16,7 +17,7 @@ input_model = ns_model.model(
     {
         "message": fields.String(required=True, description="User input message"),
         "phone": fields.String(required=True, description="Origination number"),
-        "message_id": fields.String(required=True, description="Message id"),
+        "send_message": fields.Boolean(required=True, description="Send SMS message"),
     },
 )
 
@@ -31,18 +32,18 @@ output_model = ns_model.model(
 
 @ns_model.route("/query")
 class QueryModel(Resource):
-    @jwt_required
     @ns_model.expect(input_model)
     def post(self):
         try:
             data = request.json
             message = data.get("message")
             phone = data.get("phone")
-            message_id = data.get("message_id")
+            message_id = str(uuid.uuid4())
+            send_message = data.get("send_message", True)
 
-            handle_incoming_sms(message_id, phone, message)
+            response = handle_incoming_sms(message_id, phone, message, send_message)
 
-            return {"status": "success"}, 200
+            return {"response": response}, 200
 
         except Exception as e:
             logger.exception(f"Error in query_model for phone {phone}: {str(e)}")

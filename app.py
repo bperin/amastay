@@ -21,6 +21,8 @@ from controllers.model_controller import ns_model
 from controllers.booking_controller import ns_booking
 from controllers.guest_controller import ns_guest
 from controllers.manager_controller import ns_manager
+from controllers.user_controller import ns_user
+from controllers.team_controller import ns_team
 from auth_utils import jwt_required
 from services.sagemaker_service import SageMakerService
 
@@ -76,6 +78,8 @@ def create_app():
     api.add_namespace(ns_webhooks, path="/api/v1/webhooks")
     api.add_namespace(ns_model, path="/api/v1/model")
     api.add_namespace(ns_manager, path="/api/v1/managers")
+    api.add_namespace(ns_user, path="/api/v1/users")
+    api.add_namespace(ns_team, path="/api/v1/teams")
 
     return app
 

@@ -4,12 +4,10 @@ from pydantic import BaseModel
 from datetime import datetime
 
 
-class Manager(BaseModel):
+class Team(BaseModel):
     id: str
+    name: str
     owner_id: str
-    first_name: str
-    last_name: str
-    email: str
-    phone: Optional[str] = None
+    description: str
     created_at: str
     updated_at: str
