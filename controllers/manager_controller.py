@@ -7,9 +7,16 @@ from uuid import UUID
 from services.manager_service import ManagerService
 from auth_utils import jwt_required
 from models.manager import Manager
+from .inputs.manager_inputs import get_manager_input_models
 
 # Create namespace for manager-related routes
 ns_manager = Namespace("managers", description="Manager operations")
+
+# Get input models
+manager_input_models = get_manager_input_models(ns_manager)
+manager_invite_model = manager_input_models["manager_invite_model"]
+update_manager_model = manager_input_models["update_manager_model"]
+assign_manager_to_team_model = manager_input_models["assign_manager_to_team_model"]
 
 # Response models
 manager_model = ns_manager.model(
@@ -26,52 +33,34 @@ manager_model = ns_manager.model(
     },
 )
 
-# Input models
-create_manager_model = ns_manager.model(
-    "CreateManager",
-    {
-        "first_name": fields.String(required=True, description="Manager's first name"),
-        "last_name": fields.String(required=True, description="Manager's last name"),
-        "email": fields.String(required=True, description="Manager's email"),
-        "phone": fields.String(required=False, description="Manager's phone number"),
-    },
-)
 
-update_manager_model = ns_manager.model(
-    "UpdateManager",
-    {
-        "id": fields.String(required=True, description="Manager ID"),
-        "first_name": fields.String(description="Manager's first name"),
-        "last_name": fields.String(description="Manager's last name"),
-        "email": fields.String(description="Manager's email"),
-        "phone": fields.String(description="Manager's phone number"),
-    },
-)
-
-
-@ns_manager.route("")
-class ManagerList(Resource):
-    @ns_manager.doc("create_manager")
-    @ns_manager.expect(create_manager_model)
-    @ns_manager.response(201, "Manager created", manager_model)
-    @ns_manager.response(400, "Validation error")
+@ns_manager.route("/invite")
+class ManagerInvite(Resource):
+    @ns_manager.doc("invite_manager")
+    @ns_manager.expect(manager_invite_model)
+    @ns_manager.response(200, "Manager invited successfully")
+    @ns_manager.response(400, "Invalid request")
     @ns_manager.response(500, "Internal server error")
     @jwt_required
     def post(self):
-        """Create a new manager"""
+        """Send invitation to a new manager"""
         try:
             data = request.get_json()
+            owner_id = g.user_id
 
-            data["owner_id"] = g.user_id
+            team_id = data.get("team_id", None)  # Use get() to handle optional team_id
+            result = ManagerService.create_manager_invitation(first_name=data["first_name"], last_name=data["last_name"], phone=data["phone"], owner_id=owner_id, email=data["email"], team_id=team_id)
+            return result, 200
 
-            manager = ManagerService.create_manager(data)
-            return manager.model_dump(), 201
         except ValueError as e:
             return {"error": str(e)}, 400
         except Exception as e:
-            logging.error(f"Error creating manager: {e}")
+            logging.error(f"Error inviting manager: {e}")
             return {"error": "Internal server error"}, 500
 
+
+@ns_manager.route("/list")
+class ListManagers(Resource):
     @ns_manager.doc("list_managers")
     @ns_manager.response(200, "Success", [manager_model])
     @ns_manager.response(500, "Internal server error")

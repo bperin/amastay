@@ -35,36 +35,49 @@ class AuthService:
         """
         try:
             user_metadata = {"first_name": first_name, "last_name": last_name, "phone": phone, "user_type": user_type}
-
             response = supabase_client.auth.sign_up({"email": email, "options": {"data": user_metadata, "emailRedirectTo": "http://localhost:3000"}, "password": password})
 
             if not response.user:
                 error_message = response.error.message if response.error else "Failed to sign up user"
                 logging.error(f"Failed to sign up user: {error_message}")
-                return make_response(jsonify({"error": error_message}), 400)
+                raise Exception(error_message)
 
             logging.debug(f"User signed up with ID: {response.user.id}")
-            return make_response(jsonify({"message": "User created successfully"}), 200)
+            return response.user
 
         except Exception as e:
             logging.error(f"Error during sign-up: {e}")
-            return make_response(jsonify({"error": str(e)}), 500)
+            raise
 
     @staticmethod
     def login(email: str, password: str):
-        """Logs in a user with email and password."""
+        """Logs in a user with email and password using direct Supabase REST API."""
         try:
-            response = supabase_client.auth.sign_in_with_password({"email": email, "password": password})
-            if response.session:
-                breakpoint()
-                return AuthService._build_session_response(response.session)
-            else:
-                error_message = response.error.message if response.error else "Failed to sign in user"
+            # Define the URL for Supabase's sign-in endpoint
+            auth_url = f"{supabase_client.supabase_url}/auth/v1/token?grant_type=password"
+
+            # Set headers for the request
+            headers = {
+                "Content-Type": "application/json",
+                "apikey": supabase_client.supabase_key,
+                "Authorization": f"Bearer {supabase_client.supabase_key}",
+            }
+
+            # Make the request to the Supabase auth endpoint
+            response = requests.post(auth_url, json={"email": email, "password": password}, headers=headers)
+
+            if response.status_code != 200:
+                error_message = response.json().get("error_description", "Failed to sign in user")
                 logging.error(f"Failed to sign in user: {error_message}")
-                return make_response(jsonify({"error": error_message}), 400)
+                raise Exception(error_message)
+
+            auth_response = response.json()
+            logging.debug("User logged in successfully")
+            return AuthService._build_session_response(auth_response)
+
         except Exception as e:
             logging.error(f"Error during login: {e}")
-            return make_response(jsonify({"error": str(e)}), 500)
+            raise
 
     @staticmethod
     def refresh_token():
@@ -102,11 +115,11 @@ class AuthService:
             else:
                 error_message = response.json().get("error_description", "Unknown error")
                 logging.error(f"Failed to refresh session: {error_message}")
-                return {"error": error_message}, 500
+                raise Exception(error_message)
 
         except Exception as e:
             logging.error(f"Error refreshing token: {e}")
-            return {"error": str(e)}, 500
+            raise
 
     @staticmethod
     def get_current_user() -> UserResponse | None:
@@ -116,10 +129,7 @@ class AuthService:
             auth_header = request.headers.get("Authorization")
             if not auth_header or not auth_header.startswith("Bearer "):
                 logging.warning("Authorization header missing or invalid")
-                return (
-                    jsonify({"error": "Authorization header missing or invalid"}),
-                    401,
-                )
+                return {"error": "Authorization header missing or invalid"}, 401
 
             access_token = auth_header.split(" ")[1]
 
@@ -128,7 +138,7 @@ class AuthService:
 
         except Exception as e:
             logging.error(f"Error retrieving current user: {e}")
-            return jsonify({"error": str(e)}), 500
+            raise
 
     @staticmethod
     def _build_session_response(auth_response):
@@ -144,67 +154,96 @@ class AuthService:
             expires_at = int(time.time()) + int(expires_in)
 
         # Create a response with the tokens and user ID in the headers
-        res = make_response(jsonify({"message": "Token issued successfully"}), 200)
-        res.headers["x-access-token"] = auth_response["access_token"]
-        res.headers["x-refresh-token"] = auth_response["refresh_token"]
-        res.headers["x-expires-at"] = str(expires_at)
-        res.headers["x-user-id"] = user_id  # Add the user ID to the headers
+        response = {"message": "Token issued successfully"}
+        headers = {"x-access-token": auth_response["access_token"], "x-refresh-token": auth_response["refresh_token"], "x-expires-at": str(expires_at), "x-user-id": user_id}
 
         logging.debug(f"User ID {user_id} included in response headers")
 
-        return res
-
-    @staticmethod
-    def logout():
-        return supabase_client.auth.sign_out()
+        return response, 200, headers
 
     @staticmethod
     def sign_in_with_google(credential: str, nonce: str = None):
-        """Signs in or signs up a user with Google credentials."""
+        """Signs in or signs up a user with Google credentials using direct Supabase REST API."""
         try:
-            # Sign in with Google ID token
-            response = supabase_client.auth.sign_in_with_id_token({"provider": Provider.google, "token": credential, "nonce": nonce})
+            # Define the URL for Supabase's OAuth sign-in endpoint
+            auth_url = f"{supabase_client.supabase_url}/auth/v1/token?grant_type=id_token"
 
-            if response.session:
-                # Build response similar to OTP verification
-                auth_response = {"access_token": response.session.access_token, "refresh_token": response.session.refresh_token, "expires_in": response.session.expires_in, "user": {"id": response.session.user.id}}
+            # Set headers for the request
+            headers = {
+                "Content-Type": "application/json",
+                "apikey": supabase_client.supabase_key,
+                "Authorization": f"Bearer {supabase_client.supabase_key}",
+            }
+
+            # Prepare the request body
+            body = {
+                "id_token": credential,
+                "provider": "google",
+            }
+            if nonce:
+                body["nonce"] = nonce
+
+            # Make the request to the Supabase auth endpoint
+            response = requests.post(auth_url, json=body, headers=headers)
+
+            if response.status_code == 200:
+                auth_response = response.json()
+                logging.debug("User signed in with Google successfully")
                 return AuthService._build_session_response(auth_response)
             else:
-                error_message = "Failed to authenticate with Google"
-                logging.error(error_message)
-                return make_response(jsonify({"error": error_message}), 400)
+                error_message = response.json().get("error_description", "Failed to authenticate with Google")
+                logging.error(f"Failed to sign in with Google: {error_message}")
+                raise Exception(error_message)
 
         except Exception as e:
             logging.error(f"Error during Google sign in: {e}")
-            return make_response(jsonify({"error": str(e)}), 500)
+            raise
 
     @staticmethod
-    def create_manager_invitation(owner_id: str, email: str, team_id: str) -> Tuple[Response, int]:
+    def request_password_reset(*, email: str):
         """
-        Creates an invitation for a manager to join a team.
+        Requests a password reset for the given email using Supabase REST API
 
         Args:
-            owner_id: ID of the owner creating the invitation
-            email: Email address of the invited manager
-            team_id: ID of the team the manager is being invited to
+            email: User's email address
         """
         try:
-            # Generate a temporary password for the manager
-            temp_password = AuthService.generate_random_password()
+            auth_url = f"{supabase_client.supabase_url}/auth/v1/recover"
 
-            # Create the user account with manager role
-            user_metadata = {"role": "manager", "owner_id": owner_id, "team_id": team_id, "invitation_pending": True}
+            headers = {"Content-Type": "application/json", "apikey": supabase_client.supabase_key, "Authorization": f"Bearer {supabase_client.supabase_key}"}
 
-            response = supabase_admin_client.auth.admin.create_user({"email": email, "password": temp_password, "email_confirm": True, "user_metadata": user_metadata})
+            response = requests.post(auth_url, json={"email": email}, headers=headers)
 
-            if not response.user:
-                return jsonify({"error": "Failed to create manager account"}), 400
+            if response.status_code != 200:
+                error_message = response.json().get("error_description", "Failed to request password reset")
+                logging.error(f"Failed to request password reset: {error_message}")
+                raise Exception(error_message)
 
-            # Here you would typically send an email to the manager with their credentials
-            # and a link to set up their account
-
-            return jsonify({"message": "Manager invitation created successfully", "user_id": response.user.id}), 200
+            return {"message": "Password reset instructions sent to email"}, 200
 
         except Exception as e:
-            logging.error(f"Error creating manager invitation: {e}")
-            return jsonify({"error": str(e)}), 500
+            logging.error(f"Error requesting password reset: {e}")
+            raise
+
+    @staticmethod
+    def reset_password(*, access_token: str, new_password: str):
+        """
+        Resets the user's password using Supabase's verify_otp method
+
+        Args:
+            access_token: Recovery token from URL (the OTP)
+            new_password: New password to set
+        """
+        try:
+            # Verify the recovery token (OTP)
+            verify_response = supabase_client.auth.verify_otp({"token_hash": access_token, "type": "recovery", "new_password": new_password})
+
+            if not verify_response.user:
+                logging.error("Failed to verify recovery token")
+                raise Exception("Failed to reset password")
+
+            return {"message": "Password reset successfully"}, 200
+
+        except Exception as e:
+            logging.error(f"Error resetting password: {e}")
+            raise

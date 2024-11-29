@@ -1,22 +1,43 @@
 from typing import List, Optional
 from uuid import UUID
 from datetime import datetime
-
+import logging
 from models.manager import Manager
 from supabase_utils import supabase_client, supabase_admin_client
+from gotrue.types import InviteUserByEmailOptions
+from flask import g
 
 
 class ManagerService:
+
     @staticmethod
-    def create_manager(payload: dict) -> bool:
-        """Create a new manager"""
+    def create_manager_invitation(first_name: str, last_name: str, phone: str, owner_id: str, email: str, team_id: Optional[str] = None) -> dict:
+        """
+        Creates an invitation for a manager to join a team.
 
-        result = supabase_admin_client.auth.admin.invite_user_by_email(email=payload["email"], data=payload)
+        Args:
+            owner_id: ID of the owner creating the invitation
+            email: Email address of the invited manager
+            team_id: ID of the team the manager is being invited to
+        """
+        try:
 
-        if not result.data:
-            raise ValueError("Failed to invite manager")
+            # Create the user account with manager role
+            user_metadata = {"first_name": first_name, "last_name": last_name, "phone": phone, "user_type": "manager", "owner_id": owner_id}
+            options = InviteUserByEmailOptions(data=user_metadata)
+            response = supabase_admin_client.auth.admin.invite_user_by_email(email=email, options=options)
 
-        return True
+            if not response.user:
+                raise ValueError("Failed to create manager account")
+
+            # Here you would typically send an email to the manager with their credentials
+            # and a link to set up their account
+
+            return {"message": "Manager invitation created successfully"}
+
+        except Exception as e:
+            logging.error(f"Error creating manager invitation: {e}")
+            raise
 
     @staticmethod
     def get_manager(id: str) -> Optional[Manager]:

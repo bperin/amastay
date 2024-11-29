@@ -4,28 +4,19 @@ from services.team_service import TeamService
 from auth_utils import jwt_required
 import logging
 from uuid import UUID
+from .inputs.team_inputs import get_team_input_models
 
 
 # Create namespace
 ns_team = Namespace("teams", description="Team management operations")
 
-# Define request/response models
-create_team_model = ns_team.model(
-    "CreateTeam",
-    {
-        "name": fields.String(required=True, description="Team name"),
-        "description": fields.String(required=True, description="Team description"),
-    },
-)
+# Get input models
+team_input_models = get_team_input_models(ns_team)
+create_team_model = team_input_models["create_team_model"]
+assign_team_to_property_model = team_input_models["assign_team_to_property_model"]
+assign_manager_to_team_model = team_input_models["assign_manager_to_team_model"]
 
-assign_team_to_property_model = ns_team.model(
-    "AssignTeamToProperty",
-    {
-        "team_id": fields.String(required=True, description="Team ID"),
-        "property_id": fields.String(required=True, description="Property ID"),
-    },
-)
-
+# Response models
 team_response_model = ns_team.model(
     "TeamResponse",
     {
@@ -38,16 +29,6 @@ team_response_model = ns_team.model(
     },
 )
 
-
-assign_manager_to_team_model = ns_team.model(
-    "AssignManagerToTeam",
-    {
-        "team_id": fields.String(required=True, description="Team ID"),
-        "manager_id": fields.String(required=True, description="Manager ID"),
-    },
-)
-
-# Define manager response model based on Manager class
 manager_response_model = ns_team.model(
     "ManagerResponse",
     {

@@ -7,23 +7,15 @@ from models.booking import Booking
 from services.booking_service import BookingService
 from auth_utils import jwt_required
 from uuid import UUID
-
 from services.pinpoint_service import PinpointService
+from .inputs.booking_inputs import get_booking_input_models
 
 # Create the Namespace for booking-related routes
 ns_booking = Namespace("bookings", description="Booking management")
 
-# Define models for request/response
-booking_model = ns_booking.model(
-    "Booking",
-    {
-        "property_id": fields.String(required=True, description="The property ID"),
-        "check_in": fields.Integer(required=True, description="Check-in date and time as Unix timestamp"),
-        "check_out": fields.Integer(required=True, description="Check-out date and time as Unix timestamp"),
-        "status": fields.String(required=False, description="Booking status"),
-        # Add other fields as necessary
-    },
-)
+# Get input models
+booking_input_models = get_booking_input_models(ns_booking)
+booking_model = booking_input_models["booking_model"]
 
 
 # Route to create a new booking

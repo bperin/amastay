@@ -6,11 +6,11 @@ from typing import Optional
 
 class PropertyInformation(BaseModel):
     id: str
-    property_id: Optional[str] = None
-    name: Optional[str] = None
-    detail: Optional[str] = None
-    is_recommendation: Optional[bool] = None
-    metadata_url: Optional[str] = None
-    category: Optional[str] = None
-    created_at: Optional[str] = None
-    updated_at: Optional[str] = None
+    property_id: str
+    name: str
+    detail: str
+    is_recommendation: bool
+    metadata_url: str
+    category: str
+    created_at: str
+    updated_at: str

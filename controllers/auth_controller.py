@@ -9,64 +9,12 @@ import logging
 import time
 from gotrue import UserResponse
 from gotrue.types import Provider
+from .inputs.auth_inputs import get_auth_input_models
 
 # Configure logging
 logger = logging.getLogger(__name__)
 
 ns_auth = Namespace("authentication", description="Authentication operations")
-
-# Define models for request/response
-signup_model = ns_auth.model(
-    "Signup",
-    {
-        "first_name": fields.String(required=True, description="First name", type="string"),
-        "last_name": fields.String(required=True, description="Last name", type="string"),
-        "email": fields.String(required=True, description="Last name", type="string"),
-        "phone": fields.String(required=True, description="Phone", type="string"),
-        "password": fields.String(required=True, description="Password", type="string"),
-    },
-)
-
-otp_model = ns_auth.model(
-    "OTP",
-    {
-        "phone": fields.String(required=True, description="Phone number"),
-        "otp": fields.String(required=True, description="One-time password"),
-    },
-)
-get_me_response = ns_auth.model(
-    "GetMeResponse",
-    {
-        "id": fields.String(description="User ID"),
-        "email": fields.String(description="User email"),
-        "phone": fields.String(description="User phone number"),
-        "created_at": fields.DateTime(description="Account creation timestamp"),
-        "updated_at": fields.DateTime(description="Last update timestamp"),
-        "confirmed_at": fields.DateTime(description="Email confirmation timestamp"),
-        "last_sign_in_at": fields.DateTime(description="Last sign in timestamp"),
-        "role": fields.String(description="User role"),
-        "app_metadata": fields.Raw(description="Application metadata"),
-        "user_metadata": fields.Raw(description="User metadata"),
-        "identities": fields.List(fields.Raw, description="User identities"),
-    },
-)
-otp_response = ns_auth.model(
-    "OTPResponse",
-    {
-        "message": fields.String(description="Success message"),
-    },
-)
-
-
-login_model = ns_auth.model(
-    "Login",
-    {"email": fields.String(required=True, description="User email"), "password": fields.String(required=True, description="User password")},
-)
-
-google_signin_model = ns_auth.model(
-    "GoogleSignIn",
-    {"credential": fields.String(required=True, description="Google ID token"), "nonce": fields.String(required=False, description="Optional nonce for verification")},
-)
 
 # Define shared auth response model
 auth_response = ns_auth.response(
@@ -83,6 +31,15 @@ auth_response = ns_auth.response(
         "x-user-id": {"description": "User ID", "type": "string"},
     },
 )
+
+auth_input_models = get_auth_input_models(ns_auth)
+
+signup_model = auth_input_models["signup_model"]
+otp_model = auth_input_models["otp_model"]
+login_model = auth_input_models["login_model"]
+google_signin_model = auth_input_models["google_signin_model"]
+password_reset_request_model = auth_input_models["password_reset_request_model"]
+password_reset_model = auth_input_models["password_reset_model"]
 
 
 # Sign-Up Route
@@ -242,3 +199,49 @@ class GoogleSignIn(Resource):
             return {"error": "Google credential is required"}, 400
 
         return AuthService.sign_in_with_google(credential, nonce)
+
+
+@ns_auth.route("/request-password-reset")
+class RequestPasswordReset(Resource):
+    @ns_auth.expect(password_reset_request_model)
+    @ns_auth.doc(responses={200: "Success", 400: "Invalid request"})
+    def post(self):
+        """
+        Request a password reset link to be sent to email
+        """
+        data = request.get_json()
+        email = data.get("email")
+
+        if not email:
+            return {"error": "Email is required"}, 400
+
+        try:
+            return AuthService.request_password_reset(email=email)
+        except Exception as e:
+            logger.error(f"Password reset request failed: {e}")
+            return {"error": str(e)}, 400
+
+
+@ns_auth.route("/reset-password")
+class ResetPassword(Resource):
+    @ns_auth.expect(password_reset_model)
+    @ns_auth.doc(responses={200: "Success", 400: "Invalid request"})
+    def post(self):
+        """
+        Reset password using the token received via email
+        """
+        data = request.get_json()
+        access_token = data.get("access_token")
+        new_password = data.get("new_password")
+
+        if not access_token or not new_password:
+            return {"error": "Access token and new password are required"}, 400
+
+        if len(new_password) < 8:
+            return {"error": "Password must be at least 8 characters long"}, 400
+
+        try:
+            return AuthService.reset_password(access_token=access_token, new_password=new_password)
+        except Exception as e:
+            logger.error(f"Password reset failed: {e}")
+            return {"error": str(e)}, 400

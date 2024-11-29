@@ -10,56 +10,20 @@ from geopy.geocoders import Nominatim
 from geopy.exc import GeocoderTimedOut, GeocoderServiceError
 from models.property_information import PropertyInformation
 from services.property_information_service import PropertyInformationService
+from .inputs.property_inputs import get_property_input_models
 
 # Create the Namespace for property-related routes
 ns_property = Namespace("properties", description="Property management")
 
 # Define models for request/response
-create_property_model = ns_property.model(
-    "CreateProperty",
-    {
-        "name": fields.String(required=True, description="The property name"),
-        "address": fields.String(required=True, description="The property address"),
-        "description": fields.String(required=False, description="The property description"),
-        "property_url": fields.String(required=True, description="The property Url"),
-    },
-)
+property_input_models = get_property_input_models(ns_property)
 
-# Define update property model for patch operations
-update_property_model = ns_property.model(
-    "UpdateProperty",
-    {
-        "id": fields.String(required=True, description="The property id"),
-        "name": fields.String(required=False, description="The property name"),
-        "address": fields.String(required=False, description="The property address"),
-        "description": fields.String(required=False, description="The property description"),
-        "property_url": fields.String(required=False, description="The property Url"),
-    },
-)
+create_property_model = property_input_models["create_property_model"]
+update_property_model = property_input_models["update_property_model"]
+add_property_info_model = property_input_models["add_property_info_model"]
+update_property_info_model = property_input_models["update_property_info_model"]
+
 # Define model for property information
-add_property_info_model = ns_property.model(
-    "AddPropertyInformation",
-    {
-        "property_id": fields.String(required=True, description="Property id"),
-        "name": fields.String(required=True, description="Information name"),
-        "detail": fields.String(required=True, description="Information detail"),
-        "is_recommendation": fields.Boolean(required=True, description="Recommendation"),
-        "metadata_url": fields.String(required=False, description="Information metadata url"),
-        "category_id": fields.String(required=False, description="Information category_id"),
-    },
-)
-
-# Define model for updating property information
-update_property_info_model = ns_property.model(
-    "UpdatePropertyInformation",
-    {
-        "id": fields.String(required=True, description="Property information id"),
-        "name": fields.String(required=False, description="Information name"),
-        "detail": fields.String(required=False, description="Information detail"),
-        "is_recommendation": fields.Boolean(required=False, description="Recommendation"),
-    },
-)
-# Define model for property information response
 property_information_response_model = ns_property.model(
     "PropertyInformationResponse",
     {
