@@ -4,10 +4,11 @@ from flask import jsonify, request
 from flask_restx import Namespace, Resource, fields
 from auth_utils import jwt_required
 from models.owner import Owner
+from models.to_swagger import pydantic_to_swagger_model
 from services.auth_service import AuthService
 import logging
 import time
-from gotrue import UserResponse
+from gotrue import AuthResponse, UserResponse, User
 from gotrue.types import Provider
 from .inputs.auth_inputs import get_auth_input_models
 
@@ -17,35 +18,34 @@ logger = logging.getLogger(__name__)
 ns_auth = Namespace("authentication", description="Authentication operations")
 
 # Define shared auth response model
-auth_response = ns_auth.response(
-    200,
-    "Success",
-    otp_response,
-    headers={
-        "x-access-token": {"description": "Access token", "type": "string"},
-        "x-refresh-token": {"description": "Refresh token", "type": "string"},
-        "x-expires-at": {
-            "description": "Token expiration timestamp",
-            "type": "integer",
-        },
-        "x-user-id": {"description": "User ID", "type": "string"},
-    },
-)
+auth_response_headers = ns_auth.model("AuthResponseHeaders", {"x-access-token": fields.String(description="Access token"), "x-refresh-token": fields.String(description="Refresh token"), "x-expires-at": fields.Integer(description="Token expiration timestamp")})
+auth_response_model = ns_auth.model("AuthResponseModel", {"success": fields.Boolean(description="Success status"), "message": fields.String(description="Response message"), "headers": fields.Nested(auth_response_headers)})
 
-auth_input_models = get_auth_input_models(ns_auth)
+# Get input models from auth_inputs
+signup_input_model = get_auth_input_models(ns_auth)["signup_model"]
+login_input_model = get_auth_input_models(ns_auth)["login_model"]
+google_signin_input_model = get_auth_input_models(ns_auth)["google_signin_model"]
+password_reset_input_request_model = get_auth_input_models(ns_auth)["password_reset_request_model"]
+password_reset_input_model = get_auth_input_models(ns_auth)["password_reset_model"]
+otp_input_model = get_auth_input_models(ns_auth)["otp_model"]
 
-signup_model = auth_input_models["signup_model"]
-otp_model = auth_input_models["otp_model"]
-login_model = auth_input_models["login_model"]
-google_signin_model = auth_input_models["google_signin_model"]
-password_reset_request_model = auth_input_models["password_reset_request_model"]
-password_reset_model = auth_input_models["password_reset_model"]
+# Add debug logging for model registration
+logger.debug("Converting User model to Swagger")
+sign_up_response = pydantic_to_swagger_model(ns_auth, "SignUpResponse", AuthResponse)
+logger.debug("User model converted successfully")
+
+logger.debug("Converting UserResponse model to Swagger")
+get_me_response = pydantic_to_swagger_model(ns_auth, "GetMeResponse", UserResponse)
+logger.debug("UserResponse model converted successfully")
 
 
 # Sign-Up Route
 @ns_auth.route("/signup")
 class Signup(Resource):
-    @ns_auth.expect(signup_model)
+    @ns_auth.expect(signup_input_model)
+    @ns_auth.response(200, "Success", sign_up_response)
+    @ns_auth.response(400, "Invalid request")
+    @ns_auth.response(500, "Internal server error")
     def post(self):
         """
         Signs up a new user and sends an OTP to their phone number.
@@ -53,53 +53,36 @@ class Signup(Resource):
         """
         data = request.get_json()
 
-        # Extract fields with proper default handling and sanitize
-        first_name = data.get("first_name", "").strip()
-        last_name = data.get("last_name", "").strip()
-        email = data.get("email", "").strip()
-        password = data.get("password", "").strip()
-        phone = data.get("phone", "").strip()
-        # Set sanitized values back in the data object
-        data["first_name"] = first_name
-        data["last_name"] = last_name
-        data["email"] = email
-        data["password"] = password
-        data["phone"] = phone
-
-        print(f"first_name: {first_name}, last_name: {last_name}, email: {email}, password: {password}, phone: {phone}")
-        # Validate each field individually for better error messages
+        # Sanitize and validate required fields
+        required_fields = ["first_name", "last_name", "email", "password", "phone"]
         errors = {}
-        if not first_name:
-            errors["first_name"] = "First name is required"
-        if not last_name:
-            errors["last_name"] = "Last name is required"
-        if not email:
-            errors["email"] = "Email is required"
-        if not password:
-            errors["password"] = "Password is required"
-        if not phone:
-            errors["phone"] = "Phone is required"
+
+        for field in required_fields:
+            value = data.get(field, "").strip()
+            if not value:
+                errors[field] = f"{field.replace('_', ' ').title()} is required"
+            data[field] = value
 
         if errors:
             logger.warning(f"Signup failed: {errors}")
             return {"errors": errors}, 400
 
         # Add basic password validation
-        if len(password) < 8:
+        if len(data.get("password", "")) < 8:
             return {"error": "Password must be at least 8 characters long"}, 400
 
         # Call the AuthService to handle sign-up
-        return AuthService.signup(first_name=data["first_name"], last_name=data["last_name"], email=data["email"], password=data["password"], phone=data["phone"], user_type="owner")
+        user = AuthService.sign_up_with_email_and_password(first_name=data["first_name"], last_name=data["last_name"], email=data["email"], password=data["password"], phone=data["phone"], user_type="owner")
+        return user.model_dump(), 200
 
 
 # OTP Verification Route
 @ns_auth.route("/verify_otp")
-@auth_response
 class VerifyOTP(Resource):
-    @ns_auth.expect(otp_model)
+    @ns_auth.expect(otp_input_model)
     def post(self):
         """
-        Verifies the OTP received by the user and issues session tokens.
+        Verifies the OTP received by the user and issues  session tokens.
         Expects JSON data with phone_number and otp.
         """
         data = request.get_json()
@@ -116,8 +99,9 @@ class VerifyOTP(Resource):
 
 # Refresh Token Route
 @ns_auth.route("/refresh_token")
-@auth_response
 class RefreshToken(Resource):
+    @ns_auth.response(200, "Success", auth_response_model)
+    @ns_auth.response(400, "Bad Request")
     def post(self):
         """
         Refreshes the session tokens using the provided refresh token.
@@ -130,6 +114,8 @@ class RefreshToken(Resource):
 class GetCurrentUser(Resource):
     @jwt_required
     @ns_auth.response(200, "Success", get_me_response)
+    @ns_auth.response(400, "Bad Request")
+    @ns_auth.response(500, "Internal server error")
     def get(self):
         """
         Retrieves the current logged-in user's information.
@@ -148,9 +134,12 @@ class Logout(Resource):
         return AuthService.logout()
 
 
-@ns_auth.route("/login")
+@ns_auth.route("/signin")
 class Login(Resource):
-    @ns_auth.expect(login_model)
+    @ns_auth.expect(login_input_model)
+    @ns_auth.response(200, "Success", auth_response_model)
+    @ns_auth.response(400, "Bad Request")
+    @ns_auth.response(500, "Internal server error")
     def post(self):
         """
         Logs in a user with email and password.
@@ -163,30 +152,16 @@ class Login(Resource):
             logger.warning("Login failed: Missing email or password.")
             return {"error": "Email and password are required"}, 400
 
-        return AuthService.login(email, password)
-
-
-@ns_auth.route("/resend")
-class ResendOTP(Resource):
-    @ns_auth.expect(login_model)
-    def post(self):
-        """
-        Resend account creation SMS OTP
-        """
-        data = request.get_json()
-        phone_number = data.get("phone")
-
-        if not phone_number:
-            logger.warning("Resend OTP failed: Missing phone_number.")
-            return {"error": "phone_number is required"}, 400
-
-        return AuthService.resend_otp(phone_number)
+        return AuthService.sign_in_with_email_and_password(email, password)
 
 
 @ns_auth.route("/google")
 class GoogleSignIn(Resource):
-    @ns_auth.expect(google_signin_model)
-    @ns_auth.doc(responses={200: "Success", 400: "Invalid request", 500: "Server error"}, description="Sign in with Google")
+    @ns_auth.expect(google_signin_input_model)
+    @ns_auth.response(200, "Success", auth_response_model)
+    @ns_auth.response(400, "Invalid request")
+    @ns_auth.response(500, "Server error")
+    @ns_auth.doc(description="Sign in with Google")
     def post(self):
         """
         Signs in or signs up a user with Google credentials
@@ -203,7 +178,7 @@ class GoogleSignIn(Resource):
 
 @ns_auth.route("/request-password-reset")
 class RequestPasswordReset(Resource):
-    @ns_auth.expect(password_reset_request_model)
+    @ns_auth.expect(password_reset_input_request_model)
     @ns_auth.doc(responses={200: "Success", 400: "Invalid request"})
     def post(self):
         """
@@ -224,7 +199,7 @@ class RequestPasswordReset(Resource):
 
 @ns_auth.route("/reset-password")
 class ResetPassword(Resource):
-    @ns_auth.expect(password_reset_model)
+    @ns_auth.expect(password_reset_input_model)
     @ns_auth.doc(responses={200: "Success", 400: "Invalid request"})
     def post(self):
         """

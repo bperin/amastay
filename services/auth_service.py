@@ -1,27 +1,17 @@
 # services/auth_service.py
 
-from typing import Literal, Tuple
 from supabase_utils import supabase_client, supabase_admin_client
 import logging
-from flask import Response, jsonify, make_response, request
+from flask import request
 import requests
 import time
-import secrets
-import string
-from gotrue import UserResponse, AuthResponse  # Add this at the top with other imports
-from gotrue.types import Provider
+from gotrue import UserResponse, AuthResponse
 
 
 class AuthService:
 
     @staticmethod
-    def generate_random_password(length=12):
-        """Generates a random string of letters, digits, and special characters."""
-        alphabet = string.ascii_letters + string.digits + string.punctuation
-        return "".join(secrets.choice(alphabet) for _ in range(length))
-
-    @staticmethod
-    def signup(first_name: str, last_name: str, email: str, password: str, phone: str, user_type: str):
+    def sign_up_with_email_and_password(first_name: str, last_name: str, email: str, password: str, phone: str, user_type: str) -> AuthResponse:
         """
         Signs up a new user with user type metadata.
 
@@ -35,22 +25,22 @@ class AuthService:
         """
         try:
             user_metadata = {"first_name": first_name, "last_name": last_name, "phone": phone, "user_type": user_type}
-            response = supabase_client.auth.sign_up({"email": email, "options": {"data": user_metadata, "emailRedirectTo": "http://localhost:3000"}, "password": password})
+            auth_response = supabase_client.auth.sign_up({"email": email, "options": {"data": user_metadata, "emailRedirectTo": "http://localhost:3000"}, "password": password})
 
-            if not response.user:
-                error_message = response.error.message if response.error else "Failed to sign up user"
+            if not auth_response.user:
+                error_message = auth_response.error.message if auth_response.error else "Failed to sign up user"
                 logging.error(f"Failed to sign up user: {error_message}")
                 raise Exception(error_message)
 
-            logging.debug(f"User signed up with ID: {response.user.id}")
-            return response.user
+            logging.debug(f"User signed up with ID: {auth_response.user.id}")
+            return auth_response
 
         except Exception as e:
             logging.error(f"Error during sign-up: {e}")
             raise
 
     @staticmethod
-    def login(email: str, password: str):
+    def sign_in_with_email_and_password(email: str, password: str):
         """Logs in a user with email and password using direct Supabase REST API."""
         try:
             # Define the URL for Supabase's sign-in endpoint
@@ -70,13 +60,51 @@ class AuthService:
                 error_message = response.json().get("error_description", "Failed to sign in user")
                 logging.error(f"Failed to sign in user: {error_message}")
                 raise Exception(error_message)
-
+            breakpoint()
             auth_response = response.json()
             logging.debug("User logged in successfully")
             return AuthService._build_session_response(auth_response)
 
         except Exception as e:
             logging.error(f"Error during login: {e}")
+            raise
+
+    @staticmethod
+    def sign_in_with_google(credential: str, nonce: str = None):
+        """Signs in or signs up a user with Google credentials using direct Supabase REST API."""
+        try:
+            # Define the URL for Supabase's OAuth sign-in endpoint
+            auth_url = f"{supabase_client.supabase_url}/auth/v1/token?grant_type=id_token"
+
+            # Set headers for the request
+            headers = {
+                "Content-Type": "application/json",
+                "apikey": supabase_client.supabase_key,
+                "Authorization": f"Bearer {supabase_client.supabase_key}",
+            }
+
+            # Prepare the request body
+            body = {
+                "id_token": credential,
+                "provider": "google",
+            }
+            if nonce:
+                body["nonce"] = nonce
+
+            # Make the request to the Supabase auth endpoint
+            response = requests.post(auth_url, json=body, headers=headers)
+
+            if response.status_code == 200:
+                auth_response = response.json()
+                logging.debug("User signed in with Google successfully")
+                return AuthService._build_session_response(auth_response)
+            else:
+                error_message = response.json().get("error_description", "Failed to authenticate with Google")
+                logging.error(f"Failed to sign in with Google: {error_message}")
+                raise Exception(error_message)
+
+        except Exception as e:
+            logging.error(f"Error during Google sign in: {e}")
             raise
 
     @staticmethod
@@ -160,44 +188,6 @@ class AuthService:
         logging.debug(f"User ID {user_id} included in response headers")
 
         return response, 200, headers
-
-    @staticmethod
-    def sign_in_with_google(credential: str, nonce: str = None):
-        """Signs in or signs up a user with Google credentials using direct Supabase REST API."""
-        try:
-            # Define the URL for Supabase's OAuth sign-in endpoint
-            auth_url = f"{supabase_client.supabase_url}/auth/v1/token?grant_type=id_token"
-
-            # Set headers for the request
-            headers = {
-                "Content-Type": "application/json",
-                "apikey": supabase_client.supabase_key,
-                "Authorization": f"Bearer {supabase_client.supabase_key}",
-            }
-
-            # Prepare the request body
-            body = {
-                "id_token": credential,
-                "provider": "google",
-            }
-            if nonce:
-                body["nonce"] = nonce
-
-            # Make the request to the Supabase auth endpoint
-            response = requests.post(auth_url, json=body, headers=headers)
-
-            if response.status_code == 200:
-                auth_response = response.json()
-                logging.debug("User signed in with Google successfully")
-                return AuthService._build_session_response(auth_response)
-            else:
-                error_message = response.json().get("error_description", "Failed to authenticate with Google")
-                logging.error(f"Failed to sign in with Google: {error_message}")
-                raise Exception(error_message)
-
-        except Exception as e:
-            logging.error(f"Error during Google sign in: {e}")
-            raise
 
     @staticmethod
     def request_password_reset(*, email: str):
