@@ -48,18 +48,14 @@ def jwt_required(f):
                 logger.warning("Invalid role")
                 return {"error": "Invalid role"}, 403
 
-            # Note: We don't need to manually check for token expiration
-            # jwt.decode() will raise jwt.ExpiredSignatureError if the token has expired
-
-            # After successful JWT validation, set up Supabase session
-            refresh_token = request.headers.get("x-refresh-token")
-
-            # Store user information in Flask's `g` object
             g.current_user = {
                 "id": payload.get("sub"),
                 "role": role,
             }
+            g.user_type = payload.get("user_metadata", {}).get("user_type", None)
             g.user_id = payload.get("sub")
+            logger.debug(f"User ID: {g.user_id}")
+            logger.debug(f"User Type: {g.user_type}")
 
         except jwt.ExpiredSignatureError:
             logger.error("Token has expired")
@@ -77,6 +73,28 @@ def jwt_required(f):
             logger.exception(f"Unexpected error in jwt_required: {str(e)}")
             return {"error": "An unexpected error occurred"}, 500
 
+        return f(*args, **kwargs)
+
+    return decorated
+
+
+def require_owner(f):
+    @wraps(f)
+    def decorated(*args, **kwargs):
+        if not hasattr(g, "user_type") or g.user_type != "owner":
+            logger.warning("Access denied: Owner privileges required")
+            return {"error": "Access denied: Owner privileges required"}, 403
+        return f(*args, **kwargs)
+
+    return decorated
+
+
+def require_admin(f):
+    @wraps(f)
+    def decorated(*args, **kwargs):
+        if not hasattr(g, "user_type") or g.user_type != "owner":
+            logger.warning("Access denied: Owner privileges required")
+            return {"error": "Access denied: Owner privileges required"}, 403
         return f(*args, **kwargs)
 
     return decorated

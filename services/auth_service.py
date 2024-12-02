@@ -40,7 +40,7 @@ class AuthService:
             raise
 
     @staticmethod
-    def sign_in_with_email_and_password(email: str, password: str):
+    def sign_in_with_email_and_password(email: str, password: str) -> AuthResponse:
         """Logs in a user with email and password using direct Supabase REST API."""
         try:
             # Define the URL for Supabase's sign-in endpoint
@@ -60,17 +60,19 @@ class AuthService:
                 error_message = response.json().get("error_description", "Failed to sign in user")
                 logging.error(f"Failed to sign in user: {error_message}")
                 raise Exception(error_message)
-            breakpoint()
-            auth_response = response.json()
+
+            # Convert raw JSON response to AuthResponse model
+            # auth_response = AuthResponse.model_validate(response.json())
             logging.debug("User logged in successfully")
-            return AuthService._build_session_response(auth_response)
+            breakpoint()
+            return response.json()
 
         except Exception as e:
             logging.error(f"Error during login: {e}")
             raise
 
     @staticmethod
-    def sign_in_with_google(credential: str, nonce: str = None):
+    def sign_in_with_google(credential: str, nonce: str = None) -> AuthResponse:
         """Signs in or signs up a user with Google credentials using direct Supabase REST API."""
         try:
             # Define the URL for Supabase's OAuth sign-in endpoint
@@ -95,9 +97,7 @@ class AuthService:
             response = requests.post(auth_url, json=body, headers=headers)
 
             if response.status_code == 200:
-                auth_response = response.json()
-                logging.debug("User signed in with Google successfully")
-                return AuthService._build_session_response(auth_response)
+                return response.json()
             else:
                 error_message = response.json().get("error_description", "Failed to authenticate with Google")
                 logging.error(f"Failed to sign in with Google: {error_message}")
@@ -108,12 +108,12 @@ class AuthService:
             raise
 
     @staticmethod
-    def refresh_token():
+    def refresh_token() -> AuthResponse:
         """Refreshes the session tokens using the provided refresh token."""
         try:
             # Get refresh token from request body
             refresh_token = request.json.get("refresh_token")
-
+            breakpoint()
             logging.debug(f"Received Refresh Token: {refresh_token}")
 
             if not refresh_token:
@@ -135,11 +135,13 @@ class AuthService:
 
             logging.debug(f"Supabase Response Status: {response.status_code}")
             logging.debug(f"Supabase Response Body: {response.text}")
-
+            breakpoint()
             if response.status_code == 200:
-                auth_response = response.json()
+                # Convert raw JSON response to AuthResponse model to match return type
+                auth_response = AuthResponse.model_validate(response.json())
+                breakpoint()
                 logging.debug("Session refreshed successfully")
-                return AuthService._build_session_response(auth_response)
+                return auth_response
             else:
                 error_message = response.json().get("error_description", "Unknown error")
                 logging.error(f"Failed to refresh session: {error_message}")
@@ -167,27 +169,6 @@ class AuthService:
         except Exception as e:
             logging.error(f"Error retrieving current user: {e}")
             raise
-
-    @staticmethod
-    def _build_session_response(auth_response):
-        """Helper function to build the response with session tokens and user ID in headers."""
-        user_id = auth_response["user"]["id"]
-
-        # Determine expires_at
-        expires_at = auth_response.get("expires_at")
-        expires_in = auth_response.get("expires_in")
-
-        # If expires_at is not provided, compute it from expires_in
-        if not expires_at and expires_in:
-            expires_at = int(time.time()) + int(expires_in)
-
-        # Create a response with the tokens and user ID in the headers
-        response = {"message": "Token issued successfully"}
-        headers = {"x-access-token": auth_response["access_token"], "x-refresh-token": auth_response["refresh_token"], "x-expires-at": str(expires_at), "x-user-id": user_id}
-
-        logging.debug(f"User ID {user_id} included in response headers")
-
-        return response, 200, headers
 
     @staticmethod
     def request_password_reset(*, email: str):

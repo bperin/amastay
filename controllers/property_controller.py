@@ -224,16 +224,21 @@ class GetAllPropertyInformation(Resource):
 
 
 # Route to remove property information
-@ns_property.route("/information/<uuid:info_id>")
+@ns_property.route("/information/delete/")
 class RemovePropertyInformation(Resource):
     @ns_property.doc("remove_property_information")
     @ns_property.response(200, "Information removed")
     @jwt_required
-    def delete(self, info_id: UUID):
+    def post(self):
         """
         Removes specific information from a property.
         """
         try:
+            data = request.get_json()
+            info_id = data.get("id")
+            if not info_id:
+                return {"error": "Missing information ID"}, 400
+
             # Call the PropertyInformationService to remove property information
             success = PropertyInformationService.remove_property_information(info_id)
 

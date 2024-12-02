@@ -18,8 +18,7 @@ logger = logging.getLogger(__name__)
 ns_auth = Namespace("authentication", description="Authentication operations")
 
 # Define shared auth response model
-auth_response_headers = ns_auth.model("AuthResponseHeaders", {"x-access-token": fields.String(description="Access token"), "x-refresh-token": fields.String(description="Refresh token"), "x-expires-at": fields.Integer(description="Token expiration timestamp")})
-auth_response_model = ns_auth.model("AuthResponseModel", {"success": fields.Boolean(description="Success status"), "message": fields.String(description="Response message"), "headers": fields.Nested(auth_response_headers)})
+
 
 # Get input models from auth_inputs
 signup_input_model = get_auth_input_models(ns_auth)["signup_model"]
@@ -30,20 +29,15 @@ password_reset_input_model = get_auth_input_models(ns_auth)["password_reset_mode
 otp_input_model = get_auth_input_models(ns_auth)["otp_model"]
 
 # Add debug logging for model registration
-logger.debug("Converting User model to Swagger")
-sign_up_response = pydantic_to_swagger_model(ns_auth, "SignUpResponse", AuthResponse)
-logger.debug("User model converted successfully")
-
-logger.debug("Converting UserResponse model to Swagger")
-get_me_response = pydantic_to_swagger_model(ns_auth, "GetMeResponse", UserResponse)
-logger.debug("UserResponse model converted successfully")
+auth_response_model = pydantic_to_swagger_model(ns_auth, "AuthResponse", AuthResponse)
+user_response_model = pydantic_to_swagger_model(ns_auth, "UserReponse", UserResponse)
 
 
 # Sign-Up Route
 @ns_auth.route("/signup")
 class Signup(Resource):
     @ns_auth.expect(signup_input_model)
-    @ns_auth.response(200, "Success", sign_up_response)
+    @ns_auth.response(200, "Success", auth_response_model)
     @ns_auth.response(400, "Invalid request")
     @ns_auth.response(500, "Internal server error")
     def post(self):
@@ -76,27 +70,6 @@ class Signup(Resource):
         return user.model_dump(), 200
 
 
-# OTP Verification Route
-@ns_auth.route("/verify_otp")
-class VerifyOTP(Resource):
-    @ns_auth.expect(otp_input_model)
-    def post(self):
-        """
-        Verifies the OTP received by the user and issues  session tokens.
-        Expects JSON data with phone_number and otp.
-        """
-        data = request.get_json()
-        phone_number = data.get("phone")
-        otp = data.get("otp")
-
-        if not all([phone_number, otp]):
-            logger.warning("OTP verification failed: Missing phone number or OTP.")
-            return {"error": "Phone number and OTP are required"}, 400
-
-        # Call the AuthService to handle OTP verification
-        return AuthService.verify_otp(phone_number, otp)
-
-
 # Refresh Token Route
 @ns_auth.route("/refresh_token")
 class RefreshToken(Resource):
@@ -113,7 +86,7 @@ class RefreshToken(Resource):
 @ns_auth.route("/me")
 class GetCurrentUser(Resource):
     @jwt_required
-    @ns_auth.response(200, "Success", get_me_response)
+    @ns_auth.response(200, "Success", user_response_model)
     @ns_auth.response(400, "Bad Request")
     @ns_auth.response(500, "Internal server error")
     def get(self):
@@ -144,15 +117,19 @@ class Login(Resource):
         """
         Logs in a user with email and password.
         """
-        data = request.get_json()
-        email = data.get("email")
-        password = data.get("password")
-        breakpoint()
-        if not email or not password:
-            logger.warning("Login failed: Missing email or password.")
-            return {"error": "Email and password are required"}, 400
+        try:
+            data = request.get_json()
+            email = data.get("email")
+            password = data.get("password")
+            breakpoint()
+            if not email or not password:
+                logger.warning("Login failed: Missing email or password.")
+                return {"error": "Email and password are required"}, 400
 
-        return AuthService.sign_in_with_email_and_password(email, password)
+            return AuthService.sign_in_with_email_and_password(email, password)
+        except Exception as e:
+            logger.error(f"Login failed: {e}")
+            return {"error": str(e)}, 500
 
 
 @ns_auth.route("/google")
@@ -166,14 +143,18 @@ class GoogleSignIn(Resource):
         """
         Signs in or signs up a user with Google credentials
         """
-        data = request.get_json()
-        credential = data.get("credential")
-        nonce = data.get("nonce")  # Optional
+        try:
+            data = request.get_json()
+            credential = data.get("credential")
+            nonce = data.get("nonce")  # Optional
 
-        if not credential:
-            return {"error": "Google credential is required"}, 400
+            if not credential:
+                return {"error": "Google credential is required"}, 400
 
-        return AuthService.sign_in_with_google(credential, nonce)
+            return AuthService.sign_in_with_google(credential, nonce)
+        except Exception as e:
+            logger.error(f"Google sign in failed: {e}")
+            return {"error": str(e)}, 500
 
 
 @ns_auth.route("/request-password-reset")

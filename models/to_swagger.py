@@ -16,17 +16,21 @@ def pydantic_to_swagger_model(ns, model_name: str, pydantic_model: Type[BaseMode
                 if type_option.get("type") != "null":
                     return convert_field(type_option, field_name)
 
+        # Handle direct references
+        if field_info.get("$ref"):
+            ref_model_name = field_info["$ref"].split("/")[-1]
+            ref_model = definitions[ref_model_name]
+            nested_fields = {k: convert_field(v, k) for k, v in ref_model["properties"].items()}
+            return fields.Nested(ns.model(f"{field_name}_model", nested_fields))
+
         field_type = field_info.get("type")
 
         if field_type == "array":
             # Handle arrays (like List[UserIdentity])
             items = field_info["items"]
             if items.get("$ref"):
-                # Get the model name from the reference
                 ref_model_name = items["$ref"].split("/")[-1]
-                # Find the referenced model in definitions
                 ref_model = definitions[ref_model_name]
-                # Convert the referenced model
                 item_model = ns.model(f"{field_name}_item", {k: convert_field(v, k) for k, v in ref_model["properties"].items()})
                 return fields.List(fields.Nested(item_model))
             return fields.List(fields.String)
