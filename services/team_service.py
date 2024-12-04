@@ -36,7 +36,7 @@ class TeamService:
     def get_owner_teams(owner_id: str) -> List[Team]:
         """Retrieves all teams owned by the specified owner"""
         try:
-            result = supabase_client.table("teams").select("*").eq("owner_id", owner_id).execute()
+            result = supabase_client.from_("teams").select("*").eq("owner_id", owner_id).execute()
 
             return [Team(**team) for team in result.data]
 

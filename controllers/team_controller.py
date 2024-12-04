@@ -34,7 +34,7 @@ class CreateTeam(Resource):
         """Create a new team"""
         try:
             data = request.get_json()
-            data["owner_id"] = g.user.id
+            data["owner_id"] = g.user_id
 
             result = TeamService.create_team(data)
             return result.model_dump(), 201
@@ -52,8 +52,10 @@ class ListTeams(Resource):
     def get(self):
         """Get all teams owned by the current user"""
         try:
-            owner_id = g.user.id
+            owner_id = g.user_id
             teams = TeamService.get_owner_teams(owner_id)
+            if len(teams) == 0:
+                return [], 200
             return [team.model_dump() for team in teams], 200
 
         except Exception as e:
@@ -72,7 +74,7 @@ class TeamProperty(Resource):
         """Assign a team to manage a property"""
         try:
             data = request.get_json()
-            data["owner_id"] = g.user.id
+            data["owner_id"] = g.user_id
             result = TeamService.assign_team_to_property(data)
             return result, 200
 
@@ -90,6 +92,8 @@ class TeamManagers(Resource):
         """Get all managers of a team"""
         try:
             managers = TeamService.get_team_managers(str(team_id))
+            if len(managers) == 0:
+                return [], 200
             return [manager.model_dump() for manager in managers], 200
         except Exception as e:
             logging.error(f"Error in get_team_managers: {e}")
@@ -105,7 +109,9 @@ class TeamManagers(Resource):
         """Get all properties of a team"""
         try:
             properties = TeamService.get_team_properties(str(team_id))
-            return [properties.model_dump() for properties in properties], 200
+            if len(properties) == 0:
+                return [], 200
+            return [property.model_dump() for property in properties], 200
         except Exception as e:
             logging.error(f"Error in get_team_properties: {e}")
             return {"error": str(e)}, 500
@@ -121,7 +127,7 @@ class AssignManagerToTeam(Resource):
         """Assign a manager to a team"""
         try:
             data = request.get_json()
-            data["owner_id"] = g.user.id
+            data["owner_id"] = g.user_id
             result = TeamService.assign_manager_to_team(data)
             return result, 200
         except Exception as e:
@@ -137,7 +143,7 @@ class TeamManager(Resource):
     def delete(self, team_id: UUID, manager_id: UUID):
         """Remove a manager from a team"""
         try:
-            data = {"team_id": str(team_id), "manager_id": str(manager_id), "owner_id": g.user.id}
+            data = {"team_id": str(team_id), "manager_id": str(manager_id), "owner_id": g.user_id}
             result = TeamService.remove_manager_from_team(data)
             return result, 200
         except Exception as e:
