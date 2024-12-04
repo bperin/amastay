@@ -8,7 +8,7 @@ from models.to_swagger import pydantic_to_swagger_model
 from services.auth_service import AuthService
 import logging
 import time
-from gotrue import AuthResponse, UserResponse, User
+from gotrue import AuthResponse, UserResponse, User, Session
 from gotrue.types import Provider
 from .inputs.auth_inputs import get_auth_input_models
 
@@ -27,10 +27,11 @@ google_signin_input_model = get_auth_input_models(ns_auth)["google_signin_model"
 password_reset_input_request_model = get_auth_input_models(ns_auth)["password_reset_request_model"]
 password_reset_input_model = get_auth_input_models(ns_auth)["password_reset_model"]
 otp_input_model = get_auth_input_models(ns_auth)["otp_model"]
-
+refresh_token_input_model = get_auth_input_models(ns_auth)["refresh_token_model"]
 # Add debug logging for model registration
 auth_response_model = pydantic_to_swagger_model(ns_auth, "AuthResponse", AuthResponse)
 user_response_model = pydantic_to_swagger_model(ns_auth, "UserReponse", UserResponse)
+sesion_response_model = pydantic_to_swagger_model(ns_auth, "UserReponse", Session)
 
 
 # Sign-Up Route
@@ -73,14 +74,21 @@ class Signup(Resource):
 # Refresh Token Route
 @ns_auth.route("/refresh_token")
 class RefreshToken(Resource):
-    @ns_auth.response(200, "Success", auth_response_model)
+    @ns_auth.expect(refresh_token_input_model)
+    @ns_auth.response(200, "Success", sesion_response_model)
     @ns_auth.response(400, "Bad Request")
     def post(self):
         """
         Refreshes the session tokens using the provided refresh token.
         Expects JSON data with refresh_token.
         """
-        return AuthService.refresh_token()
+        try:
+            data = request.get_json()
+            refresh_token = data.get("refresh_token")
+            return AuthService.refresh_token(refresh_token)
+        except Exception as e:
+            logger.error(f"Token refresh failed: {e}")
+            return {"error": str(e)}, 500
 
 
 @ns_auth.route("/me")
@@ -110,7 +118,7 @@ class Logout(Resource):
 @ns_auth.route("/signin")
 class Login(Resource):
     @ns_auth.expect(login_input_model)
-    @ns_auth.response(200, "Success", auth_response_model)
+    @ns_auth.response(200, "Success", sesion_response_model)
     @ns_auth.response(400, "Bad Request")
     @ns_auth.response(500, "Internal server error")
     def post(self):
@@ -121,7 +129,7 @@ class Login(Resource):
             data = request.get_json()
             email = data.get("email")
             password = data.get("password")
-            breakpoint()
+
             if not email or not password:
                 logger.warning("Login failed: Missing email or password.")
                 return {"error": "Email and password are required"}, 400
@@ -135,7 +143,7 @@ class Login(Resource):
 @ns_auth.route("/google")
 class GoogleSignIn(Resource):
     @ns_auth.expect(google_signin_input_model)
-    @ns_auth.response(200, "Success", auth_response_model)
+    @ns_auth.response(200, "Success", sesion_response_model)
     @ns_auth.response(400, "Invalid request")
     @ns_auth.response(500, "Server error")
     @ns_auth.doc(description="Sign in with Google")

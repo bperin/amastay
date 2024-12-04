@@ -1,8 +1,9 @@
 import logging
 from typing import List
-from flask import request, jsonify
+from flask import g, request, jsonify
 from flask_restx import Namespace, Resource, fields
 from models.property import Property
+from models.to_swagger import pydantic_to_swagger_model
 from services.property_service import PropertyService
 from auth_utils import jwt_required
 from uuid import UUID
@@ -23,37 +24,10 @@ update_property_model = property_input_models["update_property_model"]
 add_property_info_model = property_input_models["add_property_info_model"]
 update_property_info_model = property_input_models["update_property_info_model"]
 
-# Define model for property information
-property_information_response_model = ns_property.model(
-    "PropertyInformationResponse",
-    {
-        "id": fields.String(description="Property information id"),
-        "property_id": fields.String(description="Property id"),
-        "name": fields.String(description="Information name"),
-        "detail": fields.String(description="Information detail"),
-        "is_recommendation": fields.Boolean(description="Recommendation flag"),
-        "metadata_url": fields.String(description="Information metadata url"),
-        "category_id": fields.String(description="Information category id"),
-        "created_at": fields.DateTime(description="Creation timestamp"),
-        "updated_at": fields.DateTime(description="Last update timestamp"),
-    },
-)
 
-property_response_model = ns_property.model(
-    "PropertyResponse",
-    {
-        "id": fields.String(description="The property id"),
-        "name": fields.String(description="The property name"),
-        "address": fields.String(description="The property address"),
-        "description": fields.String(description="The property description"),
-        "property_url": fields.String(description="The property URL"),
-        "lat": fields.Float(description="Property latitude"),
-        "lng": fields.Float(description="Property longitude"),
-        "created_at": fields.DateTime(description="Creation timestamp"),
-        "updated_at": fields.DateTime(description="Last update timestamp"),
-        "owner_id": fields.String(description="Owner ID"),
-    },
-)
+property_information_response_model = pydantic_to_swagger_model(ns_property, "PropertyInformation", PropertyInformation)
+property_response_model = pydantic_to_swagger_model(ns_property, "Property", Property)
+
 
 # Initialize the geolocator
 geolocator = Nominatim(user_agent="amastay_property_geocoder")
@@ -90,6 +64,7 @@ class CreateProperty(Resource):
                     logging.error(f"Geocoding error: {e}")
 
             # Call the PropertyService to create the property
+
             new_property = PropertyService.create_property(data)
 
             return new_property.model_dump(), 201
@@ -139,7 +114,7 @@ class DeleteProperty(Resource):
         Deletes a property by its ID.
         """
         try:
-            user_id = request.headers.get("x-user-id")
+            user_id = g.user_id
 
             # Call the PropertyService to delete the property
             success = PropertyService.delete_property(property_id, user_id)
@@ -164,11 +139,12 @@ class ListProperties(Resource):
         Lists properties, optionally filtering by owner.
         """
         try:
-            owner_id = request.args.get("owner_id")
+            owner_id = g.user_id  # TODO fix this
 
             # Call the PropertyService to list properties
             properties = PropertyService.list_properties(owner_id)
-
+            if len(properties) == 0:
+                return [], 200
             return [property.model_dump() for property in properties], 200
         except Exception as e:
             logging.error(f"Error in list_properties: {e}")

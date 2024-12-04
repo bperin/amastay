@@ -5,7 +5,7 @@ import logging
 from flask import request
 import requests
 import time
-from gotrue import UserResponse, AuthResponse
+from gotrue import UserResponse, Session, AuthResponse
 
 
 class AuthService:
@@ -40,7 +40,7 @@ class AuthService:
             raise
 
     @staticmethod
-    def sign_in_with_email_and_password(email: str, password: str) -> AuthResponse:
+    def sign_in_with_email_and_password(email: str, password: str) -> Session:
         """Logs in a user with email and password using direct Supabase REST API."""
         try:
             # Define the URL for Supabase's sign-in endpoint
@@ -64,7 +64,7 @@ class AuthService:
             # Convert raw JSON response to AuthResponse model
             # auth_response = AuthResponse.model_validate(response.json())
             logging.debug("User logged in successfully")
-            breakpoint()
+
             return response.json()
 
         except Exception as e:
@@ -72,7 +72,7 @@ class AuthService:
             raise
 
     @staticmethod
-    def sign_in_with_google(credential: str, nonce: str = None) -> AuthResponse:
+    def sign_in_with_google(credential: str, nonce: str = None) -> Session:
         """Signs in or signs up a user with Google credentials using direct Supabase REST API."""
         try:
             # Define the URL for Supabase's OAuth sign-in endpoint
@@ -108,12 +108,9 @@ class AuthService:
             raise
 
     @staticmethod
-    def refresh_token() -> AuthResponse:
+    def refresh_token(refresh_token: str) -> Session:
         """Refreshes the session tokens using the provided refresh token."""
         try:
-            # Get refresh token from request body
-            refresh_token = request.json.get("refresh_token")
-            breakpoint()
             logging.debug(f"Received Refresh Token: {refresh_token}")
 
             if not refresh_token:

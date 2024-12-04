@@ -23,6 +23,13 @@ def get_auth_input_models(ns_auth):
         },
     )
 
+    refresh_token_model = ns_auth.model(
+        "RefreshToken",
+        {
+            "refresh_token": fields.String(required=True, description="Refresh token"),
+        },
+    )
+
     login_model = ns_auth.model(
         "Login",
         {"email": fields.String(required=True, description="User email"), "password": fields.String(required=True, description="User password")},
@@ -37,4 +44,4 @@ def get_auth_input_models(ns_auth):
 
     password_reset_model = ns_auth.model("PasswordReset", {"access_token": fields.String(required=True, description="Reset password token"), "new_password": fields.String(required=True, description="New password")})
 
-    return {"signup_model": signup_model, "otp_model": otp_model, "login_model": login_model, "google_signin_model": google_signin_model, "password_reset_request_model": password_reset_request_model, "password_reset_model": password_reset_model}
+    return {"signup_model": signup_model, "otp_model": otp_model, "login_model": login_model, "google_signin_model": google_signin_model, "password_reset_request_model": password_reset_request_model, "password_reset_model": password_reset_model, "refresh_token_model": refresh_token_model}

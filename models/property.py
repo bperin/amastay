@@ -5,13 +5,13 @@ from typing import Optional
 
 
 class Property(BaseModel):
-    id: Optional[str] = Field(default=None)
-    owner_id: Optional[str] = Field(default=None)  # Assuming owner_id is a string (user's ID)
+    id: str = Field(default=None)
+    owner_id: str = Field(default=None)
     name: str
-    description: Optional[str] = Field(default=None)
-    address: Optional[str] = Field(default=None)
-    lat: Optional[float] = Field(default=None)
-    lng: Optional[float] = Field(default=None)
-    property_url: Optional[str] = Field(default=None)
-    created_at: Optional[str] = Field(default=None)
-    updated_at: Optional[str] = Field(default=None)
+    description: str = Field(default=None)
+    address: str = Field(default=None)
+    lat: float = Field(default=None)
+    lng: float = Field(default=None)
+    property_url: str = Field(default=None)
+    created_at: str = Field(default=None)
+    updated_at: str = Field(default=None)

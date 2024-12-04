@@ -53,7 +53,7 @@ class PropertyService:
             # Insert the property into the 'properties' table
             response = supabase_client.table("properties").insert(property_data).execute()
             if not response.data:
-                logging.error("Failed to insert property: No data returned.")
+                logging.error("Failed to insert property: No data returned.", response)
                 raise Exception("Failed to insert property: No data returned.")
 
             data = response.data[0]
@@ -195,11 +195,11 @@ class PropertyService:
             raise e
 
     @staticmethod
-    def list_properties(owner_id: Optional[UUID] = None) -> List[Property]:
+    def list_properties(owner_id: str) -> List[Property]:
         try:
             query = supabase_client.table("properties").select("*")
             if owner_id:
-                query = query.eq("owner_id", str(owner_id))
+                query = query.eq("owner_id", owner_id)
 
             response = query.execute()
             if not response.data:

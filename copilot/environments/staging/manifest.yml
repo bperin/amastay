@@ -16,6 +16,10 @@ http:
     certificates:
       - arn:aws:acm:us-east-1:422220778159:certificate/d1259492-082d-4ad9-b641-b754caef46b5
 
+variables:
+  SYSYTEM_PHONE_NUMBER: "+18556058275"
+  FLASK_ENV: "development"
+
 # Configure observability for your environment resources.
 observability:
   container_insights: false

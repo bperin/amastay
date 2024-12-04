@@ -1,5 +1,9 @@
 from flask_restx import Namespace, Resource, fields
 from flask import g, request
+from models.property_information import PropertyInformation
+from models.team import Team
+from models.manager import Manager
+from models.to_swagger import pydantic_to_swagger_model
 from services.team_service import TeamService
 from auth_utils import jwt_required
 import logging
@@ -16,32 +20,8 @@ create_team_model = team_input_models["create_team_model"]
 assign_team_to_property_model = team_input_models["assign_team_to_property_model"]
 assign_manager_to_team_model = team_input_models["assign_manager_to_team_model"]
 
-# Response models
-team_response_model = ns_team.model(
-    "TeamResponse",
-    {
-        "id": fields.String(description="Team ID"),
-        "name": fields.String(description="Team name"),
-        "description": fields.String(description="Team description"),
-        "owner_id": fields.String(description="Owner ID"),
-        "created_at": fields.DateTime(description="Creation timestamp"),
-        "updated_at": fields.DateTime(description="Last update timestamp"),
-    },
-)
-
-manager_response_model = ns_team.model(
-    "ManagerResponse",
-    {
-        "id": fields.String(description="Manager ID"),
-        "owner_id": fields.String(description="Owner ID"),
-        "first_name": fields.String(description="First name"),
-        "last_name": fields.String(description="Last name"),
-        "email": fields.String(description="Email address"),
-        "phone": fields.String(description="Phone number", required=False),
-        "created_at": fields.String(description="Creation timestamp"),
-        "updated_at": fields.String(description="Last update timestamp"),
-    },
-)
+team_response_model = pydantic_to_swagger_model(ns_team, "Team", Team)
+manager_response_model = pydantic_to_swagger_model(ns_team, "Manager", Manager)
 
 
 @ns_team.route("/create")
