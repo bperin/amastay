@@ -1,15 +1,17 @@
 from typing import Optional
-from uuid import UUID, uuid4
+from uuid import UUID
 from pydantic import BaseModel
-from datetime import datetime
+
+from models.owner import Owner
 
 
 class Manager(BaseModel):
-    id: str
-    owner_id: str
+    id: UUID
+    owner_id: UUID
     first_name: str
-    last_name: str
-    email: str
+    last_name: Optional[str] = None
     phone: Optional[str] = None
     created_at: str
     updated_at: str
+
+    owner: Optional[Owner] = None

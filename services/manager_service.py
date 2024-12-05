@@ -11,7 +11,7 @@ from flask import g
 class ManagerService:
 
     @staticmethod
-    def create_manager_invitation(first_name: str, last_name: str, phone: str, owner_id: str, email: str, team_id: Optional[str] = None) -> dict:
+    def create_manager_invitation(first_name: str, last_name: str, phone: str, owner_id: UUID, email: str, team_id: Optional[str] = None) -> dict:
         """
         Creates an invitation for a manager to join a team.
 

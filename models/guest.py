@@ -2,14 +2,13 @@
 
 from pydantic import BaseModel
 from typing import Optional
-from datetime import datetime
 from uuid import UUID
 
 
 class Guest(BaseModel):
-    id: str
+    id: UUID
     phone: str
     first_name: str
-    last_name: str
+    last_name: Optional[str] = None
     created_at: str
     updated_at: str

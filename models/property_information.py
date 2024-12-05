@@ -1,12 +1,15 @@
 # models/property_information.py
 
-from pydantic import BaseModel, Field
+from uuid import UUID
+from pydantic import BaseModel
 from typing import Optional
+
+from models.property import Property
 
 
 class PropertyInformation(BaseModel):
-    id: str
-    property_id: str
+    id: UUID
+    property_id: UUID
     name: str
     detail: str
     is_recommendation: bool
@@ -14,3 +17,5 @@ class PropertyInformation(BaseModel):
     category: str
     created_at: str
     updated_at: str
+
+    property: Optional[Property] = None

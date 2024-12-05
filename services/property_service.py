@@ -4,7 +4,6 @@ import tempfile
 import time
 from geopy.geocoders import Nominatim
 from geopy.exc import GeocoderTimedOut, GeocoderServiceError
-
 from flask import g
 from models.booking import Booking
 from models.document import Document
@@ -98,7 +97,7 @@ class PropertyService:
             raise
 
     @staticmethod
-    def get_property(id: str) -> Optional[Property]:
+    def get_property(id: UUID) -> Optional[Property]:
         try:
             response = supabase_client.table("properties").select("*").eq("id", id).single().execute()
             if not response.data:
@@ -112,7 +111,7 @@ class PropertyService:
             raise e
 
     @staticmethod
-    def get_property_by_booking_id(property_id: str) -> Optional[Property]:
+    def get_property_by_booking_id(property_id: UUID) -> Optional[Property]:
         try:
             response = supabase_client.from_("properties").select("*").eq("id", str(property_id)).execute()
             if not response.data:
@@ -126,7 +125,7 @@ class PropertyService:
             raise e
 
     @staticmethod
-    def update_property(property_id: str, update_data: dict) -> Property:
+    def update_property(property_id: UUID, update_data: dict) -> Property:
         try:
 
             # Verify that the user is the owner of the property
@@ -195,7 +194,7 @@ class PropertyService:
             raise e
 
     @staticmethod
-    def list_properties(owner_id: str) -> List[Property]:
+    def list_properties(owner_id: UUID) -> List[Property]:
         try:
             query = supabase_client.table("properties").select("*")
             if owner_id:
@@ -213,7 +212,7 @@ class PropertyService:
             raise e
 
     @staticmethod
-    def save_scraped_data(property_id, scraped_data) -> str:
+    def save_scraped_data(property_id: UUID, scraped_data: str) -> str:
         """Save scraped data as a text file to Supabase."""
         filename = f"{property_id}_{int(time.time())}.txt"
         try:

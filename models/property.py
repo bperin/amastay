@@ -1,17 +1,26 @@
 # models/property.py
 
-from pydantic import BaseModel, Field
 from typing import Optional
+from uuid import UUID
+from pydantic import BaseModel
+from datetime import datetime
+
+from models.owner import Owner
+from models.manager import Manager
 
 
 class Property(BaseModel):
-    id: str = Field(default=None)
-    owner_id: str = Field(default=None)
+    id: UUID
+    owner_id: UUID
+    manager_id: Optional[UUID] = None
     name: str
-    description: str = Field(default=None)
-    address: str = Field(default=None)
-    lat: float = Field(default=None)
-    lng: float = Field(default=None)
-    property_url: str = Field(default=None)
-    created_at: str = Field(default=None)
-    updated_at: str = Field(default=None)
+    description: str
+    address: str
+    lat: float
+    lng: float
+    property_url: str
+    created_at: str
+    updated_at: str
+
+    owner: Optional[Owner]
+    manager: Optional[Manager]

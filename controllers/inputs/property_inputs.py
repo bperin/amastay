@@ -22,6 +22,7 @@ def get_property_input_models(ns_property):
             "address": fields.String(required=False, description="The property address"),
             "description": fields.String(required=False, description="The property description"),
             "property_url": fields.String(required=False, description="The property Url"),
+            "manager_id": fields.String(required=False, description="The property Url"),
         },
     )
 
