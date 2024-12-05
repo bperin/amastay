@@ -8,8 +8,8 @@ from uuid import UUID
 
 class Booking(BaseModel):
     id: str
-    property_id: Optional[str]
-    check_in: Optional[str]
-    check_out: Optional[str]
-    created_at: Optional[str]
-    updated_at: Optional[str]
+    property_id: str
+    check_in: str
+    check_out: str
+    created_at: str
+    updated_at: str

@@ -6,6 +6,9 @@ from models.guest import Guest
 from models.booking_guest import BookingGuest
 from services.guest_service import GuestService
 from supabase_utils import supabase_client
+from models.booking_with_details import BookingWithDetails
+from models.property import Property
+from flask import g
 
 
 class BookingService:
@@ -37,22 +40,27 @@ class BookingService:
         return Booking(**booking_response.data["bookings"])
 
     @staticmethod
-    def create_booking(booking_data: Dict[str, Any]) -> Booking:
+    def create_booking(property_id: str, check_in: int, check_out: int, notes: Optional[str] = None) -> Booking:
         """
         Creates a new booking in the Supabase 'bookings' table.
 
         Args:
-            booking_data (Dict[str, Any]): A dictionary containing the booking information.
+            property_id: ID of the property being booked
+            check_in: Check-in timestamp in Unix epoch format
+            check_out: Check-out timestamp in Unix epoch format
+            notes: Optional booking notes
 
         Returns:
             Booking: The created booking data returned by Supabase, cast to a Booking object.
         """
         try:
-            # Parse check_in and check_out to timestamptz
-            if "check_in" in booking_data:
-                booking_data["check_in"] = datetime.fromtimestamp(booking_data["check_in"]).isoformat()
-            if "check_out" in booking_data:
-                booking_data["check_out"] = datetime.fromtimestamp(booking_data["check_out"]).isoformat()
+            # Convert Unix timestamps to datetime objects
+            check_in_dt = datetime.fromtimestamp(check_in)
+            check_out_dt = datetime.fromtimestamp(check_out)
+            booking_data = {"property_id": property_id, "check_in": check_in_dt.isoformat(), "check_out": check_out_dt.isoformat()}
+
+            if notes:
+                booking_data["notes"] = notes
 
             response = supabase_client.table("bookings").insert(booking_data).execute()
 
@@ -177,3 +185,80 @@ class BookingService:
     def get_booking_by_id(booking_id: str) -> Optional[Booking]:
         response = supabase_client.table("bookings").select("*").eq("id", booking_id).single().execute()
         return Booking(**response.data) if response.data else None
+
+    @staticmethod
+    def _build_booking_details(booking_data: Dict[str, Any]) -> BookingWithDetails:
+        """
+        Helper method to build a BookingWithDetails object from booking data.
+
+        Args:
+            booking_data (Dict[str, Any]): Raw booking data including properties
+
+        Returns:
+            BookingWithDetails: Constructed booking details object
+        """
+        # Create booking and property objects
+        booking = Booking(**{k: v for k, v in booking_data.items() if k != "properties"})
+        property_data = booking_data.get("properties")
+        property_obj = Property(**property_data) if property_data else None
+
+        # Get guests for this booking
+        guests_response = supabase_client.table("booking_guests").select("guests(*)").eq("booking_id", booking.id).execute()
+
+        guests = []
+        if guests_response.data:
+            guests = [Guest(**guest_data["guests"]) for guest_data in guests_response.data if guest_data.get("guests")]
+
+        return BookingWithDetails(booking=booking, property=property_obj, guests=guests)
+
+    @staticmethod
+    def get_booking_with_details(booking_id: str) -> Optional[BookingWithDetails]:
+        """
+        Retrieves a booking with its associated property and guest information.
+        """
+        try:
+            booking_response = supabase_client.table("bookings").select("*, properties(*)").eq("id", booking_id).single().execute()
+
+            if not booking_response.data:
+                return None
+
+            return BookingService._build_booking_details(booking_response.data)
+
+        except Exception as e:
+            logging.error(f"Error retrieving booking details for booking ID {booking_id}: {e}")
+            raise
+
+    @staticmethod
+    def get_all_bookings_with_details() -> List[BookingWithDetails]:
+        """
+        Retrieves all bookings with their associated properties and guests.
+        """
+        try:
+            bookings_response = supabase_client.table("bookings").select("*, properties(*)").execute()
+
+            if not bookings_response.data:
+                return []
+
+            return [BookingService._build_booking_details(booking_data) for booking_data in bookings_response.data]
+
+        except Exception as e:
+            logging.error(f"Error retrieving all bookings with details: {e}")
+            raise
+
+    @staticmethod
+    def get_bookings_by_owner_with_details() -> List[BookingWithDetails]:
+        """
+        Retrieves all bookings with their associated properties and guests
+        for properties owned by the current user.
+        """
+        try:
+            bookings_response = supabase_client.table("bookings").select("*, properties!inner(*)").eq("properties.owner_id", g.user_id).execute()
+
+            if not bookings_response.data:
+                return []
+
+            return [BookingService._build_booking_details(booking_data) for booking_data in bookings_response.data]
+
+        except Exception as e:
+            logging.error(f"Error retrieving bookings for owner: {e}")
+            raise

@@ -18,7 +18,7 @@ from controllers.property_controller import ns_property
 from controllers.webhook_controller import ns_webhooks
 from controllers.health_controller import ns_health
 from controllers.model_controller import ns_model
-from controllers.booking_controller import ns_booking
+from controllers.booking_controller import ns_booking, booking_blueprint
 from controllers.guest_controller import ns_guest
 from controllers.manager_controller import ns_manager
 from controllers.user_controller import ns_user
@@ -80,6 +80,8 @@ def create_app():
     api.add_namespace(ns_manager, path="/api/v1/managers")
     api.add_namespace(ns_user, path="/api/v1/users")
     api.add_namespace(ns_team, path="/api/v1/teams")
+
+    app.register_blueprint(booking_blueprint, url_prefix="/api")
 
     return app
 

@@ -1,8 +1,11 @@
 from flask_restx import Namespace, Resource, fields
 from flask import request
+from models.guest import Guest
+from models.to_swagger import pydantic_to_swagger_model
 from services.guest_service import GuestService
 from services.booking_service import BookingService
 from services.pinpoint_service import PinpointService
+from .inputs.booking_inputs import get_booking_input_models
 from auth_utils import jwt_required
 import logging
 import os
@@ -10,36 +13,15 @@ from uuid import UUID
 
 # Create namespace
 ns_guest = Namespace("guests", description="Guest management operations")
-
+guest_input_model = get_booking_input_models(ns_guest)["guest_input_model"]
+guest_response_model = pydantic_to_swagger_model(ns_guest, "Guest", Guest)
 # Define request/response models
-create_guest_model = ns_guest.model(
-    "CreateGuest",
-    {
-        "phone": fields.String(required=True, description="Guest's phone number"),
-        "booking_id": fields.String(required=True, description="Booking ID"),
-        "first_name": fields.String(required=True, description="Guest's first name"),
-        "last_name": fields.String(required=False, description="Guest's last name"),
-    },
-)
-
-guest_response_model = ns_guest.model(
-    "GuestResponse",
-    {
-        "id": fields.String(description="Guest ID"),
-        "phone": fields.String(description="Phone number"),
-        "email": fields.String(description="Email address"),
-        "first_name": fields.String(description="First name"),
-        "last_name": fields.String(description="Last name"),
-        "created_at": fields.DateTime(description="Creation timestamp"),
-        "updated_at": fields.DateTime(description="Last update timestamp"),
-    },
-)
 
 
 @ns_guest.route("")
 class GuestList(Resource):
     @ns_guest.doc("add_guest")
-    @ns_guest.expect(create_guest_model)
+    @ns_guest.expect(guest_input_model)
     @ns_guest.response(200, "Success", guest_response_model)
     @jwt_required
     def post(self):
