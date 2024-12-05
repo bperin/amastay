@@ -1,6 +1,7 @@
 from typing import List, Optional, Dict, Any
 import logging
 from datetime import datetime
+from uuid import UUID
 from models.booking import Booking
 from models.guest import Guest
 from models.booking_guest import BookingGuest
@@ -40,7 +41,7 @@ class BookingService:
         return Booking(**booking_response.data["bookings"])
 
     @staticmethod
-    def create_booking(property_id: str, check_in: int, check_out: int, notes: Optional[str] = None) -> Booking:
+    def create_booking(property_id: UUID, check_in: int, check_out: int, notes: Optional[str] = None) -> Booking:
         """
         Creates a new booking in the Supabase 'bookings' table.
 
@@ -92,7 +93,7 @@ class BookingService:
             raise
 
     @staticmethod
-    def get_bookings_by_property_id(property_id: str) -> List[Booking]:
+    def get_bookings_by_property_id(property_id: UUID) -> List[Booking]:
         """
         Retrieves all bookings for a specific property from the Supabase 'bookings' table.
 
@@ -115,8 +116,8 @@ class BookingService:
 
     @staticmethod
     def add_guest(
-        guest_id: str,
-        booking_id: str,
+        guest_id: UUID,
+        booking_id: UUID,
     ) -> Optional[BookingGuest]:
         """
         Adds a guest to a booking after verifying both exist.
@@ -159,7 +160,7 @@ class BookingService:
             return None
 
     @staticmethod
-    def get_next_booking_by_guest_id(guest_id: str) -> Optional[Booking]:
+    def get_next_booking_by_guest_id(guest_id: UUID) -> Optional[Booking]:
         """
         Retrieves the next upcoming booking for a guest based on their guest ID.
 
@@ -182,7 +183,7 @@ class BookingService:
             return None
 
     @staticmethod
-    def get_booking_by_id(booking_id: str) -> Optional[Booking]:
+    def get_booking_by_id(booking_id: UUID) -> Optional[Booking]:
         response = supabase_client.table("bookings").select("*").eq("id", booking_id).single().execute()
         return Booking(**response.data) if response.data else None
 

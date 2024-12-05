@@ -31,11 +31,19 @@ class GuestList(Resource):
             if not data:
                 return {"error": "Missing guest data"}, 400
 
+            booking_id = UUID(data.get("booking_id"))
+            phone = data.get("phone")
+            first_name = data.get("first_name")
+            last_name = data.get("last_name")
+
+            if not phone or not first_name:
+                return {"error": "Phone and first name are required"}, 400
+
             # Create or get guest
-            guest = GuestService.get_or_create_guest(data)
+            guest = GuestService.get_or_create_guest(phone, first_name, last_name)
 
             # Verify booking exists
-            booking = BookingService.get_booking_by_id(data["booking_id"])
+            booking = BookingService.get_booking_by_id(booking_id)
             if not booking:
                 return {"error": "Booking not found"}, 404
 
