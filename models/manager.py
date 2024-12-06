@@ -11,7 +11,7 @@ class Manager(BaseModel):
     email: str
     last_name: Optional[str] = None
     phone: Optional[str] = None
-    active: bool = False
+    verified: bool = False
     phone_verified: bool = False
     created_at: str
     updated_at: str

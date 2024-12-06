@@ -11,6 +11,7 @@ def get_booking_input_models(ns_booking):
             "notes": fields.String(required=False, description="Booking notes"),
             "check_in": fields.String(required=True, description="Check-in date and time as ISO timestamp"),
             "check_out": fields.String(required=True, description="Check-out date and time as ISO timestamp"),
+            "guests": fields.List(fields.Nested(ns_booking.model("GuestInput", {"first_name": fields.String(required=False, description="First name"), "last_name": fields.String(required=False, description="Last name"), "phone": fields.String(required=True, description="Phone number")})), required=False, description="List of guests to add to booking"),
         },
     )
     update_booking_model = ns_booking.model(
@@ -27,8 +28,8 @@ def get_booking_input_models(ns_booking):
         "AddGuest",
         {
             "booking_id": fields.String(required=True, description="The property ID"),
-            "first_name": fields.String(required=True, description="First name"),
-            "last_name": fields.String(required=True, description="Last name"),
+            "first_name": fields.String(required=False, description="First name"),
+            "last_name": fields.String(required=False, description="Last name"),
             "phone": fields.String(required=True, description="Phone number"),
         },
     )

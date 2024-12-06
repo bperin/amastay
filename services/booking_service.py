@@ -1,10 +1,14 @@
+import os
 from typing import List, Optional, Dict, Any
 import logging
 from datetime import datetime
+from phone_utils import PhoneUtils
 from models.booking import Booking
 from models.guest import Guest
 from models.booking_guest import BookingGuest
 from services.guest_service import GuestService
+from services.pinpoint_service import PinpointService
+from services.property_service import PropertyService
 from supabase_utils import supabase_client
 from models.booking_with_details import BookingWithDetails
 from models.property import Property
@@ -40,7 +44,7 @@ class BookingService:
         return Booking(**booking_response.data["bookings"])
 
     @staticmethod
-    def create_booking(property_id: str, check_in: str, check_out: str, notes: Optional[str] = None) -> Booking:
+    def create_booking(property_id: str, check_in: str, check_out: str, notes: Optional[str] = None, guests: Optional[List[Dict[str, str]]] = None) -> Booking:
         """
         Creates a new booking in the Supabase 'bookings' table.
 
@@ -54,7 +58,7 @@ class BookingService:
             Booking: The created booking data returned by Supabase, cast to a Booking object.
         """
         try:
-
+            property_obj = PropertyService.get_property(property_id)
             check_in_dt = datetime.fromisoformat(check_in)
             check_out_dt = datetime.fromisoformat(check_out)
             booking_data = {"property_id": property_id, "check_in": check_in_dt.isoformat(), "check_out": check_out_dt.isoformat()}
@@ -67,7 +71,24 @@ class BookingService:
             if not response.data:
                 raise ValueError("Failed to create booking")
 
-            return Booking(**response.data[0])
+            booking = Booking(**response.data[0])
+
+            if guests:
+
+                for item in guests:
+                    phone = PhoneUtils.normalize_phone(item.get("phone"))
+                    guest_obj = GuestService.get_or_create_guest(phone, item.get("first_name", None), item.get("last_name", None))
+                    booking_guest = BookingService.add_guest(guest_obj.id, booking.id)
+
+                    if booking_guest:
+                        # Send welcome message
+                        try:
+                            content = f"AmastayAI: You've been added to a reservation at {property_obj.name}. " f"Reply YES to opt-in for updates about your stay. " f"Msg frequency varies. Msg & data rates may apply. " f"Text HELP for support, STOP to opt-out. " f"Booking ID: {booking.id}, " f"Guest: {item.get('first_name', '')} {item.get('last_name', '')}"
+                            PinpointService.send_sms(phone, os.getenv("SYSTEM_PHONE_NUMBER"), content)
+                        except Exception as sms_error:
+                            logging.error(f"Error sending welcome SMS: {sms_error}")
+
+            return booking
         except Exception as e:
             print(f"Error creating booking: {e}")
             raise

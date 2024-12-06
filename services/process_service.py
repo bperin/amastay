@@ -3,6 +3,7 @@ import os
 import traceback
 import requests
 
+from phone_utils import PhoneUtils
 from services.booking_service import BookingService
 from services.message_service import MessageService
 from services.pinpoint_service import PinpointService
@@ -39,19 +40,20 @@ def handle_incoming_sms(message_id: str, origination_number: str, message_body: 
             return
 
         # Guest lookup
-        guest = GuestService.get_guest_by_phone(origination_number)
+        phone = PhoneUtils.normalize_phone(origination_number)
+        guest = GuestService.get_guest_by_phone(phone)
         if not guest:
-            logger.error(f"Guest lookup failed - Phone: {origination_number}")
-            PinpointService.send_sms(origination_number, os.getenv("SYSTEM_PHONE_NUMBER"), "We couldn't find your information. Please contact support.")
+            logger.error(f"Guest lookup failed - Phone: {phone}")
+            PinpointService.send_sms(phone, os.getenv("SYSTEM_PHONE_NUMBER"), "We couldn't find your information. Please contact support.")
             return
 
-        logger.info(f"Found guest: {guest.id} for phone: {origination_number}")
+        logger.info(f"Found guest: {guest.id} for phone: {phone}")
 
         # Booking lookup
         booking = BookingService.get_next_booking_by_guest_id(guest.id)
         if not booking:
             logger.error(f"No upcoming bookings found - Guest ID: {guest.id}")
-            PinpointService.send_sms(origination_number, os.getenv("SYSTEM_PHONE_NUMBER"), "We couldn't find any upcoming bookings for you. Please check your details.")
+            PinpointService.send_sms(phone, os.getenv("SYSTEM_PHONE_NUMBER"), "We couldn't find any upcoming bookings for you. Please check your details.")
             return
 
         logger.info(f"Found booking: {booking.id} for guest: {guest.id}")
@@ -60,7 +62,7 @@ def handle_incoming_sms(message_id: str, origination_number: str, message_body: 
         property = PropertyService.get_property_by_booking_id(booking.property_id)
         if not property:
             logger.error(f"Property not found - Booking ID: {booking.id}")
-            PinpointService.send_sms(origination_number, os.getenv("SYSTEM_PHONE_NUMBER"), "We're sorry, but we couldn't find the property associated with your booking. Please contact support.")
+            PinpointService.send_sms(phone, os.getenv("SYSTEM_PHONE_NUMBER"), "We're sorry, but we couldn't find the property associated with your booking. Please contact support.")
             return
 
         logger.info(f"Found property: {property.id} for booking: {booking.id}")
@@ -81,13 +83,13 @@ def handle_incoming_sms(message_id: str, origination_number: str, message_body: 
         # Send response
         if send_message:
             logger.info("Sending SMS response...")
-            PinpointService.send_sms(origination_number, os.getenv("SYSTEM_PHONE_NUMBER"), ai_response)
+            PinpointService.send_sms(phone, os.getenv("SYSTEM_PHONE_NUMBER"), ai_response)
             logger.info("SMS response sent successfully")
 
         return ai_response
 
     except Exception as e:
-        handle_error(e, message_id, origination_number, message_body)
+        handle_error(e, message_id, phone, message_body)
 
 
 def process_property_documents(documents, property_id: str) -> str:

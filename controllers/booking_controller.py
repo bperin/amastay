@@ -44,13 +44,12 @@ class CreateBooking(Resource):
             check_in = data.get("check_in")
             check_out = data.get("check_out")
             notes = data.get("notes")
-
-            breakpoint()
+            guests = data.get("guests")
 
             if not property_id or not check_in or not check_out:
                 return {"error": "Missing required booking fields"}, 400
 
-            new_booking = BookingService.create_booking(property_id=property_id, check_in=check_in, check_out=check_out, notes=notes)
+            new_booking = BookingService.create_booking(property_id=property_id, check_in=check_in, check_out=check_out, notes=notes, guests=guests)
             return new_booking.model_dump(), 201
         except ValueError as ve:
             logging.error(f"Validation error in create_booking: {ve}")

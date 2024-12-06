@@ -134,11 +134,11 @@ class AuthService:
 
             logging.debug(f"Supabase Response Status: {response.status_code}")
             logging.debug(f"Supabase Response Body: {response.text}")
-            breakpoint()
+
             if response.status_code == 200:
                 # Convert raw JSON response to AuthResponse model to match return type
                 auth_response = AuthResponse.model_validate(response.json())
-                breakpoint()
+
                 logging.debug("Session refreshed successfully")
                 return auth_response
             else:

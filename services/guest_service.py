@@ -22,7 +22,7 @@ class GuestService:
             raise
 
     @staticmethod
-    def get_or_create_guest(phone: str, first_name: str, last_name: Optional[str] = None) -> Guest:
+    def get_or_create_guest(phone: str, first_name: Optional[str] = None, last_name: Optional[str] = None) -> Guest:
         """Get existing guest or create new one, updating info if needed"""
         try:
             phone = PhoneUtils.normalize_phone(phone)
