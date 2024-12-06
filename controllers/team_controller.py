@@ -1,5 +1,6 @@
 from flask_restx import Namespace, Resource, fields
 from flask import g, request
+from controllers.inputs.team_inputs import get_team_input_models
 from models.property_information import PropertyInformation
 from models.team import Team
 from models.manager import Manager
@@ -7,8 +8,6 @@ from models.to_swagger import pydantic_to_swagger_model
 from services.team_service import TeamService
 from auth_utils import jwt_required
 import logging
-from uuid import UUID
-from .inputs.team_inputs import get_team_input_models
 
 
 # Create namespace
@@ -83,15 +82,15 @@ class TeamProperty(Resource):
             return {"error": str(e)}, 500
 
 
-@ns_team.route("/<uuid:team_id>/managers")
+@ns_team.route("/<string:team_id>/managers")
 class TeamManagers(Resource):
     @ns_team.doc("get_team_managers")
     @ns_team.response(200, "Success", [manager_response_model])
     @jwt_required
-    def get(self, team_id: UUID):
+    def get(self, team_id: str):
         """Get all managers of a team"""
         try:
-            managers = TeamService.get_team_managers(str(team_id))
+            managers = TeamService.get_team_managers(team_id)
             if len(managers) == 0:
                 return [], 200
             return [manager.model_dump() for manager in managers], 200
@@ -100,15 +99,15 @@ class TeamManagers(Resource):
             return {"error": str(e)}, 500
 
 
-@ns_team.route("/<uuid:team_id>/properties")
+@ns_team.route("/<string:team_id>/properties")
 class TeamManagers(Resource):
     @ns_team.doc("get_team_properties")
     @ns_team.response(200, "Success", [manager_response_model])
     @jwt_required
-    def get(self, team_id: UUID):
+    def get(self, team_id: str):
         """Get all properties of a team"""
         try:
-            properties = TeamService.get_team_properties(str(team_id))
+            properties = TeamService.get_team_properties(team_id)
             if len(properties) == 0:
                 return [], 200
             return [property.model_dump() for property in properties], 200
@@ -135,15 +134,15 @@ class AssignManagerToTeam(Resource):
             return {"error": str(e)}, 500
 
 
-@ns_team.route("/<uuid:team_id>/managers/<uuid:manager_id>")
+@ns_team.route("/<string:team_id>/managers/<string:manager_id>")
 class TeamManager(Resource):
     @ns_team.doc("remove_manager_from_team")
     @ns_team.response(200, "Manager removed successfully")
     @jwt_required
-    def delete(self, team_id: UUID, manager_id: UUID):
+    def delete(self, team_id: str, manager_id: str):
         """Remove a manager from a team"""
         try:
-            data = {"team_id": str(team_id), "manager_id": str(manager_id), "owner_id": g.user_id}
+            data = {"team_id": team_id, "manager_id": manager_id, "owner_id": g.user_id}
             result = TeamService.remove_manager_from_team(data)
             return result, 200
         except Exception as e:

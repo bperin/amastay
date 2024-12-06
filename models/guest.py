@@ -2,11 +2,10 @@
 
 from pydantic import BaseModel
 from typing import Optional
-from uuid import UUID
 
 
 class Guest(BaseModel):
-    id: UUID
+    id: str
     phone: str
     first_name: str
     last_name: Optional[str] = None

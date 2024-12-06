@@ -2,8 +2,8 @@ import logging
 from typing import List
 from flask import g, request
 from flask_restx import Namespace, Resource, fields
-from uuid import UUID
 
+from models.to_swagger import pydantic_to_swagger_model
 from services.manager_service import ManagerService
 from auth_utils import jwt_required
 from models.manager import Manager
@@ -18,20 +18,7 @@ manager_invite_model = manager_input_models["manager_invite_model"]
 update_manager_model = manager_input_models["update_manager_model"]
 assign_manager_to_team_model = manager_input_models["assign_manager_to_team_model"]
 
-# Response models
-manager_model = ns_manager.model(
-    "Manager",
-    {
-        "id": fields.String(description="Manager ID"),
-        "owner_id": fields.String(description="Owner ID"),
-        "first_name": fields.String(description="Manager's first name"),
-        "last_name": fields.String(description="Manager's last name"),
-        "email": fields.String(description="Manager's email"),
-        "phone": fields.String(description="Manager's phone number"),
-        "created_at": fields.DateTime(description="Creation timestamp"),
-        "updated_at": fields.DateTime(description="Last update timestamp"),
-    },
-)
+manager_response_model = pydantic_to_swagger_model(ns_manager, "Manager", Manager)
 
 
 @ns_manager.route("/invite")
@@ -39,8 +26,6 @@ class ManagerInvite(Resource):
     @ns_manager.doc("invite_manager")
     @ns_manager.expect(manager_invite_model)
     @ns_manager.response(200, "Manager invited successfully")
-    @ns_manager.response(400, "Invalid request")
-    @ns_manager.response(500, "Internal server error")
     @jwt_required
     def post(self):
         """Send invitation to a new manager"""
@@ -62,7 +47,7 @@ class ManagerInvite(Resource):
 @ns_manager.route("/list")
 class ListManagers(Resource):
     @ns_manager.doc("list_managers")
-    @ns_manager.response(200, "Success", [manager_model])
+    @ns_manager.response(200, "Success", [manager_response_model])
     @ns_manager.response(500, "Internal server error")
     @jwt_required
     def get(self):
@@ -70,20 +55,41 @@ class ListManagers(Resource):
         try:
             owner_id = g.user_id
             managers = ManagerService.get_managers_by_owner(owner_id)
+            if len(managers) == 0:
+                return [], 200
             return [manager.model_dump() for manager in managers], 200
         except Exception as e:
             logging.error(f"Error listing managers: {e}")
             return {"error": "Internal server error"}, 500
 
 
-@ns_manager.route("/<uuid:manager_id>")
+@ns_manager.route("/list_pending")
+class ListPendingManagers(Resource):
+    @ns_manager.doc("list_pending_managers")
+    @ns_manager.response(200, "Success", [manager_response_model])
+    @ns_manager.response(500, "Internal server error")
+    @jwt_required
+    def get(self):
+        """List all pending managers for the owner"""
+        try:
+            owner_id = g.user_id
+            managers = ManagerService.get_pending_managers_by_owner(owner_id)
+            if len(managers) == 0:
+                return [], 200
+            return [manager.model_dump() for manager in managers], 200
+        except Exception as e:
+            logging.error(f"Error listing managers: {e}")
+            return {"error": "Internal server error"}, 500
+
+
+@ns_manager.route("/<string:manager_id>")
 @ns_manager.param("manager_id", "Manager identifier")
 class ManagerResource(Resource):
     @ns_manager.doc("get_manager")
-    @ns_manager.response(200, "Success", manager_model)
+    @ns_manager.response(200, "Success", manager_response_model)
     @ns_manager.response(404, "Manager not found")
     @jwt_required
-    def get(self, manager_id: UUID):
+    def get(self, manager_id: str):
         """Get a specific manager"""
         try:
             manager = ManagerService.get_manager(manager_id)
@@ -96,7 +102,7 @@ class ManagerResource(Resource):
 
     @ns_manager.doc("update_manager")
     @ns_manager.expect(update_manager_model)
-    @ns_manager.response(200, "Manager updated", manager_model)
+    @ns_manager.response(200, "Manager updated", manager_response_model)
     @ns_manager.response(404, "Manager not found")
     @jwt_required
     def put(self):
@@ -117,7 +123,7 @@ class ManagerResource(Resource):
     @ns_manager.response(200, "Manager deleted")
     @ns_manager.response(404, "Manager not found")
     @jwt_required
-    def delete(self, manager_id: UUID):
+    def delete(self, manager_id: str):
         """Delete a manager"""
         try:
             if ManagerService.delete_manager(manager_id):

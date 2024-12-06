@@ -1,8 +1,5 @@
 from typing import Dict, List, Optional
-from uuid import UUID
-from pydantic import BaseModel
-from datetime import datetime
-import phonenumbers
+from phone_utils import PhoneUtils
 import logging
 from models.guest import Guest
 from supabase_utils import supabase_admin_client, supabase_client
@@ -12,19 +9,10 @@ class GuestService:
     """Service for managing guests"""
 
     @staticmethod
-    def normalize_phone(phone: str) -> str:
-        """Normalize phone number to E.164 format without + prefix"""
-        try:
-            parsed = phonenumbers.parse(phone, "US")
-            return str(parsed.country_code) + str(parsed.national_number)
-        except phonenumbers.NumberParseException:
-            raise ValueError("Invalid phone number format")
-
-    @staticmethod
     def get_guest_by_phone(phone: str) -> Optional[Guest]:
         """Get a guest by phone number"""
         try:
-            phone = GuestService.normalize_phone(phone)
+            phone = PhoneUtils.normalize_phone(phone)
             result = supabase_client.from_("guests").select("*").eq("phone", phone).limit(1).execute()
 
             return Guest(**result.data[0]) if result.data else None
@@ -37,7 +25,7 @@ class GuestService:
     def get_or_create_guest(phone: str, first_name: str, last_name: Optional[str] = None) -> Guest:
         """Get existing guest or create new one, updating info if needed"""
         try:
-            phone = GuestService.normalize_phone(phone)
+            phone = PhoneUtils.normalize_phone(phone)
             guest = GuestService.get_guest_by_phone(phone)
 
             if guest:
@@ -68,6 +56,7 @@ class GuestService:
     def remove_guest(booking_id: str, guest_id: str) -> bool:
         """Remove a guest from a booking"""
         try:
+            # TODO: Add authorization check to verify user has access to view guests for this booking
             result = supabase_client.table("booking_guests").delete().eq("booking_id", booking_id).eq("guest_id", guest_id).execute()
 
             return bool(result.data)
@@ -80,6 +69,7 @@ class GuestService:
     def get_guests_by_booking(booking_id: str) -> List[Guest]:
         """Get all guests for a booking"""
         try:
+            # TODO: Add authorization check to verify user has access to view guests for this booking
             result = supabase_client.table("booking_guests").select("guests!inner(*)").eq("booking_id", booking_id).execute()
 
             return [Guest(**guest["guests"]) for guest in result.data] if result.data else []

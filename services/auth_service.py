@@ -6,6 +6,7 @@ from flask import request
 import requests
 import time
 from gotrue import UserResponse, Session, AuthResponse
+from phone_utils import PhoneUtils
 
 
 class AuthService:
@@ -24,6 +25,7 @@ class AuthService:
             user_type: User's type (e.g., owner)
         """
         try:
+            phone = PhoneUtils.normalize_phone(phone)
             user_metadata = {"first_name": first_name, "last_name": last_name, "phone": phone, "user_type": user_type}
             auth_response = supabase_client.auth.sign_up({"email": email, "options": {"data": user_metadata, "emailRedirectTo": "http://localhost:3000"}, "password": password})
 

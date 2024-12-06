@@ -1,7 +1,6 @@
 # models/property.py
 
 from typing import Optional
-from uuid import UUID
 from pydantic import BaseModel
 from datetime import datetime
 
@@ -10,9 +9,9 @@ from models.manager import Manager
 
 
 class Property(BaseModel):
-    id: UUID
-    owner_id: UUID
-    manager_id: Optional[UUID] = None
+    id: str
+    owner_id: str
+    manager_id: Optional[str] = None
     name: str
     description: str
     address: str
@@ -22,5 +21,5 @@ class Property(BaseModel):
     created_at: str
     updated_at: str
 
-    owner: Optional[Owner]
-    manager: Optional[Manager]
+    owner: Optional[Owner] = None
+    manager: Optional[Manager] = None

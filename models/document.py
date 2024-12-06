@@ -2,14 +2,13 @@
 
 from pydantic import BaseModel
 from typing import Optional
-from uuid import UUID
 
 from models.property import Property
 
 
 class Document(BaseModel):
-    id: UUID
-    property_id: UUID
+    id: str
+    property_id: str
     file_id: str
     file_url: str
     created_at: str

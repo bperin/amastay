@@ -54,7 +54,7 @@ def jwt_required(f):
                 "role": role,
             }
             g.user_type = payload.get("user_metadata", {}).get("user_type", None)
-            g.user_id = UUID(payload.get("sub"))
+            g.user_id = payload.get("sub")
             logger.debug(f"User ID: {g.user_id}")
             logger.debug(f"User Type: {g.user_type}")
 

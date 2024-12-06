@@ -2,12 +2,11 @@
 
 from pydantic import BaseModel
 from typing import Optional
-from uuid import UUID
 
 
 class PropertyInformationSubject(BaseModel):
-    id: UUID
-    property_information_id: Optional[UUID]
-    subject_id: Optional[UUID]
+    id: str
+    property_information_id: Optional[str]
+    subject_id: Optional[str]
     created_at: Optional[str]
     updated_at: Optional[str]

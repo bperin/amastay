@@ -1,7 +1,7 @@
 from typing import List, Optional
-from uuid import UUID
 from datetime import datetime
 import logging
+from phone_utils import PhoneUtils
 from models.manager import Manager
 from supabase_utils import supabase_client, supabase_admin_client
 from gotrue.types import InviteUserByEmailOptions
@@ -11,7 +11,7 @@ from flask import g
 class ManagerService:
 
     @staticmethod
-    def create_manager_invitation(first_name: str, last_name: str, phone: str, owner_id: UUID, email: str, team_id: Optional[str] = None) -> dict:
+    def create_manager_invitation(first_name: str, last_name: str, phone: str, owner_id: str, email: str, team_id: Optional[str] = None) -> dict:
         """
         Creates an invitation for a manager to join a team.
 
@@ -21,6 +21,7 @@ class ManagerService:
             team_id: ID of the team the manager is being invited to
         """
         try:
+            phone = PhoneUtils.normalize_phone(phone)
 
             # Create the user account with manager role
             user_metadata = {"first_name": first_name, "last_name": last_name, "phone": phone, "user_type": "manager", "owner_id": owner_id}
@@ -29,6 +30,13 @@ class ManagerService:
 
             if not response.user:
                 raise ValueError("Failed to create manager account")
+
+            # Create manager record in managers table
+            manager_data = {"id": response.user.id, "owner_id": owner_id, "first_name": first_name, "last_name": last_name, "phone": phone, "email": email}
+
+            result = supabase_client.from_("managers").insert(manager_data).execute()
+            if not result.data:
+                raise ValueError("Failed to create manager record")
 
             # Here you would typically send an email to the manager with their credentials
             # and a link to set up their account
@@ -49,6 +57,16 @@ class ManagerService:
     def get_managers_by_owner(owner_id: str) -> List[Manager]:
         """Get all managers for an owner"""
         result = supabase_client.from_("managers").select("*").eq("owner_id", owner_id).execute()
+        if not result.data:
+            return []
+        return [Manager(**manager) for manager in result.data]
+
+    @staticmethod
+    def get_pending_managers_by_owner(owner_id: str) -> List[Manager]:
+        """Get all pending managers for an owner"""
+        result = supabase_client.from_("managers").select("*").eq("owner_id", owner_id).execute()
+        if not result.data:
+            return []
         return [Manager(**manager) for manager in result.data]
 
     @staticmethod
@@ -77,7 +95,7 @@ class ManagerService:
         return Manager(**result.data[0]) if result.data else None
 
     @staticmethod
-    def delete_manager(manager_id: UUID) -> bool:
+    def delete_manager(manager_id: str) -> bool:
         """Delete a manager"""
         # Get manager to verify ownership
         manager = ManagerService.get_manager(str(manager_id))

@@ -2,16 +2,15 @@
 from pydantic import BaseModel
 from typing import Optional
 from datetime import datetime
-from uuid import UUID
 
 from models.booking import Booking
 from models.guest import Guest
 
 
 class BookingGuest(BaseModel):
-    id: UUID
-    booking_id: UUID
-    guest_id: UUID
+    id: str
+    booking_id: str
+    guest_id: str
     created_at: str
     updated_at: str
 

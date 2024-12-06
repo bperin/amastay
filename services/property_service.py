@@ -13,7 +13,6 @@ from supabase_utils import supabase_client
 from models.property import Property
 from scraper import Scraper  # Adjust the import path if necessary
 from typing import List, Optional, Tuple
-from uuid import UUID
 
 
 class PropertyService:
@@ -97,7 +96,7 @@ class PropertyService:
             raise
 
     @staticmethod
-    def get_property(id: UUID) -> Optional[Property]:
+    def get_property(id: str) -> Optional[Property]:
         try:
             response = supabase_client.table("properties").select("*").eq("id", id).single().execute()
             if not response.data:
@@ -111,7 +110,7 @@ class PropertyService:
             raise e
 
     @staticmethod
-    def get_property_by_booking_id(property_id: UUID) -> Optional[Property]:
+    def get_property_by_booking_id(property_id: str) -> Optional[Property]:
         try:
             response = supabase_client.from_("properties").select("*").eq("id", str(property_id)).execute()
             if not response.data:
@@ -125,7 +124,7 @@ class PropertyService:
             raise e
 
     @staticmethod
-    def update_property(property_id: UUID, update_data: dict) -> Property:
+    def update_property(property_id: str, update_data: dict) -> Property:
         try:
 
             # Verify that the user is the owner of the property
@@ -174,7 +173,7 @@ class PropertyService:
             raise e
 
     @staticmethod
-    def delete_property(property_id: UUID, user_id: UUID) -> bool:
+    def delete_property(property_id: str, user_id: str) -> bool:
         try:
             # Verify that the user is the owner of the property
             existing_property = PropertyService.get_property(property_id)
@@ -194,7 +193,7 @@ class PropertyService:
             raise e
 
     @staticmethod
-    def list_properties(owner_id: UUID) -> List[Property]:
+    def list_properties(owner_id: str) -> List[Property]:
         try:
             query = supabase_client.table("properties").select("*")
             if owner_id:
@@ -212,7 +211,7 @@ class PropertyService:
             raise e
 
     @staticmethod
-    def save_scraped_data(property_id: UUID, scraped_data: str) -> str:
+    def save_scraped_data(property_id: str, scraped_data: str) -> str:
         """Save scraped data as a text file to Supabase."""
         filename = f"{property_id}_{int(time.time())}.txt"
         try:
@@ -233,3 +232,32 @@ class PropertyService:
         except Exception as e:
             logging.error(f"Error uploading document: {e}")
             return ""
+
+    @staticmethod
+    def assign_manager(*, property_id: str, manager_id: str) -> Optional[Property]:
+        """
+        Assigns a manager to a property.
+
+        Args:
+            property_id: str of the property to update
+            manager_id: str of the manager to assign
+
+        Returns:
+            Optional[Property]: The updated property if successful, None if property not found
+        """
+        try:
+            # Verify manager exists
+            manager_check = supabase_client.table("managers").select("*").eq("id", manager_id).execute()
+            if not manager_check.data:
+                raise ValueError(f"Manager with ID {manager_id} not found")
+
+            # Update property with new manager
+            response = supabase_client.table("properties").update({"manager_id": manager_id}).eq("id", property_id).execute()
+
+            if not response.data:
+                return None
+
+            return Property(**response.data[0])
+        except Exception as e:
+            logging.error(f"Error assigning manager {manager_id} to property {property_id}: {e}")
+            raise

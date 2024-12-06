@@ -6,7 +6,6 @@ from models.property import Property
 from models.to_swagger import pydantic_to_swagger_model
 from services.property_service import PropertyService
 from auth_utils import jwt_required
-from uuid import UUID
 from geopy.geocoders import Nominatim
 from geopy.exc import GeocoderTimedOut, GeocoderServiceError
 from models.property_information import PropertyInformation
@@ -104,12 +103,12 @@ class UpdateProperty(Resource):
 
 
 # Route to delete a property by its ID
-@ns_property.route("/delete/<uuid:property_id>")
+@ns_property.route("/delete/<string:property_id>")
 class DeleteProperty(Resource):
     @ns_property.doc("delete_property")
     @ns_property.response(204, "Property deleted")
     @jwt_required
-    def delete(self, property_id: UUID):
+    def delete(self, property_id: str):
         """
         Deletes a property by its ID.
         """
@@ -139,7 +138,7 @@ class ListProperties(Resource):
         Lists properties, optionally filtering by owner.
         """
         try:
-            owner_id = g.user_id  # TODO fix this
+            owner_id = g.user_id
 
             # Call the PropertyService to list properties
             properties = PropertyService.list_properties(owner_id)
@@ -177,12 +176,12 @@ class AddPropertyInformation(Resource):
 
 
 # Route to get all property information
-@ns_property.route("/information/<uuid:property_id>")
+@ns_property.route("/information/<string:property_id>")
 class GetAllPropertyInformation(Resource):
     @ns_property.doc("get_all_property_information")
     @ns_property.response(200, "Success", [property_information_response_model])
     @jwt_required
-    def get(self, property_id: UUID):
+    def get(self, property_id: str):
         """
         Get all information for a specific property, including recommendations and categories.
         """
@@ -228,12 +227,12 @@ class RemovePropertyInformation(Resource):
 
 
 # Route to get property information by property ID
-@ns_property.route("/information/<uuid:property_id>")
+@ns_property.route("/information/<string:property_id>")
 class GetPropertyInformation(Resource):
     @ns_property.doc("get_property_information")
     @ns_property.response(200, "Success", [property_information_response_model])
     @jwt_required
-    def get(self, property_id: UUID):
+    def get(self, property_id: str):
         """
         Get all information for a specific property.
         """
@@ -278,12 +277,12 @@ class UpdatePropertyInformation(Resource):
 
 
 # Route to get property by ID
-@ns_property.route("/<uuid:property_id>")
+@ns_property.route("/<string:property_id>")
 class GetProperty(Resource):
     @ns_property.doc("get_property_details")
     @ns_property.response(200, "Success", property_response_model)
     @jwt_required
-    def get(self, property_id: UUID):
+    def get(self, property_id: str):
         """
         Get a specific property by ID.
         """

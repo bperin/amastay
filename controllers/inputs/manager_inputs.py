@@ -19,10 +19,10 @@ def get_manager_input_models(ns_manager):
         "UpdateManager",
         {
             "id": fields.String(required=True, description="Manager ID"),
-            "first_name": fields.String(description="Manager's first name"),
-            "last_name": fields.String(description="Manager's last name"),
-            "email": fields.String(description="Manager's email"),
-            "phone": fields.String(description="Manager's phone number"),
+            "first_name": fields.String(required=False, description="Manager's first name"),
+            "last_name": fields.String(required=False, description="Manager's last name"),
+            "email": fields.String(required=False, description="Manager's email"),
+            "phone": fields.String(required=False, description="Manager's phone number"),
         },
     )
 
@@ -30,5 +30,9 @@ def get_manager_input_models(ns_manager):
         "AssignManagerToTeam",
         {"team_id": fields.String(required=True, description="Team ID"), "manager_id": fields.String(required=True, description="Manager ID")},
     )
+    assign_manager_to_property = ns_manager.model(
+        "AssignManagerToProperty",
+        {"property_id": fields.String(required=True, description="Property ID"), "manager_id": fields.String(required=True, description="Manager ID")},
+    )
 
-    return {"manager_invite_model": manager_invite_model, "update_manager_model": update_manager_model, "assign_manager_to_team_model": assign_manager_to_team_model}
+    return {"manager_invite_model": manager_invite_model, "update_manager_model": update_manager_model, "assign_manager_to_team_model": assign_manager_to_team_model, "assign_manager_to_property_model": assign_manager_to_property}

@@ -7,8 +7,8 @@ from models.property import Property
 
 
 class Booking(BaseModel):
-    id: UUID
-    property_id: UUID
+    id: str
+    property_id: str
     notes: Optional[str] = None
     check_in: str
     check_out: str

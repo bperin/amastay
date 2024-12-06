@@ -18,7 +18,7 @@ guest_response_model = pydantic_to_swagger_model(ns_guest, "Guest", Guest)
 # Define request/response models
 
 
-@ns_guest.route("")
+@ns_guest.route("/add")
 class GuestList(Resource):
     @ns_guest.doc("add_guest")
     @ns_guest.expect(guest_input_model)
@@ -86,7 +86,7 @@ class GuestDetail(Resource):
             return {"error": str(e)}, 500
 
 
-@ns_guest.route("/<uuid:booking_id>")
+@ns_guest.route("/guests/<uuid:booking_id>")
 class BookingGuests(Resource):
     @ns_guest.doc("list_guests")
     @ns_guest.response(200, "Success", [guest_response_model])
@@ -94,8 +94,10 @@ class BookingGuests(Resource):
     def get(self, booking_id: UUID):
         """List all guests for a booking"""
         try:
-            guests = GuestService.get_guests_by_booking(str(booking_id))
-            return {"guests": [guest.model_dump() for guest in guests]}, 200
+            guests = GuestService.get_guests_by_booking(booking_id)
+            if not guests:
+                return [], 200
+            return [guest.model_dump() for guest in guests], 200
 
         except Exception as e:
             logging.error(f"Error in list_guests: {e}")

@@ -4,7 +4,7 @@ import os
 import logging
 from datetime import datetime
 from dotenv import load_dotenv
-from flask import Flask, jsonify
+from flask import Flask
 from flask_cors import CORS
 from flask_restx import Api
 import json
