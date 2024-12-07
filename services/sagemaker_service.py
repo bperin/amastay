@@ -31,7 +31,8 @@ class SageMakerService:
             return
 
         endpoint_name = os.getenv("SAGEMAKER_ENDPOINT")
-        logger.info(f"SAGEMAKER_ENDPOINT: {endpoint_name}")
+        logger.info(f"Loading SAGEMAKER_ENDPOINT from environment: {endpoint_name}")
+        logger.info(f"All environment variables: {dict(os.environ)}")  # Temporary debug line
         region_name = os.getenv("SAGEMAKER_REGION")
         aws_access_key = os.getenv("SAGEMAKER_ACCESS_KEY")
         aws_secret_key = os.getenv("SAGEMAKER_SECRET_ACCESS_KEY")
@@ -100,6 +101,7 @@ class SageMakerService:
             raise RuntimeError("SageMaker service not initialized")
 
         try:
+
             messages = cls.get_conversation_history(booking_id=booking.id, property=property, property_information=property_information, all_document_text=all_document_text)
 
             messages.append({"role": "user", "content": prompt})

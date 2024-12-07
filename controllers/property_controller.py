@@ -10,6 +10,7 @@ from geopy.geocoders import Nominatim
 from geopy.exc import GeocoderTimedOut, GeocoderServiceError
 from models.property_information import PropertyInformation
 from services.property_information_service import PropertyInformationService
+from services.scraper_service import ScraperService
 from .inputs.property_inputs import get_property_input_models
 
 # Create the Namespace for property-related routes
@@ -48,23 +49,19 @@ class CreateProperty(Resource):
             if not data:
                 return {"error": "Missing property data"}, 400
 
-            # Geocode the address
+            # Extract fields from request data
+            name = data.get("name")
             address = data.get("address")
-            if address:
-                try:
-                    # This is not a coroutine, it's a synchronous function call
-                    location = geolocator.geocode(address)
-                    if location:
-                        data["lat"] = location.latitude
-                        data["lng"] = location.longitude
-                    else:
-                        logging.warning(f"Failed to geocode address: {address}")
-                except (GeocoderTimedOut, GeocoderServiceError) as e:
-                    logging.error(f"Geocoding error: {e}")
+            description = data.get("description")
+            property_url = data.get("property_url")
+            # Clean property URL by removing query parameters
+            if property_url:
+                property_url = property_url.split("?")[0]
 
-            # Call the PropertyService to create the property
+            # Create property with named parameters
+            new_property = PropertyService.create_property(name=name, address=address, description=description, property_url=property_url)
 
-            new_property = PropertyService.create_property(data)
+            ScraperService.scrape_property(new_property)
 
             return new_property.model_dump(), 201
         except ValueError as ve:

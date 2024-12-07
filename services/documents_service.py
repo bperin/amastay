@@ -11,35 +11,7 @@ class DocumentsService:
     BUCKET_NAME = "properties"
 
     @staticmethod
-    def save_scraped_data(property_id, scraped_data):
-        """Save scraped data as a text file to Supabase storage."""
-        filename = f"{property_id}_{int(time.time())}.txt"
-        try:
-            with tempfile.NamedTemporaryFile(delete=False, mode="w", encoding="utf-8") as temp_file:
-                temp_file.write(scraped_data)
-                temp_file_path = temp_file.name
-
-            # Upload to Supabase
-            with open(temp_file_path, "rb") as file:
-                response = supabase_client.storage.from_(DocumentsService.BUCKET_NAME).upload(
-                    file=file,
-                    path=filename,
-                    file_options={"content-type": "text/plain"},
-                )
-
-            if response:
-                logging.info(f"Document uploaded successfully as {filename}")
-                os.remove(temp_file_path)  # Clean up temp file
-                return filename
-            else:
-                logging.error(f"Failed to upload document to Supabase.")
-                return None
-        except Exception as e:
-            logging.error(f"Error uploading document: {e}")
-            return None
-
-    @staticmethod
-    def get_documents_by_property_id(property_id) -> List[Document]:
+    def get_documents_by_property_id(property_id: str) -> List[Document]:
         """Fetch all documents for a given property ID."""
         try:
             document_query = supabase_client.table("documents").select("*").eq("property_id", property_id).execute()
@@ -58,7 +30,7 @@ class DocumentsService:
             return []
 
     @staticmethod
-    def delete_document(filename):
+    def delete_document(filename: str) -> bool:
         """Delete a document from storage."""
         try:
             supabase_client.storage.from_(DocumentsService.BUCKET_NAME).remove([filename])

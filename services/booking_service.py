@@ -411,6 +411,18 @@ class BookingService:
             bool: True if deletion was successful, False otherwise
         """
         try:
+            booking = BookingService.get_booking_by_id(booking_id)
+            if not booking:
+                raise ValueError(f"Booking with ID {booking_id} not found")
+
+            property_id = booking.property_id
+            property_obj = PropertyService.get_property(property_id)
+            if not property_obj:
+                raise ValueError(f"Property with ID {property_id} not found")
+
+            if str(property_obj.owner_id) != str(g.user_id) and str(property_obj.manager_id) != str(g.user_id):
+                raise ValueError(f"User does not have permission to delete booking for property {property_id}")
+
             # First delete associated booking_guests entries
             supabase_client.table("booking_guests").delete().eq("booking_id", booking_id).execute()
 

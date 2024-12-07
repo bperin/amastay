@@ -17,36 +17,56 @@ from typing import List, Optional, Tuple
 
 class PropertyService:
     @staticmethod
-    def geocode_address(address: str) -> Tuple[Optional[float], Optional[float]]:
+    def geocode_address(address: str) -> Tuple[Optional[str], Optional[float], Optional[float]]:
+        """
+        Geocode and normalize an address.
+
+        Args:
+            address: Raw address string
+
+        Returns:
+            Tuple containing (normalized_address, latitude, longitude)
+            Returns (None, None, None) if geocoding fails
+        """
         geolocator = Nominatim(user_agent="amastay_app")
         try:
             location = geolocator.geocode(address)
 
             if location:
-                return location.latitude, location.longitude
+                return location.address, location.latitude, location.longitude
             else:
                 logging.warning(f"Could not geocode address: {address}")
-                return None, None
+                return None, None, None
         except (GeocoderTimedOut, GeocoderServiceError) as e:
             logging.error(f"Geocoding error for address {address}: {str(e)}")
-            return None, None
+            return None, None, None
 
     @staticmethod
-    def create_property(property_data: dict) -> Property:
+    def create_property(name: str, address: str, description: Optional[str], property_url: str) -> Property:
         try:
-            property_data["owner_id"] = g.user_id
+            property_data = {
+                "name": name,
+                "address": address,
+                "description": description,
+                "property_url": property_url,
+                "owner_id": g.user_id,
+            }
 
             # Geocode the address
             address = property_data.get("address")
             if not address:
                 raise ValueError("Address is required for property creation")
 
-            lat, lng = PropertyService.geocode_address(address)
+            normalized_address, lat, lng = PropertyService.geocode_address(address)
+
             if lat is None or lng is None:
                 raise ValueError(f"Failed to geocode address: {address}")
             if lat and lng:
                 property_data["lat"] = lat
                 property_data["lng"] = lng
+
+            if normalized_address:
+                property_data["address"] = normalized_address
 
             # Insert the property into the 'properties' table
             response = supabase_client.table("properties").insert(property_data).execute()
@@ -56,43 +76,10 @@ class PropertyService:
 
             data = response.data[0]
             new_property = Property(**data)
-            PropertyService.scrape_property(new_property)
             return new_property
 
         except Exception as e:
             logging.error(f"Exception in create_property: {e}")
-            raise
-
-    @staticmethod
-    def scrape_property(property: Property):
-        try:
-            if property.property_url:
-                scraper = Scraper(property.property_url)
-                scraped_data = scraper.scrape()
-
-                logging.info(f"Scraped data cleaned successfully for property {property.id}")
-
-                if scraped_data:
-                    # Save the scraped data using the scraper's save method
-                    filename = PropertyService.save_scraped_data(property.id, scraped_data)
-                    document_data = {
-                        "property_id": property.id,
-                        "file_id": filename,
-                    }
-                    # Get the full URL for the storage object
-                    file_url = supabase_client.storage.from_(DocumentsService.BUCKET_NAME).get_public_url(filename)
-                    document_data["file_url"] = file_url
-                    # Insert the document into the 'documents' table
-                    document_response = supabase_client.table("documents").insert(document_data).execute()
-
-                    log_message = f"Scraped data saved successfully for property {property.id}" if filename else f"Failed to save scraped data for property {property.id}"
-                    (logging.info(log_message) if filename else logging.error(log_message))
-                else:
-                    logging.error(f"Failed to scrape data for property {property.id}")
-            else:
-                logging.info(f"No 'property_url' provided for property {property.id}")
-        except Exception as e:
-            logging.error(f"Exception in scrape_property: {e}")
             raise
 
     @staticmethod
@@ -209,29 +196,6 @@ class PropertyService:
         except Exception as e:
             logging.error(f"Exception in list_properties: {e}")
             raise e
-
-    @staticmethod
-    def save_scraped_data(property_id: str, scraped_data: str) -> str:
-        """Save scraped data as a text file to Supabase."""
-        filename = f"{property_id}_{int(time.time())}.txt"
-        try:
-            with tempfile.NamedTemporaryFile(delete=False) as temp_file:
-                temp_file.write(scraped_data.encode("utf-8"))
-                temp_file_path = temp_file.name
-
-            # Upload to Supabase
-            response = supabase_client.storage.from_("properties").upload(filename, temp_file_path)
-
-            if response:
-                logging.info(f"Document uploaded successfully as {filename}")
-                os.remove(temp_file_path)  # Clean up temp file
-                return filename
-            else:
-                logging.error(f"Failed to upload document to Supabase.")
-                return ""
-        except Exception as e:
-            logging.error(f"Error uploading document: {e}")
-            return ""
 
     @staticmethod
     def assign_manager(*, property_id: str, manager_id: str) -> Optional[Property]:

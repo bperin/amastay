@@ -11,6 +11,7 @@ class Document(BaseModel):
     property_id: str
     file_id: str
     file_url: str
+    primary: bool
     created_at: str
     updated_at: str
 

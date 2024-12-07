@@ -1,12 +1,10 @@
 import logging
 import time
+import re
+import os
 from bs4 import BeautifulSoup
 from selenium import webdriver
 from selenium.webdriver.chrome.options import Options
-from supabase_utils import supabase_client
-import tempfile
-import os
-import re
 
 # Configure logging
 logging.basicConfig(
@@ -31,32 +29,47 @@ class Scraper:
         options.add_argument("disable-infobars")
         options.add_argument("--disable-extensions")
         options.add_argument("--enable-javascript")
-
-        # Initialize the Chrome driver (Make sure chromedriver is installed)
         self.driver = webdriver.Chrome(options=options)
 
     def filter_content(self, soup):
-        """Filter out unwanted content such as headers, footers, and calendar elements."""
-        # Remove irrelevant tags
-        for tag in soup(["script", "style", "header", "footer", "nav", "aside"]):
+        """Filter out unwanted content and clean the text."""
+
+        # Remove non-content tags
+        for tag in soup(["script", "style", "header", "footer", "nav", "aside", "noscript", "meta", "link", "button", "svg", "iframe", "form"]):
             tag.decompose()
 
-        # Remove calendar elements based on their known class or ID (modify this selector as needed)
-        for calendar_tag in soup.find_all(class_="calendar"):
-            calendar_tag.decompose()
+        # Remove elements known to contain irrelevant content (adjust selectors as needed)
+        # For example, if calendars or similar elements have known classes:
+        for cal in soup.select(".calendar"):
+            cal.decompose()
 
-        # Remove any specific elements with text patterns like 'Add your travel dates'
-        for tag in soup.find_all(string=lambda text: "Add your travel dates" in text or "Su Mo Tu We Th Fr Sa" in text):
-            parent_tag = tag.find_parent()
-            if parent_tag:
-                parent_tag.decompose()
+        # Remove hidden elements
+        for hidden in soup.select("[aria-hidden='true'], [style*='display:none']"):
+            hidden.decompose()
 
-        # Extract meaningful text
+        # Remove text related to calendar lines after extraction
         text = soup.get_text(separator="\n", strip=True)
-
-        # Post-process the text to remove excessive newlines and white spaces
         lines = [line.strip() for line in text.splitlines() if line.strip()]
-        clean_text = "\n".join(lines)
+
+        # Define sets of unwanted lines
+        day_abbrevs = {"Su", "Mo", "Tu", "We", "Th", "Fr", "Sa"}
+        months = {"January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"}
+
+        filtered_lines = []
+        for line in lines:
+            # Skip day abbreviations
+            if line in day_abbrevs:
+                continue
+            # Skip month names
+            if line in months:
+                continue
+            # Skip numeric-only lines if they likely represent calendar days
+            if line.isdigit():
+                continue
+
+            filtered_lines.append(line)
+
+        clean_text = "\n".join(filtered_lines)
         return clean_text
 
     def scrape(self):
@@ -70,12 +83,13 @@ class Scraper:
 
             if airbnb_match:
                 room_id = airbnb_match.group(1)
-                urls = [self.url, f"https://www.airbnb.com/rooms/{room_id}/reviews", f"https://www.airbnb.com/rooms/{room_id}/amenities"]  # Main listing  # Reviews  # Amenities
-                combined_text = []
+                urls = [self.url, f"https://www.airbnb.com/rooms/{room_id}/reviews", f"https://www.airbnb.com/rooms/{room_id}/amenities"]
 
+                combined_text = []
                 for url in urls:
                     self.driver.get(url)
-                    time.sleep(2)  # Adjust sleep time to allow the page to load fully
+                    # Adjust the sleep time as needed based on page load speed
+                    time.sleep(2)
 
                     page_source = self.driver.page_source
                     soup = BeautifulSoup(page_source, "html.parser")
@@ -90,7 +104,7 @@ class Scraper:
                 return final_text if final_text else "No content found"
 
             else:
-                # Handle non-Airbnb URLs as before
+                # Handle non-Airbnb URLs
                 self.driver.get(self.url)
                 time.sleep(2)
 

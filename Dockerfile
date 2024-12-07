@@ -17,7 +17,6 @@ WORKDIR /app
 # Copy the rest of the application
 COPY . .
 
-
 # Install system dependencies and Poetry
 RUN apt-get update && apt-get install -y curl build-essential && curl -sSL https://install.python-poetry.org | python3 -
 

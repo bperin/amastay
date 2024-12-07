@@ -10,7 +10,7 @@ from flask_restx import Api
 import json
 
 # Load environment variables
-load_dotenv()
+load_dotenv(override=True)
 
 # Import controllers and utilities
 from controllers.auth_controller import ns_auth

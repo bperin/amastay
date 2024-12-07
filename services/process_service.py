@@ -80,11 +80,13 @@ def handle_incoming_sms(message_id: str, origination_number: str, message_body: 
 
         logger.info(f"AI Response received: {ai_response[:100]}...")
 
-        # Send response
+        # Send response in chunks if needed
         if send_message:
             logger.info("Sending SMS response...")
-            PinpointService.send_sms(phone, os.getenv("SYSTEM_PHONE_NUMBER"), ai_response)
-            logger.info("SMS response sent successfully")
+            chunks = split_message_into_chunks(ai_response)
+            for chunk in chunks:
+                PinpointService.send_sms(phone, os.getenv("SYSTEM_PHONE_NUMBER"), chunk)
+                logger.info(f"SMS chunk sent: {chunk[:50]}...")
 
         return ai_response
 
@@ -130,3 +132,42 @@ def handle_error(error: Exception, message_id: str, origination_number: str, mes
         logger.info("Error message sent to user")
     except Exception as sms_error:
         logger.error(f"Failed to send error SMS: {str(sms_error)}")
+
+
+def split_message_into_chunks(message: str, max_length: int = 160) -> list[str]:
+    """
+    Split a message into chunks that fit within SMS character limits.
+
+    Args:
+        message: The message to split
+        max_length: Maximum length of each chunk (default 160 for SMS)
+
+    Returns:
+        List of message chunks
+    """
+    # If message is short enough, return as single chunk
+    if len(message) <= max_length:
+        return [message]
+
+    chunks = []
+    current_chunk = ""
+    words = message.split()
+
+    for word in words:
+        # Check if adding the next word would exceed max_length
+        if len(current_chunk) + len(word) + 1 <= max_length:
+            current_chunk += " " + word if current_chunk else word
+        else:
+            # Save current chunk and start new one
+            chunks.append(current_chunk)
+            current_chunk = word
+
+    # Add the last chunk if there is one
+    if current_chunk:
+        chunks.append(current_chunk)
+
+    # Add chunk numbers if there are multiple chunks
+    if len(chunks) > 1:
+        chunks = [f"({i+1}/{len(chunks)}) {chunk}" for i, chunk in enumerate(chunks)]
+
+    return chunks

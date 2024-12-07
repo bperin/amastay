@@ -3,6 +3,9 @@ from uuid import UUID
 from datetime import datetime
 from typing import Optional
 
+from models.booking import Booking
+from models.guest import Guest
+
 
 class Message(BaseModel):
     id: str
@@ -14,3 +17,6 @@ class Message(BaseModel):
     question_id: Optional[str]  # SMS message ID, optional if not an SMS message
     created_at: str
     updated_at: str
+
+    booking: Optional[Booking] = None
+    sender: Optional[Guest] = None
