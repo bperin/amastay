@@ -35,7 +35,7 @@ class SMSWebhook(Resource):
             message_body = data.get("message")
             message_id = data.get("message_id")
 
-            handle_incoming_sms(message_id, origination_number, message_body, true)
+            handle_incoming_sms(message_id, origination_number, message_body, True)
 
             return {"status": "success"}, 200
 
