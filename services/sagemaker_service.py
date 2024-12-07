@@ -32,7 +32,6 @@ class SageMakerService:
 
         endpoint_name = os.getenv("SAGEMAKER_ENDPOINT")
         logger.info(f"Loading SAGEMAKER_ENDPOINT from environment: {endpoint_name}")
-        logger.info(f"All environment variables: {dict(os.environ)}")  # Temporary debug line
         region_name = os.getenv("SAGEMAKER_REGION")
         aws_access_key = os.getenv("SAGEMAKER_ACCESS_KEY")
         aws_secret_key = os.getenv("SAGEMAKER_SECRET_ACCESS_KEY")

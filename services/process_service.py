@@ -83,10 +83,10 @@ def handle_incoming_sms(message_id: str, origination_number: str, message_body: 
         # Send response in chunks if needed
         if send_message:
             logger.info("Sending SMS response...")
-            chunks = split_message_into_chunks(ai_response)
+            chunks = split_message_into_chunks(ai_response, 400)
             for chunk in chunks:
                 PinpointService.send_sms(phone, os.getenv("SYSTEM_PHONE_NUMBER"), chunk)
-                logger.info(f"SMS chunk sent: {chunk[:50]}...")
+                logger.info(f"SMS chunk sent: {chunk[:400]}...")
 
         return ai_response
 
@@ -134,13 +134,13 @@ def handle_error(error: Exception, message_id: str, origination_number: str, mes
         logger.error(f"Failed to send error SMS: {str(sms_error)}")
 
 
-def split_message_into_chunks(message: str, max_length: int = 160) -> list[str]:
+def split_message_into_chunks(message: str, max_length: int = 400) -> list[str]:
     """
     Split a message into chunks that fit within SMS character limits.
 
     Args:
         message: The message to split
-        max_length: Maximum length of each chunk (default 160 for SMS)
+        max_length: Maximum length of each chunk (default 400 for SMS)
 
     Returns:
         List of message chunks
