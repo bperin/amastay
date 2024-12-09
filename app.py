@@ -4,7 +4,7 @@ import os
 import logging
 from datetime import datetime
 from dotenv import load_dotenv
-from flask import Flask
+from flask import Flask, jsonify
 from flask_cors import CORS
 from flask_restx import Api
 import json
@@ -93,6 +93,15 @@ def create_app():
 
 # Create the application instance
 app = create_app()
+
+
+@app.route("/api/v1/debug/env", methods=["GET"])
+def debug_env():
+    # Only enable in non-production environments
+    if os.getenv("FLASK_ENV") != "production":
+        return {"environment": os.getenv("FLASK_ENV"), "system_phone": os.getenv("SYSTEM_PHONE_NUMBER"), "log_level": os.getenv("LOG_LEVEL")}
+    return {"error": "Debug endpoint not available in production"}, 403
+
 
 if __name__ == "__main__":
     app.run(debug=True, host="0.0.0.0", port=5001)

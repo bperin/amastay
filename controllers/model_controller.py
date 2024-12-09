@@ -39,7 +39,7 @@ class QueryModel(Resource):
             message = data.get("message")
             phone = data.get("phone")
             message_id = str(uuid.uuid4())
-            send_message = data.get("send_message", True)
+            send_message = data.get("send_message", False)
 
             response = handle_incoming_sms(message_id, phone, message, send_message)
 
