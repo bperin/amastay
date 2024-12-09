@@ -16,7 +16,7 @@ class PinpointService:
         Args:
             phone_number (str): The recipient's phone number.
             sender_number (str): The system phone number.
-            message_content (str): The content of the SMS.
+            message_content (str): The content of the SMS. 
 
         Returns:
             Optional[str]: The SMS message ID if successful, None otherwise.

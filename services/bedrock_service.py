@@ -62,7 +62,7 @@ class BedrockService:
         return response["message"]["content"][0]["text"]
 
     @classmethod
-    def get_system_prompt(cls, booking: Booking, property: Property, Guest: Guest) -> str:
+    def get_system_prompt(cls, booking: Booking, property: Property, Guest: Guest, document_text: Optional[str] = None) -> str:
 
         model_params = get_active_model_param()
 
@@ -78,10 +78,10 @@ class BedrockService:
             property_info_text = "\n#Property Information:#\n"
             property_info_text += "\n".join(f"{info.name}: {info.detail}" for info in property_information)
 
-        # doc_text = f"\n#Additional Property Details:#\n{all_document_text}" if all_document_text else ""
+        doc_text = f"\n#Property documents#\n{document_text}" if document_text else ""
 
         # Combine all system information
-        full_system_content = system_content + property_info + property_info_text
+        full_system_content = system_content + property_info + property_info_text + doc_text
         if len(full_system_content) > 8000:
             full_system_content = full_system_content[:8000]
 
@@ -95,6 +95,7 @@ class BedrockService:
         guest: Guest,
         prompt: str,
         message_id: str,
+        document_text: Optional[str] = None,
     ) -> str:
         """Query the Bedrock model with conversation history and context"""
         if cls.bedrock_client is None:
@@ -111,7 +112,7 @@ class BedrockService:
 
             # Get model parameters
             model_params = get_active_model_param()
-            raw_system_prompt = cls.get_system_prompt(booking, property, guest)
+            raw_system_prompt = cls.get_system_prompt(booking, property, guest, document_text)
             system_prompt = SystemPrompt.create(raw_system_prompt)
 
             # Query Bedrock

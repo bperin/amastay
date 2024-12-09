@@ -1,8 +1,10 @@
 import logging
 import os
 import traceback
+from typing import List
 import requests
 
+from models.document import Document
 from phone_utils import PhoneUtils
 from services.booking_service import BookingService
 from services.message_service import MessageService
@@ -89,10 +91,10 @@ def handle_incoming_sms(message_id: str, origination_number: str, message_body: 
         # Get property information and documents
         property_information = PropertyInformationService.get_property_information_by_property_id(property.id)
         property_documents = DocumentsService.get_documents_by_property_id(property.id)
-
+        document_text = process_property_documents(property_documents, property.id)
         # Query AI model
         logger.info("Querying bedrock model...")
-        ai_response = BedrockService.query_model(booking=booking, property=property, guest=guest, prompt=message_body, message_id=message_id)
+        ai_response = BedrockService.query_model(booking=booking, property=property, guest=guest, prompt=message_body, message_id=message_id, document_text=document_text)
 
         logger.info(f"AI Response received: {ai_response[:100]}...")
 
@@ -109,7 +111,7 @@ def handle_incoming_sms(message_id: str, origination_number: str, message_body: 
         handle_error(e, message_id, phone, message_body, send_message)
 
 
-def process_property_documents(documents, property_id: str) -> str:
+def process_property_documents(documents: List[Document], property_id: str) -> str:
     """Process property documents and return combined text"""
     if not documents:
         logger.info(f"No documents found for property ID {property_id}")
@@ -127,7 +129,7 @@ def process_property_documents(documents, property_id: str) -> str:
         except requests.exceptions.RequestException as e:
             logger.warning(f"Could not read content for document: {document.file_url}, error: {e}")
 
-    return "\n\n".join(processed_texts)
+    return "\n".join(processed_texts)
 
 
 def handle_error(error: Exception, message_id: str, origination_number: str, message_body: str, send_message: bool = True) -> None:
