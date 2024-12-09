@@ -36,8 +36,6 @@ network:
 
 # Add variables section at the root level for default values
 variables:
-  SYSTEM_PHONE_NUMBER: "+18556124703"
-  FLASK_ENV: "development"
   SUPABASE_URL: "https://cjpqoecwszjepmrijxit.supabase.co"
   SUPABASE_ANON_KEY: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNqcHFvZWN3c3pqZXBtcmlqeGl0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3MzIxNTE1NjEsImV4cCI6MjA0NzcyNzU2MX0.2B7_ONZBPkB9Hc4hTnjaCrLX1aWnVpFH6rKPYKz_OSI"
   SUPABASE_SERVICE_KEY: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNqcHFvZWN3c3pqZXBtcmlqeGl0Iiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTczMjE1MTU2MSwiZXhwIjoyMDQ3NzI3NTYxfQ.U1By0_dlPF6XI5rRyrhgAjZCoonoNY6KrfcPcHKxKq4"

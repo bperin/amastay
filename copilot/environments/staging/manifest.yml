@@ -19,3 +19,8 @@ http:
 # Configure observability for your environment resources.
 observability:
   container_insights: false
+
+variables:
+  SYSTEM_PHONE_NUMBER: "+18556058275"
+  FLASK_ENV: "staging"
+  LOG_LEVEL: debug
