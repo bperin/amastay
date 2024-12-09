@@ -1,204 +1,129 @@
 import os
 import logging
-import traceback
 import boto3
-from typing import Optional, List, Any
-from flask import g
-from botocore.exceptions import ClientError
-from sagemaker.predictor import Predictor
-from sagemaker.serializers import JSONSerializer
-from sagemaker.deserializers import JSONDeserializer
+from typing import Optional, List
+from botocore.config import Config
 from models.booking import Booking
 from models.guest import Guest
 from models.hf_message import HfMessage
 from models.property import Property
 from models.property_information import PropertyInformation
-from services.documents_service import DocumentsService
+from services import booking_service, guest_service, property_service
 from services.message_service import MessageService
-from services.property_information_service import PropertyInformationService
 from services.model_params_service import get_active_model_param
-import re
 
-from services.property_service import PropertyService
-
-from botocore.config import Config
+logger = logging.getLogger(__name__)
 
 
 class BedrockService:
-    def __init__(self):
+    bedrock_client = None
+    message_service = MessageService()
 
-        self.inference_arn = os.getenv("BEDROCK_INFERENCE_ARN")
+    @classmethod
+    def initialize(cls):
+        """Initialize Bedrock client with AWS credentials"""
+        if cls.bedrock_client is not None:
+            return
 
-        # Configure boto3 client with explicit retry config
-        config = Config(retries=dict(max_attempts=3), connect_timeout=5, read_timeout=30)  # Disable retries completely
+        config = Config(retries=dict(max_attempts=3), connect_timeout=5, read_timeout=30)
+        cls.bedrock_client = boto3.client("bedrock-runtime", region_name="us-east-1", config=config)
 
-        self.bedrock_client = boto3.client("bedrock-runtime", region_name="us-east-1", config=config)
+    @classmethod
+    def get_conversation_history(cls, booking_id: str) -> List[HfMessage]:
+        """Get conversation history with property context"""
+        if cls.bedrock_client is None:
+            raise RuntimeError("Bedrock service not initialized")
+        conversation_history = []
+        # Add message history
+        messages = cls.message_service.get_messages_by_booking(booking_id)
+        if messages:
+            for msg in messages:
+                role = "user" if msg.sender_type == 0 else "assistant"
+                conversation_history.append(HfMessage.create(role=role, text=msg.content))
 
-        # Message service to interact with the database
-        self.message_service = MessageService()
-        self.document_service = DocumentsService()
-        self.property_service = PropertyService()
-        self.property_information_service = PropertyInformationService()
+        return conversation_history
 
-    def get_conversation_history(self, booking_id: str) -> List[HfMessage]:
-        # Fetch conversation history from Supabase
-        messages = self.message_service.get_messages_by_booking(booking_id)
+    @classmethod
+    def get_basic_query(cls, prompt: str):
+        messages = HfMessage.create(role="user", text=prompt)
+        payload = [msg.dict() for msg in messages]
+        response = cls.bedrock_client.converse(modelId="us.meta.llama3-2-3b-instruct-v1:0", messages=payload, inferenceConfig={"maxTokens": 360, "temperature": 0.5, "topP": 0.5})
+        return response["message"]["content"][0]["text"]
 
-        # Handle case where get_messages_by_booking returns None
-        if messages is None:
-            return []
+    @classmethod
+    def get_system_prompt(cls, booking: Booking, property: Property, Guest: Guest) -> str:
 
-        # Convert the database messages into HfMessage format for the model
-        custom_messages = []
-        last_role = None
-        for msg in messages:
-            current_role = "user" if msg.sender_type == 0 else "assistant"
+        model_params = get_active_model_param()
 
-            # Ensure alternating user/assistant pattern
-            if current_role != last_role:
-                custom_messages.append(HfMessage.create(role=current_role, text=msg.content))
-                last_role = current_role
-            else:
-                # If same role appears consecutively, combine messages
-                if custom_messages:
-                    custom_messages[-1].text += f"\n{msg.content}"
-                else:
-                    custom_messages.append(HfMessage.create(role=current_role, text=msg.content))
+        property_information = property_service.get_property_information_by_property_id(property.id)
+        # all_document_text = document_service.get_all_document_text_by_property_id(property_id)
+        # Build system prompt with context
+        system_content = model_params.prompt
+        property_info = f"\n#Property Details:#\nName: {property.name}\n" f"Address: {property.address}\nDescription: {property.description}\n" f"Location: Lat {property.lat}, Lng {property.lng}"
+        property_info += f"\n#Booking Details:#\nCheck-in: {booking.check_in}\nCheck-out: {booking.check_out}\n"
 
-        # Ensure the conversation starts with a user message and ends with an assistant message
-        if custom_messages and custom_messages[0].role == "assistant":
-            custom_messages.insert(0, HfMessage.create(role="user", text="Hello"))
-        if custom_messages and custom_messages[-1].role == "user":
-            custom_messages.append(HfMessage.create(role="assistant", text="I understand. How can I assist you further?"))
+        property_info_text = ""
+        if property_information:
+            property_info_text = "\n#Property Information:#\n"
+            property_info_text += "\n".join(f"{info.name}: {info.detail}" for info in property_information)
 
-        return custom_messages
+        # doc_text = f"\n#Additional Property Details:#\n{all_document_text}" if all_document_text else ""
 
+        # Combine all system information
+        full_system_content = system_content + property_info + property_info_text + doc_text
+        if len(full_system_content) > 8000:
+            full_system_content = full_system_content[:8000]
+
+    @classmethod
     def query_model(
-        self,
+        cls,
         booking: Booking,
         property: Property,
         guest: Guest,
         prompt: str,
         message_id: str,
-        property_information: Optional[List[PropertyInformation]] = None,
-        all_document_text: str = "",
-        max_new_tokens: int = 2048,
-    ):
+    ) -> dict:
+        """Query the Bedrock model with conversation history and context"""
+        if cls.bedrock_client is None:
+            raise RuntimeError("Bedrock service not initialized")
+
         try:
+            messages = cls.get_conversation_history(booking_id=booking.id, property=property)
 
-            # Fetch conversation history directly from the database
-            conversation_history = self.get_conversation_history(booking.id)
-            # Get the active model parameters
+            # Add the new user message
+            messages.append(HfMessage.create(role="user", text=prompt))
 
-            active_model_param = get_active_model_param()
+            # Convert messages to payload format
+            payload = [msg.dict() for msg in messages]
 
-            # Use the prompt from the active model parameters
-            system_prompt = [{"text": active_model_param.prompt}]
-
-            # Append property details to system prompt
-            property_info_text = ""
-            if property_information:
-                for info in property_information:
-                    property_info_text += f"{info.name}: {info.detail}\n"
-
-            system_prompt[0]["text"] += f". The property details are as follows: Longitude: {property.lat} Latitude: {property.lng} Property Name: {property.name} Address: {property.address} Description: {property.description} Property Information: {property_info_text} Additional Information: {all_document_text}"
-
-            # Trim system prompt if too long
-            if len(system_prompt[0]["text"]) > 8000:
-                system_prompt[0]["text"] = system_prompt[0]["text"][:8000]
-
-            # Prepare the new user prompt
-            new_user_message = HfMessage.create("user", prompt)
-            # Add the new user prompt to the conversation history
-            conversation_history.append(new_user_message)
-
-            # Prepare payload for the model
-            payload = [msg.dict() for msg in conversation_history]
-
-            # Define the system prompt as an array of texts
-            response = self.bedrock_client.converse(
+            # Get model parameters
+            model_params = get_active_model_param()
+            system_prompt = cls.get_system_prompt(booking_id=booking.id, property_id=property.id, guest_id=guest.id)
+            # Query Bedrock
+            response = cls.bedrock_client.converse(
+                prompt=system_prompt,
                 modelId="us.meta.llama3-2-3b-instruct-v1:0",
                 messages=payload,
-                system=system_prompt,
                 inferenceConfig={
                     "maxTokens": 360,
-                    "temperature": active_model_param.temperature,
-                    "topP": active_model_param.top_p,
+                    "temperature": model_params.temperature,
+                    "topP": model_params.top_p,
                 },
-                additionalModelRequestFields={},
             )
 
-            logging.info(f"AI: Response: {response}")
-            # Extract the response text
+            # Extract and clean response
             if "content" in response:
-                cleaned_response = self.clean_response(response["message"]["content"][0]["text"])
+                model_response = response["message"]["content"][0]["text"]
             else:
-                cleaned_response = "I apologize, but I couldn't generate a proper response."
+                model_response = "I apologize, but I couldn't generate a proper response."
 
-            logging.info(f"Cleaned response: {cleaned_response}")
+            # Save messages
+            user_message = cls.message_service.add_message(booking_id=booking.id, sender_id=guest.id, sender_type=0, content=prompt, sms_id=message_id)
 
-            if cleaned_response:
-                # Save only the new user input and assistant's response directly to the database
-                user_message = self.message_service.add_message(
-                    booking_id=booking.id,
-                    sender_id=guest.id,
-                    sender_type=0,
-                    content=prompt,
-                    sms_id=message_id,
-                    question_id=None,
-                )
-                self.message_service.add_message(
-                    booking_id=booking.id,
-                    sender_id=None,
-                    sender_type=1,
-                    content=cleaned_response,
-                    sms_id=None,
-                    question_id=str(user_message.id),
-                )
+            cls.message_service.add_message(booking_id=booking.id, sender_id=None, sender_type=1, content=model_response, sms_id=None, question_id=str(user_message.id))
 
-            # Return the cleaned response
-            return {"response": cleaned_response}
+            return {"response": model_response}
 
-        except (ClientError, Exception) as e:
-            print(f"ERROR: Can't invoke model'. Reason: {e}")
+        except Exception as e:
+            logger.error(f"Error querying model: {str(e)}")
             return {"error": "I apologize, but I encountered an error while processing your request. " "The error has been logged for further investigation."}
-
-    def clean_document(document: str) -> str:
-        pass
-
-    def clean_text(text):
-        # # Remove Markdown formatting
-        # text = re.sub(r"\*\*|__", "", text)
-
-        # # Remove bullet points and numbering
-        # text = re.sub(r"^\s*[\d*-]\s*", "", text, flags=re.MULTILINE)
-
-        # # Remove quotes and parentheses
-        # text = re.sub(r"[\"\'()]", "", text)
-
-        # # Remove backslashes
-        # text = text.replace("\\n", " ")
-
-        # # Remove extra whitespace and double spaces
-        # text = re.sub(r"\s+", " ", text).strip()
-
-        # # Remove period with two spaces followed by another period
-        # text = re.sub(r"\. {2}\.", ".", text)
-
-        return text
-
-    def clean_response(text):
-        if not text:
-            return "I apologize, but I couldn't generate a proper response."
-
-        # Extract message content from Bedrock response
-        if isinstance(text, dict):
-            try:
-                # Navigate the response structure to get the actual message
-                message = text.get("output", {}).get("message", {}).get("content", [])
-                if message and isinstance(message, list):
-                    text = message[0].get("text", "")
-            except (KeyError, IndexError, AttributeError):
-                return "I apologize, but I couldn't generate a proper response."
-
-        return text

@@ -25,6 +25,7 @@ from controllers.user_controller import ns_user
 from controllers.team_controller import ns_team
 from auth_utils import jwt_required
 from services.sagemaker_service import SageMakerService
+from services.bedrock_service import BedrockService
 
 # Initialize Flask app and CORS
 app = Flask(__name__)
@@ -69,6 +70,12 @@ def create_app():
         app.logger.error(f"Failed to initialize SageMaker service: {str(e)}")
         raise
 
+    try:
+        BedrockService.initialize()
+        app.logger.info("Bedrock service initialized successfully")
+    except Exception as e:
+        app.logger.error(f"Failed to initialize Bedrock service: {str(e)}")
+        raise
     # Register Namespaces with the API
     api.add_namespace(ns_auth, path="/api/v1/auth")
     api.add_namespace(ns_property, path="/api/v1/properties")

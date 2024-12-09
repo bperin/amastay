@@ -8,4 +8,4 @@ class HfMessage(BaseModel):
 
     @classmethod
     def create(cls, role: str, content: str):
-        return cls(role=role, content=content)
+        return cls(role=role, content=[{"text": content}])
