@@ -104,7 +104,7 @@ class PropertyInformationService:
             raise
 
     @staticmethod
-    def get_property_information(property_id: str) -> List[PropertyInformation]:
+    def get_property_information_by_property_id(property_id: str) -> List[PropertyInformation]:
         try:
             # Fetch all property information for the given property ID
             info_response = supabase_client.from_("property_information").select("*").eq("property_id", property_id).execute()

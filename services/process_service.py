@@ -25,6 +25,24 @@ def is_message_from_ai(origination_number: str) -> bool:
     return cleaned_orig == cleaned_ai
 
 
+def send_sms_message(phone: str, message: str, send_message: bool = True) -> None:
+    """
+    Helper method to send SMS messages v ia Pinpoint.
+
+    Args:
+        phone: Recipient's phone number
+        message: Message content
+        send_message: Flag to control if message should be sent
+    """
+    if send_message:
+        try:
+            system_phone = os.getenv("SYSTEM_PHONE_NUMBER")
+            PinpointService.send_sms(phone, system_phone, message)
+            logger.info(f"SMS sent to {phone}: {message[:50]}...")
+        except Exception as e:
+            logger.error(f"Failed to send SMS to {phone}: {str(e)}")
+
+
 def handle_incoming_sms(message_id: str, origination_number: str, message_body: str, send_message: bool = True) -> str:
     """Handle incoming SMS between a guest and the AI"""
     try:
@@ -45,8 +63,7 @@ def handle_incoming_sms(message_id: str, origination_number: str, message_body: 
         guest = GuestService.get_guest_by_phone(phone)
         if not guest:
             logger.error(f"Guest lookup failed - Phone: {phone}")
-            if send_message:
-                PinpointService.send_sms(phone, os.getenv("SYSTEM_PHONE_NUMBER"), "We couldn't find your information. Please contact support.")
+            send_sms_message(phone, "We couldn't find your information. Please contact support.", send_message)
             return
 
         logger.info(f"Found guest: {guest.id} for phone: {phone}")
@@ -55,8 +72,7 @@ def handle_incoming_sms(message_id: str, origination_number: str, message_body: 
         booking = BookingService.get_next_booking_by_guest_id(guest.id)
         if not booking:
             logger.error(f"No upcoming bookings found - Guest ID: {guest.id}")
-            if send_message:
-                PinpointService.send_sms(phone, os.getenv("SYSTEM_PHONE_NUMBER"), "We couldn't find any upcoming bookings for you. Please check your details.")
+            send_sms_message(phone, "We couldn't find any upcoming bookings for you. Please check your details.", send_message)
             return
 
         logger.info(f"Found booking: {booking.id} for guest: {guest.id}")
@@ -65,29 +81,27 @@ def handle_incoming_sms(message_id: str, origination_number: str, message_body: 
         property = PropertyService.get_property_by_booking_id(booking.property_id)
         if not property:
             logger.error(f"Property not found - Booking ID: {booking.id}")
-            if send_message:
-                PinpointService.send_sms(phone, os.getenv("SYSTEM_PHONE_NUMBER"), "We're sorry, but we couldn't find the property associated with your booking. Please contact support.")
+            send_sms_message(phone, "We're sorry, but we couldn't find the property associated with your booking. Please contact support.", send_message)
             return
 
         logger.info(f"Found property: {property.id} for booking: {booking.id}")
 
         # Get property information and documents
-        property_information = PropertyInformationService.get_property_information(property.id)
+        property_information = PropertyInformationService.get_property_information_by_property_id(property.id)
         property_documents = DocumentsService.get_documents_by_property_id(property.id)
 
         # Query AI model
-        logger.info("Querying SageMaker model...")
-        ai_response = BedrockService.query_model(booking=booking, property=property, guest=guest, prompt=message_body, message_id=message_id, property_information=property_information)
+        logger.info("Querying bedrock model...")
+        ai_response = BedrockService.query_model(booking=booking, property=property, guest=guest, prompt=message_body, message_id=message_id)
 
         logger.info(f"AI Response received: {ai_response[:100]}...")
 
         # Send response in chunks if needed
         if send_message:
             logger.info("Sending SMS response...")
-            chunks = split_message_into_chunks(ai_response, 400)
+            chunks = split_message_into_chunks(ai_response)
             for chunk in chunks:
-                PinpointService.send_sms(phone, os.getenv("SYSTEM_PHONE_NUMBER"), chunk)
-                logger.info(f"SMS chunk sent: {chunk[:400]}...")
+                send_sms_message(phone, chunk, send_message)
 
         return ai_response
 
@@ -128,12 +142,7 @@ def handle_error(error: Exception, message_id: str, origination_number: str, mes
     logger.error("=======================================")
 
     error_message = "We're sorry, but there was an error processing your message. Please try again later."
-    if send_message:
-        try:
-            PinpointService.send_sms(origination_number, os.getenv("SYSTEM_PHONE_NUMBER"), error_message)
-            logger.info("Error message sent to user")
-        except Exception as sms_error:
-            logger.error(f"Failed to send error SMS: {str(sms_error)}")
+    send_sms_message(origination_number, error_message, send_message)
 
 
 def split_message_into_chunks(message: str, max_length: int = 400) -> list[str]:

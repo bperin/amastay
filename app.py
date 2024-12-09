@@ -63,12 +63,12 @@ api = Api(app, version="0.1", title="Amastay API", description="Amastay API", do
 def create_app():
     """Create and configure the Flask application"""
     # Initialize services
-    try:
-        SageMakerService.initialize()
-        app.logger.info("SageMaker service initialized successfully")
-    except Exception as e:
-        app.logger.error(f"Failed to initialize SageMaker service: {str(e)}")
-        raise
+    # try:
+    #     SageMakerService.initialize()
+    #     app.logger.info("SageMaker service initialized successfully")
+    # except Exception as e:
+    #     app.logger.error(f"Failed to initialize SageMaker service: {str(e)}")
+    #     raise
 
     try:
         BedrockService.initialize()
