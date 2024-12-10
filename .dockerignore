@@ -1,5 +1,12 @@
 .env
 .env.*
 !.env.example
-node_modules
-dist
+.venv/
+__pycache__/
+*.py[cod]
+dist/
+build/
+*.egg-info/
+.coverage
+coverage/
+.pytest_cache/
