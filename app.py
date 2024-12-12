@@ -4,32 +4,28 @@ import os
 import logging
 from datetime import datetime
 from dotenv import load_dotenv
-from flask import Flask, jsonify
-from flask_cors import CORS
-from flask_restx import Api
-import json
+from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
+from fastapi.openapi.utils import get_openapi
+import db_config
+
+from services.bedrock_service import BedrockService
 
 # Load environment variables
 load_dotenv(override=True)
 
-# Import controllers and utilities
-from controllers.auth_controller import ns_auth
-from controllers.property_controller import ns_property
-from controllers.webhook_controller import ns_webhooks
-from controllers.health_controller import ns_health
-from controllers.model_controller import ns_model
-from controllers.booking_controller import ns_booking
-from controllers.guest_controller import ns_guest
-from controllers.manager_controller import ns_manager
-from controllers.user_controller import ns_user
-from controllers.team_controller import ns_team
-from auth_utils import jwt_required
-from services.sagemaker_service import SageMakerService
-from services.bedrock_service import BedrockService
+# Import controllers
+from controllers.auth_controller import router as auth_router
+from controllers.property_controller import router as property_router
+from controllers.webhook_controller import router as webhook_router
+from controllers.health_controller import router as health_router
+from controllers.model_controller import router as model_router
+from controllers.booking_controller import router as booking_router
+from controllers.guest_controller import router as guest_router
+from controllers.manager_controller import router as manager_router
+from controllers.user_controller import router as user_router
+from controllers.team_controller import router as team_router
 
-# Initialize Flask app and CORS
-app = Flask(__name__)
-CORS(app)
 
 # Set up logging
 logging.basicConfig(
@@ -39,54 +35,78 @@ logging.basicConfig(
 file_handler = logging.FileHandler("app.log")
 file_handler.setLevel(logging.DEBUG)
 file_handler.setFormatter(logging.Formatter("%(asctime)s - %(name)s - %(levelname)s - %(filename)s:%(lineno)d - %(message)s"))
-app.logger.addHandler(file_handler)
+
+# Create FastAPI app
+app = FastAPI(title="Amastay API", description="Amastay API", version="0.2", docs_url="/swagger")
+
+# Configure CORS
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],  # Configure this appropriately for production
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 
-# Configure JSON encoder/decoder to handle datetime
-class CustomJSONEncoder(json.JSONEncoder):
-    def default(self, obj):
-        if isinstance(obj, datetime):
-            return obj.isoformat()
-        return super().default(obj)
+def custom_openapi():
+    if app.openapi_schema:
+        return app.openapi_schema
 
+    openapi_schema = get_openapi(
+        title="Amastay API",
+        version="0.1",
+        summary="Property Management System API",
+        description="API for managing properties, bookings, and guests",
+        routes=app.routes,
+    )
 
-app.json_encoder = CustomJSONEncoder
+    # Add custom branding
+    openapi_schema["info"]["x-logo"] = {"url": "https://amastay.ai/assets/logo.png"}  # Replace with your logo URL
 
+    # Add security schemes
+    openapi_schema["components"]["securitySchemes"] = {
+        "bearerAuth": {
+            "type": "http",
+            "scheme": "bearer",
+            "bearerFormat": "JWT",
+        }
+    }
 
-# Update these lines
-app.config["RESTX_JSON"] = {"cls": CustomJSONEncoder}  # Add this line for Flask-RESTX
+    # Apply security globally
+    openapi_schema["security"] = [{"bearerAuth": []}]
 
-# Initialize Flask-RESTX API with Swagger UI
-api = Api(app, version="0.1", title="Amastay API", description="Amastay API", doc="/swagger")
+    app.openapi_schema = openapi_schema
+    return app.openapi_schema
 
 
 def create_app():
-    """Create and configure the Flask application"""
-    # Initialize services
-    # try:
-    #     SageMakerService.initialize()
-    #     app.logger.info("SageMaker service initialized successfully")
-    # except Exception as e:
-    #     app.logger.error(f"Failed to initialize SageMaker service: {str(e)}")
-    #     raise
+
+    db_config.test_database_connection()
+    breakpoint()
+    """Create and configure the FastAPI application"""
 
     try:
         BedrockService.initialize()
-        app.logger.info("Bedrock service initialized successfully")
+        logging.info("Bedrock service initialized successfully")
     except Exception as e:
-        app.logger.error(f"Failed to initialize Bedrock service: {str(e)}")
+        logging.error(f"Failed to initialize Bedrock service: {str(e)}")
         raise
-    # Register Namespaces with the API
-    api.add_namespace(ns_auth, path="/api/v1/auth")
-    api.add_namespace(ns_property, path="/api/v1/properties")
-    api.add_namespace(ns_booking, path="/api/v1/bookings")
-    api.add_namespace(ns_guest, path="/api/v1/guests")
-    api.add_namespace(ns_health, path="/api/v1/health")
-    api.add_namespace(ns_webhooks, path="/api/v1/webhooks")
-    api.add_namespace(ns_model, path="/api/v1/model")
-    api.add_namespace(ns_manager, path="/api/v1/managers")
-    api.add_namespace(ns_user, path="/api/v1/users")
-    api.add_namespace(ns_team, path="/api/v1/teams")
+
+    # Include routers
+    app.include_router(auth_router, prefix="/api/v1/auth")
+    app.include_router(property_router, prefix="/api/v1/properties")
+    app.include_router(booking_router, prefix="/api/v1/bookings")
+    app.include_router(guest_router, prefix="/api/v1/guests")
+    app.include_router(health_router, prefix="/api/v1/health")
+    app.include_router(webhook_router, prefix="/api/v1/webhooks")
+    app.include_router(model_router, prefix="/api/v1/model")
+    app.include_router(manager_router, prefix="/api/v1/managers")
+    app.include_router(user_router, prefix="/api/v1/users")
+    app.include_router(team_router, prefix="/api/v1/teams")
+
+    # Override the default openapi schema
+    app.openapi = custom_openapi
 
     return app
 
@@ -94,14 +114,7 @@ def create_app():
 # Create the application instance
 app = create_app()
 
-
-@app.route("/api/v1/debug/env", methods=["GET"])
-def debug_env():
-    # Only enable in non-production environments
-    if os.getenv("FLASK_ENV") != "production":
-        return {"environment": os.getenv("FLASK_ENV"), "system_phone": os.getenv("SYSTEM_PHONE_NUMBER"), "log_level": os.getenv("LOG_LEVEL")}
-    return {"error": "Debug endpoint not available in production"}, 403
-
-
 if __name__ == "__main__":
-    app.run(debug=True, host="0.0.0.0", port=5001)
+    import uvicorn
+
+    uvicorn.run(app, host="0.0.0.0", port=5001, reload=True)

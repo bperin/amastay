@@ -1,22 +1,23 @@
-from pydantic import BaseModel
-from uuid import UUID
-from datetime import datetime
+import ormar
 from typing import Optional
-
+from db_config import base_ormar_config
 from models.booking import Booking
 from models.guest import Guest
 
 
-class Message(BaseModel):
-    id: str
-    booking_id: str
-    sender_id: Optional[str]
-    sender_type: int  # 0 for guest, 1 for AI, 2 for owner
-    content: str  # Message content
-    sms_id: Optional[str]
-    question_id: Optional[str]  # SMS message ID, optional if not an SMS message
-    created_at: str
-    updated_at: str
+class Message(ormar.Model):
+    ormar_config = base_ormar_config.copy(tablename="messages")
 
-    booking: Optional[Booking] = None
-    sender: Optional[Guest] = None
+    id: ormar.UUID = ormar.UUID(primary_key=True)
+
+    content: str = ormar.Text()  # Using Text for potentially longer messages
+    sender_type: int = ormar.Integer()  # 0 for guest, 1 for AI, 2 for owner
+
+    sms_id: Optional[str] = ormar.String(max_length=100, nullable=True)
+    question_id: Optional[ormar.UUID] = ormar.UUID(nullable=True)
+
+    created_at: str = ormar.String(max_length=50)
+    updated_at: str = ormar.String(max_length=50)
+
+    booking: Optional[Booking] = ormar.ForeignKey(Booking)
+    sender: Optional[Guest] = ormar.ForeignKey(Guest, nullable=True)

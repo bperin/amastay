@@ -1,18 +1,22 @@
 # models/document.py
 
-from pydantic import BaseModel
+import ormar
 from typing import Optional
-
+from db_config import base_ormar_config
 from models.property import Property
 
 
-class Document(BaseModel):
-    id: str
-    property_id: str
-    file_id: str
-    file_url: str
-    primary: bool
-    created_at: str
-    updated_at: str
+class Document(ormar.Model):
+    ormar_config = base_ormar_config.copy(tablename="documents")
 
-    property: Optional[Property] = None
+    id: ormar.UUID = ormar.UUID(primary_key=True)
+
+    file_id: str = ormar.String(max_length=100)
+    file_url: str = ormar.String(max_length=255)
+
+    primary: bool = ormar.Boolean(default=False)
+
+    created_at: str = ormar.String(max_length=50)
+    updated_at: str = ormar.String(max_length=50)
+
+    property: Optional[Property] = ormar.ForeignKey(Property, nullable=True)

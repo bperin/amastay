@@ -1,19 +1,22 @@
+import ormar
 from typing import Optional
-from pydantic import BaseModel
-
+from db_config import base_ormar_config
 from models.owner import Owner
 
 
-class Manager(BaseModel):
-    id: str
-    owner_id: str
-    first_name: str
-    email: str
-    last_name: Optional[str] = None
-    phone: Optional[str] = None
-    verified: bool = False
-    phone_verified: bool = False
-    created_at: str
-    updated_at: str
+class Manager(ormar.Model):
+    ormar_config = base_ormar_config.copy(tablename="managers")
 
-    owner: Optional[Owner] = None
+    id: ormar.UUID = ormar.UUID(primary_key=True)
+
+    first_name: str = ormar.String(max_length=100, nullable=True)
+    last_name: Optional[str] = ormar.String(max_length=100, nullable=True)
+    email: str = ormar.String(max_length=255, nullable=False)
+    phone: Optional[str] = ormar.String(max_length=20, nullable=False)
+    verified: bool = ormar.Boolean(default=False)
+    phone_verified: bool = ormar.Boolean(default=False)
+
+    created_at: str = ormar.String(max_length=50)
+    updated_at: str = ormar.String(max_length=50)
+
+    owner: Optional[Owner] = ormar.ForeignKey(Owner, nullable=True)

@@ -1,47 +1,59 @@
-from flask_restx import fields
+from pydantic import BaseModel, EmailStr
+from typing import Optional
 
 
-def get_auth_input_models(ns_auth):
-    """Define input models for auth endpoints"""
+class SignupInput(BaseModel):
+    first_name: str
+    last_name: str
+    email: str
+    phone: str
+    password: str
 
-    signup_model = ns_auth.model(
-        "Signup",
-        {
-            "first_name": fields.String(required=True, description="First name"),
-            "last_name": fields.String(required=True, description="Last name"),
-            "email": fields.String(required=True, description="Email"),
-            "phone": fields.String(required=True, description="Phone"),
-            "password": fields.String(required=True, description="Password"),
-        },
-    )
+    class Config:
+        json_schema_extra = {"example": {"first_name": "John", "last_name": "Doe", "email": "john.doe@example.com", "phone": "+1234567890", "password": "securepassword123"}}
 
-    otp_model = ns_auth.model(
-        "OTP",
-        {
-            "phone": fields.String(required=True, description="Phone number"),
-            "otp": fields.String(required=True, description="One-time password"),
-        },
-    )
 
-    refresh_token_model = ns_auth.model(
-        "RefreshToken",
-        {
-            "refresh_token": fields.String(required=True, description="Refresh token"),
-        },
-    )
+class OTPInput(BaseModel):
+    phone: str
+    otp: str
 
-    login_model = ns_auth.model(
-        "Login",
-        {"email": fields.String(required=True, description="User email"), "password": fields.String(required=True, description="User password")},
-    )
+    class Config:
+        json_schema_extra = {"example": {"phone": "+1234567890", "otp": "123456"}}
 
-    google_signin_model = ns_auth.model(
-        "GoogleSignIn",
-        {"credential": fields.String(required=True, description="Google ID token"), "nonce": fields.String(required=False, description="Optional nonce for verification")},
-    )
 
-    password_reset_request_model = ns_auth.model("PasswordResetRequest", {"email": fields.String(required=True, description="User email")})
+class RefreshTokenInput(BaseModel):
+    refresh_token: str
 
-    password_reset_model = ns_auth.model("PasswordReset", {"access_token": fields.String(required=True, description="Reset password token"), "new_password": fields.String(required=True, description="New password")})
+    class Config:
+        json_schema_extra = {"example": {"refresh_token": "your.refresh.token"}}
 
-    return {"signup_model": signup_model, "otp_model": otp_model, "login_model": login_model, "google_signin_model": google_signin_model, "password_reset_request_model": password_reset_request_model, "password_reset_model": password_reset_model, "refresh_token_model": refresh_token_model}
+
+class LoginInput(BaseModel):
+    email: str
+    password: str
+
+    class Config:
+        json_schema_extra = {"example": {"email": "john.doe@example.com", "password": "securepassword123"}}
+
+
+class GoogleSignInInput(BaseModel):
+    credential: str
+    nonce: Optional[str] = None
+
+    class Config:
+        json_schema_extra = {"example": {"credential": "google.id.token", "nonce": "optional_nonce_value"}}
+
+
+class PasswordResetRequestInput(BaseModel):
+    email: str
+
+    class Config:
+        json_schema_extra = {"example": {"email": "john.doe@example.com"}}
+
+
+class PasswordResetInput(BaseModel):
+    access_token: str
+    new_password: str
+
+    class Config:
+        json_schema_extra = {"example": {"access_token": "reset.token.value", "new_password": "newSecurePassword123"}}

@@ -1,7 +1,7 @@
 import logging
 import os
 import traceback
-from typing import List
+from typing import List, Optional
 import requests
 
 from models.document import Document
@@ -45,7 +45,7 @@ def send_sms_message(phone: str, message: str, send_message: bool = True) -> Non
             logger.error(f"Failed to send SMS to {phone}: {str(e)}")
 
 
-def handle_incoming_sms(message_id: str, origination_number: str, message_body: str, send_message: bool = True) -> str:
+def handle_incoming_sms(message_id: str, origination_number: str, message_body: str, send_message: bool = True, current_user_id: Optional[str] = None) -> str:
     """Handle incoming SMS between a guest and the AI"""
     try:
         logger.info(f"Processing SMS - ID: {message_id}, From: {origination_number}, Message: {message_body}")

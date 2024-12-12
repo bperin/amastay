@@ -1,51 +1,48 @@
-from flask_restx import fields
+from pydantic import BaseModel, HttpUrl
+from uuid import UUID
+from typing import Optional
 
 
-def get_property_input_models(ns_property):
-    """Define input models for property endpoints"""
+class CreatePropertyInput(BaseModel):
+    name: str
+    address: str
+    description: Optional[str] = None
+    property_url: HttpUrl
+    manager_id: Optional[UUID] = None
 
-    create_property_model = ns_property.model(
-        "CreateProperty",
-        {
-            "name": fields.String(required=True, description="The property name"),
-            "address": fields.String(required=True, description="The property address"),
-            "description": fields.String(required=False, description="The property description"),
-            "property_url": fields.String(required=True, description="The property Url"),
-        },
-    )
+    class Config:
+        json_schema_extra = {"example": {"name": "Sunset Villa", "address": "123 Ocean Drive", "description": "Beautiful beachfront property", "property_url": "https://example.com/property/123", "manager_id": "123e4567-e89b-12d3-a456-426614174001"}}
 
-    update_property_model = ns_property.model(
-        "UpdateProperty",
-        {
-            "id": fields.String(required=True, description="The property id"),
-            "name": fields.String(required=False, description="The property name"),
-            "address": fields.String(required=False, description="The property address"),
-            "description": fields.String(required=False, description="The property description"),
-            "property_url": fields.String(required=False, description="The property Url"),
-            "manager_id": fields.String(required=False, description="The property Url"),
-        },
-    )
 
-    add_property_info_model = ns_property.model(
-        "AddPropertyInformation",
-        {
-            "property_id": fields.String(required=True, description="Property id"),
-            "name": fields.String(required=True, description="Information name"),
-            "detail": fields.String(required=True, description="Information detail"),
-            "is_recommendation": fields.Boolean(required=True, description="Recommendation"),
-            "metadata_url": fields.String(required=False, description="Information metadata url"),
-            "category_id": fields.String(required=False, description="Information category_id"),
-        },
-    )
+class UpdatePropertyInput(BaseModel):
+    id: UUID
+    name: Optional[str] = None
+    address: Optional[str] = None
+    description: Optional[str] = None
+    property_url: Optional[HttpUrl] = None
+    manager_id: Optional[UUID] = None
 
-    update_property_info_model = ns_property.model(
-        "UpdatePropertyInformation",
-        {
-            "id": fields.String(required=True, description="Property information id"),
-            "name": fields.String(required=False, description="Information name"),
-            "detail": fields.String(required=False, description="Information detail"),
-            "is_recommendation": fields.Boolean(required=False, description="Recommendation"),
-        },
-    )
+    class Config:
+        json_schema_extra = {"example": {"id": "123e4567-e89b-12d3-a456-426614174000", "name": "Updated Villa Name", "address": "124 Ocean Drive", "description": "Updated description", "property_url": "https://example.com/property/124", "manager_id": "123e4567-e89b-12d3-a456-426614174001"}}
 
-    return {"create_property_model": create_property_model, "update_property_model": update_property_model, "add_property_info_model": add_property_info_model, "update_property_info_model": update_property_info_model}
+
+class AddPropertyInfoInput(BaseModel):
+    property_id: UUID
+    name: str
+    detail: str
+    is_recommendation: bool
+    metadata_url: Optional[HttpUrl] = None
+    category_id: Optional[UUID] = None
+
+    class Config:
+        json_schema_extra = {"example": {"property_id": "123e4567-e89b-12d3-a456-426614174000", "name": "Pool Access", "detail": "24/7 access to infinity pool", "is_recommendation": True, "metadata_url": "https://example.com/metadata/123", "category_id": "123e4567-e89b-12d3-a456-426614174002"}}
+
+
+class UpdatePropertyInfoInput(BaseModel):
+    id: UUID
+    name: Optional[str] = None
+    detail: Optional[str] = None
+    is_recommendation: Optional[bool] = None
+
+    class Config:
+        json_schema_extra = {"example": {"id": "123e4567-e89b-12d3-a456-426614174000", "name": "Updated Pool Access", "detail": "Pool access from 6 AM to 10 PM", "is_recommendation": False}}

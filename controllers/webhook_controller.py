@@ -1,44 +1,23 @@
-import logging
-from flask import request
-from flask_restx import Namespace, Resource, fields
+from fastapi import APIRouter, HTTPException
+from pydantic import BaseModel
 from services.process_service import handle_incoming_sms
+import logging
 
-# Create logger instance
-logging.basicConfig(level=logging.INFO)
-logger = logging.getLogger(__name__)
-
-ns_webhooks = Namespace("webhooks", description="Webhook for receiving SMS")
-
-# Define models for request/response
-sms_model = ns_webhooks.model(
-    "lambda_sms",
-    {
-        "phone": fields.String(required=True, description="The phone number that sent the message"),
-        "message": fields.String(required=True, description="The content of the SMS message"),
-        "message_id": fields.String(required=True, description="AWS Pinpoint message ID"),
-    },
-)
+router = APIRouter(prefix="/webhooks", tags=["webhooks"])
 
 
-@ns_webhooks.route("/sms")
-class SMSWebhook(Resource):
+class SMSWebhook(BaseModel):
+    phone: str
+    message: str
+    message_id: str
 
-    @ns_webhooks.doc("sms_webhook")
-    @ns_webhooks.expect(sms_model)
-    def post(self):
-        """
-        Receives and processes incoming SMS webhooks.
-        """
-        try:
-            data = request.json
-            origination_number = data.get("phone")
-            message_body = data.get("message")
-            message_id = data.get("message_id")
 
-            handle_incoming_sms(message_id, origination_number, message_body, True)
-
-            return {"status": "success"}, 200
-
-        except Exception as e:
-            logger.error("Error processing webhook: %s", str(e))
-            return {"status": "error", "message": str(e)}, 500
+@router.post("/sms")
+async def sms_webhook(data: SMSWebhook):
+    """Receives and processes incoming SMS webhooks"""
+    try:
+        handle_incoming_sms(data.message_id, data.phone, data.message, True)
+        return {"status": "success"}
+    except Exception as e:
+        logging.error(f"Error processing webhook: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))

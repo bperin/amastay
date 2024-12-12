@@ -1,18 +1,19 @@
-import datetime
+import ormar
 from typing import Optional
-from uuid import UUID
-from pydantic import BaseModel
-
+from db_config import base_ormar_config
 from models.property import Property
 
 
-class Booking(BaseModel):
-    id: str
-    property_id: str
-    notes: Optional[str] = None
-    check_in: str
-    check_out: str
-    created_at: str
-    updated_at: str
+class Booking(ormar.Model):
+    ormar_config = base_ormar_config.copy(tablename="bookings")
 
-    property: Optional[Property] = None
+    id: ormar.UUID = ormar.UUID(primary_key=True)
+    notes: Optional[str] = ormar.Text(nullable=True)
+
+    check_in: str = ormar.String(max_length=50)
+    check_out: str = ormar.String(max_length=50)
+
+    created_at: str = ormar.String(max_length=50)
+    updated_at: str = ormar.String(max_length=50)
+
+    property: Optional[Property] = ormar.ForeignKey(Property, nullable=False)

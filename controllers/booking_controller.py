@@ -1,258 +1,162 @@
-import logging
-import os
-from typing import List
-from flask import request, g
-from flask_restx import Namespace, Resource, fields
+from fastapi import APIRouter, Depends, HTTPException
+from pydantic import BaseModel
+from typing import List, Optional
+from uuid import UUID
+from datetime import datetime
 from models.booking import Booking
-from models.to_swagger import pydantic_to_swagger_model
 from services.booking_service import BookingService
-from auth_utils import jwt_required
-from .inputs.booking_inputs import get_booking_input_models
-from models.booking_with_details import BookingWithDetails
-
-# Create the Namespace for booking-related routes
-ns_booking = Namespace("bookings", description="Booking management")
-
-# Get input models
-booking_input_models = get_booking_input_models(ns_booking)
-create_booking_model = booking_input_models["booking_input_model"]
-update_booking_model = booking_input_models["update_booking_model"]
-add_guest_model = booking_input_models["guest_input_model"]
-
-booking_response_model = pydantic_to_swagger_model(ns_booking, "Booking", Booking)
-booking_details_response_model = pydantic_to_swagger_model(ns_booking, "BookingDetailsResponse", BookingWithDetails)
+from auth_utils import get_current_user
+import logging
 
 
-# Route to create a new booking
-@ns_booking.route("/create")
-class CreateBooking(Resource):
-    @ns_booking.doc("create_booking")
-    @ns_booking.expect(create_booking_model)
-    @ns_booking.response(201, "Success", booking_response_model)
-    @jwt_required
-    def post(self):
-        """
-        Creates a new booking.
-        """
-        try:
-            data = request.get_json()
-
-            if not data:
-                return {"error": "Missing booking data"}, 400
-
-            property_id = data.get("property_id")
-            check_in = data.get("check_in")
-            check_out = data.get("check_out")
-            notes = data.get("notes")
-            guests = data.get("guests")
-
-            if not property_id or not check_in or not check_out:
-                return {"error": "Missing required booking fields"}, 400
-
-            new_booking = BookingService.create_booking(property_id=property_id, check_in=check_in, check_out=check_out, notes=notes, guests=guests)
-            return new_booking.model_dump(), 201
-        except ValueError as ve:
-            logging.error(f"Validation error in create_booking: {ve}")
-            return {"error": str(ve)}, 400
-        except Exception as e:
-            logging.error(f"Error in create_booking: {e}")
-            return {"error": "An unexpected error occurred"}, 500
+router = APIRouter(prefix="/bookings", tags=["bookings"])
 
 
-# Route to get all bookings
-@ns_booking.route("/list")
-class ListBookings(Resource):
-    @ns_booking.doc("list_bookings")
-    @ns_booking.response(200, "Success", [booking_response_model])
-    @jwt_required
-    def get(self):
-        """
-        Lists all bookings.
-        """
-        try:
-            bookings = BookingService.get_all_bookings_by_owner(g.user_id)
-            # Check if bookings list is empty
-            if not bookings:
-                return [], 200
-            return [booking.model_dump() for booking in bookings], 200
-        except Exception as e:
-            logging.error(f"Error in list_bookings: {e}")
-            return {"error": str(e)}, 500
-
-        # Route to get all bookings
+class GuestInput(BaseModel):
+    first_name: Optional[str] = None
+    last_name: Optional[str] = None
+    phone: str
 
 
-@ns_booking.route("/list_details")
-class ListBookingsWithDetailsByOwner(Resource):
-    @ns_booking.doc("list_bookings_details")
-    @ns_booking.response(200, "Success", [booking_details_response_model])
-    @jwt_required
-    def get(self):
-        """
-        Lists all bookings.
-        """
-        try:
-            bookings = BookingService.get_bookings_by_owner_with_details(g.user_id)
-            # Check if bookings list is empty
-            if not bookings:
-                return [], 200
-            return [booking.model_dump() for booking in bookings], 200
-        except Exception as e:
-            logging.error(f"Error in list_bookings: {e}")
-            return {"error": str(e)}, 500
+class CreateBookingInput(BaseModel):
+    property_id: UUID
+    notes: Optional[str] = None
+    check_in: datetime
+    check_out: datetime
+    guests: Optional[List[GuestInput]] = None
 
 
-# Route to get a specific booking by its ID
-@ns_booking.route("/<string:booking_id>")
-class ViewBooking(Resource):
-    @ns_booking.doc("get_booking")
-    @ns_booking.response(200, "Success", booking_response_model)
-    @jwt_required
-    def get(self, booking_id: str):
-        """
-        Retrieves a booking by its ID.
-        """
-        try:
-            booking = BookingService.get_booking_by_manager(booking_id)
-            if not booking:
-                return {"error": "Booking not found"}, 404
-            return booking.model_dump(), 200
-        except Exception as e:
-            logging.error(f"Error in get_booking: {e}")
-            return {"error": str(e)}, 500
+class UpdateBookingInput(BaseModel):
+    booking_id: UUID
+    property_id: Optional[UUID] = None
+    notes: Optional[str] = None
+    check_in: Optional[datetime] = None
+    check_out: Optional[datetime] = None
 
 
-# Route to update a booking
-@ns_booking.route("/update")
-class UpdateBooking(Resource):
-    @ns_booking.doc("update_booking")
-    @ns_booking.expect(update_booking_model)
-    @ns_booking.response(200, "Success", booking_response_model)
-    @jwt_required
-    def put(self):
-        """
-        Updates a booking by its ID.
-        """
-        try:
-            data = request.get_json()
-            booking_id = data.get("booking_id")
-            property_id = data.get("property_id") if data.get("property_id") else None
-            notes = data.get("notes")
-            check_in = data.get("check_in")
-            check_out = data.get("check_out")
-
-            if not booking_id:
-                return {"error": "Missing booking ID"}, 400
-
-            updated_booking = BookingService.update_booking(booking_id=booking_id, property_id=property_id, check_in=check_in, check_out=check_out, notes=notes)
-
-            if not updated_booking:
-                return {"error": "Booking not found"}, 404
-
-            return updated_booking.model_dump(), 200
-        except Exception as e:
-            logging.error(f"Error in update_booking: {e}")
-            return {"error": str(e)}, 500
+@router.post("/create", response_model=Booking, status_code=201)
+async def create_booking(data: CreateBookingInput, current_user: dict = Depends(get_current_user)):
+    """Creates a new booking"""
+    try:
+        new_booking = BookingService.create_booking(property_id=str(data.property_id), check_in=data.check_in, check_out=data.check_out, notes=data.notes, guests=data.guests)
+        return new_booking
+    except ValueError as ve:
+        logging.error(f"Validation error in create_booking: {ve}")
+        raise HTTPException(status_code=400, detail=str(ve))
+    except Exception as e:
+        logging.error(f"Error in create_booking: {e}")
+        raise HTTPException(status_code=500, detail="An unexpected error occurred")
 
 
-# Route to delete a booking
-@ns_booking.route("/delete/<string:booking_id>")
-class DeleteBooking(Resource):
-    @ns_booking.doc("delete_booking")
-    @jwt_required
-    def delete(self, booking_id: str):
-        """
-        Deletes a booking by its ID.
-        """
-        try:
-            success = BookingService.delete_booking(booking_id)
-            if success:
-                return {"message": "Booking deleted successfully"}, 200
-            else:
-                return {"error": "Failed to delete booking"}, 400
-        except Exception as e:
-            logging.error(f"Error in delete_booking: {e}")
-            return {"error": str(e)}, 500
+@router.get("/list", response_model=List[Booking])
+async def list_bookings(current_user: dict = Depends(get_current_user)):
+    """Lists all bookings"""
+    try:
+        bookings = BookingService.get_all_bookings_by_owner(current_user["id"])
+        return bookings
+    except Exception as e:
+        logging.error(f"Error in list_bookings: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
 
 
-# Route to get bookings for a specific property
-@ns_booking.route("/property/<string:property_id>")
-class PropertyBookings(Resource):
-    @ns_booking.doc("get_property_bookings")
-    @jwt_required
-    def get(self, property_id: str):
-        """
-        Retrieves all bookings for a specific property.
-        """
-        try:
-            bookings = BookingService.get_bookings_by_property_id(property_id)
-            if not bookings:
-                return [], 200
-            return [booking.model_dump() for booking in bookings], 200
-        except Exception as e:
-            logging.error(f"Error in get_property_bookings: {e}")
-            return {"error": str(e)}, 500
+@router.get("/list_details", response_model=List[Booking])
+async def list_bookings_with_details(current_user: dict = Depends(get_current_user)):
+    """Lists all bookings with details"""
+    try:
+        bookings = BookingService.get_bookings_by_owner_with_details(current_user["id"])
+        return bookings
+    except Exception as e:
+        logging.error(f"Error in list_bookings_details: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
 
 
-@ns_booking.route("/details/<string:booking_id>")
-class BookingDetails(Resource):
-    @ns_booking.doc("get_booking_details")
-    @jwt_required
-    def get(self, booking_id: str):
-        """
-        Get a booking with its property and guest details.
-        """
-        try:
-            booking_details = BookingService.get_booking_with_details(booking_id)
-            if not booking_details:
-                return {"error": "Booking not found"}, 404
-
-            return booking_details.model_dump(), 200
-
-        except Exception as e:
-            logging.error(f"Error in get_booking_details: {e}")
-            return {"error": str(e)}, 500
+@router.get("/{booking_id}", response_model=Booking)
+async def get_booking(booking_id: UUID, current_user: dict = Depends(get_current_user)):
+    """Retrieves a booking by its ID"""
+    try:
+        booking = BookingService.get_booking_by_manager(str(booking_id))
+        if not booking:
+            raise HTTPException(status_code=404, detail="Booking not found")
+        return booking
+    except Exception as e:
+        logging.error(f"Error in get_booking: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
 
 
-@ns_booking.route("/upcoming")
-class UpcomingBooking(Resource):
-    @ns_booking.doc("get_upcoming_booking")
-    @jwt_required
-    def get(self):
-        """
-        Get the next upcoming booking for a guest by their phone number.
-        """
-        try:
-            phone = request.args.get("phone")
-            if not phone:
-                return {"error": "Phone number is required"}, 400
-
-            booking = BookingService.get_next_upcoming_booking_by_phone(phone)
-            if not booking:
-                return {"error": "No upcoming bookings found"}, 404
-
-            return {"booking": booking.model_dump()}, 200
-
-        except Exception as e:
-            logging.error(f"Error in get_upcoming_booking: {e}")
-            return {"error": str(e)}, 500
+@router.patch("/update", response_model=Booking)
+async def update_booking(data: UpdateBookingInput, current_user: dict = Depends(get_current_user)):
+    """Updates a booking"""
+    try:
+        updated_booking = BookingService.update_booking(booking_id=str(data.booking_id), property_id=str(data.property_id) if data.property_id else None, check_in=data.check_in, check_out=data.check_out, notes=data.notes)
+        if not updated_booking:
+            raise HTTPException(status_code=404, detail="Booking not found")
+        return updated_booking
+    except Exception as e:
+        logging.error(f"Error in update_booking: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
 
 
-@ns_booking.route("/guest/<string:guest_id>")
-class GuestBooking(Resource):
-    @ns_booking.doc("get_guest_booking")
-    @jwt_required
-    def get(self, guest_id: str):
-        """
-        Get the next booking for a specific guest by their ID.
-        """
-        try:
-            booking = BookingService.get_next_booking_by_guest_id(guest_id)
-            if not booking:
-                return {"error": "No bookings found for this guest"}, 404
+@router.delete("/{booking_id}")
+async def delete_booking(booking_id: UUID, current_user: dict = Depends(get_current_user)):
+    """Deletes a booking"""
+    try:
+        success = BookingService.delete_booking(str(booking_id))
+        if success:
+            return {"message": "Booking deleted successfully"}
+        raise HTTPException(status_code=400, detail="Failed to delete booking")
+    except Exception as e:
+        logging.error(f"Error in delete_booking: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
 
-            return {"booking": booking.model_dump()}, 200
 
-        except Exception as e:
-            logging.error(f"Error in get_guest_booking: {e}")
-            return {"error": str(e)}, 500
+@router.get("/property/{property_id}", response_model=List[Booking])
+async def get_property_bookings(property_id: UUID, current_user: dict = Depends(get_current_user)):
+    """Retrieves all bookings for a specific property"""
+    try:
+        bookings = BookingService.get_bookings_by_property_id(str(property_id))
+        return bookings
+    except Exception as e:
+        logging.error(f"Error in get_property_bookings: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.get("/details/{booking_id}", response_model=BookingWithDetails)
+async def get_booking_details(booking_id: UUID, current_user: dict = Depends(get_current_user)):
+    """Get a booking with its property and guest details"""
+    try:
+        booking_details = BookingService.get_booking_with_details(str(booking_id))
+        if not booking_details:
+            raise HTTPException(status_code=404, detail="Booking not found")
+        return booking_details
+    except Exception as e:
+        logging.error(f"Error in get_booking_details: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.get("/upcoming")
+async def get_upcoming_booking(phone: str, current_user: dict = Depends(get_current_user)):
+    """Get the next upcoming booking for a guest by their phone number"""
+    try:
+        if not phone:
+            raise HTTPException(status_code=400, detail="Phone number is required")
+
+        booking = BookingService.get_next_upcoming_booking_by_phone(phone)
+        if not booking:
+            raise HTTPException(status_code=404, detail="No upcoming bookings found")
+        return {"booking": booking}
+    except Exception as e:
+        logging.error(f"Error in get_upcoming_booking: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.get("/guest/{guest_id}", response_model=Booking)
+async def get_guest_booking(guest_id: UUID, current_user: dict = Depends(get_current_user)):
+    """Get the next booking for a specific guest by their ID"""
+    try:
+        booking = BookingService.get_next_booking_by_guest_id(str(guest_id))
+        if not booking:
+            raise HTTPException(status_code=404, detail="No bookings found for this guest")
+        return booking
+    except Exception as e:
+        logging.error(f"Error in get_guest_booking: {e}")
+        raise HTTPException(status_code=500, detail=str(e))

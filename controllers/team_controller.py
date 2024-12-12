@@ -1,150 +1,111 @@
-from flask_restx import Namespace, Resource, fields
-from flask import g, request
-from controllers.inputs.team_inputs import get_team_input_models
-from models.property_information import PropertyInformation
+from fastapi import APIRouter, Depends, HTTPException
+from pydantic import BaseModel
+from typing import List, Optional
+from uuid import UUID
+from services.team_service import TeamService
+from auth_utils import get_current_user
 from models.team import Team
 from models.manager import Manager
-from models.to_swagger import pydantic_to_swagger_model
-from services.team_service import TeamService
-from auth_utils import jwt_required
 import logging
 
 
-# Create namespace
-ns_team = Namespace("teams", description="Team management operations")
-
-# Get input models
-team_input_models = get_team_input_models(ns_team)
-create_team_model = team_input_models["create_team_model"]
-assign_team_to_property_model = team_input_models["assign_team_to_property_model"]
-assign_manager_to_team_model = team_input_models["assign_manager_to_team_model"]
-
-team_response_model = pydantic_to_swagger_model(ns_team, "Team", Team)
-manager_response_model = pydantic_to_swagger_model(ns_team, "Manager", Manager)
+router = APIRouter(prefix="/teams", tags=["teams"])
 
 
-@ns_team.route("/create")
-class CreateTeam(Resource):
-    @ns_team.doc("create_team")
-    @ns_team.expect(create_team_model)
-    @ns_team.response(201, "Success", team_response_model)
-    @jwt_required
-    def post(self):
-        """Create a new team"""
-        try:
-            data = request.get_json()
-            data["owner_id"] = g.user_id
-
-            result = TeamService.create_team(data)
-            return result.model_dump(), 201
-
-        except Exception as e:
-            logging.error(f"Error in create_team: {e}")
-            return {"error": str(e)}, 500
+class CreateTeamInput(BaseModel):
+    name: str
+    description: str
 
 
-@ns_team.route("/list")
-class ListTeams(Resource):
-    @ns_team.doc("list_teams")
-    @ns_team.response(200, "Success", [team_response_model])
-    @jwt_required
-    def get(self):
-        """Get all teams owned by the current user"""
-        try:
-            owner_id = g.user_id
-            teams = TeamService.get_owner_teams(owner_id)
-            if len(teams) == 0:
-                return [], 200
-            return [team.model_dump() for team in teams], 200
-
-        except Exception as e:
-            logging.error(f"Error in get_owner_teams: {e}")
-            return {"error": str(e)}, 500
+class AssignTeamToPropertyInput(BaseModel):
+    team_id: UUID
+    property_id: UUID
 
 
-@ns_team.route("/assign_property")
-class TeamProperty(Resource):
-
-    @ns_team.doc("assign_team_to_property")
-    @ns_team.expect(assign_team_to_property_model)
-    @ns_team.response(200, "Success")
-    @jwt_required
-    def post(self):
-        """Assign a team to manage a property"""
-        try:
-            data = request.get_json()
-            data["owner_id"] = g.user_id
-            result = TeamService.assign_team_to_property(data)
-            return result, 200
-
-        except Exception as e:
-            logging.error(f"Error in assign_team_to_property: {e}")
-            return {"error": str(e)}, 500
+class AssignManagerToTeamInput(BaseModel):
+    team_id: UUID
+    manager_id: UUID
 
 
-@ns_team.route("/<string:team_id>/managers")
-class TeamManagers(Resource):
-    @ns_team.doc("get_team_managers")
-    @ns_team.response(200, "Success", [manager_response_model])
-    @jwt_required
-    def get(self, team_id: str):
-        """Get all managers of a team"""
-        try:
-            managers = TeamService.get_team_managers(team_id)
-            if len(managers) == 0:
-                return [], 200
-            return [manager.model_dump() for manager in managers], 200
-        except Exception as e:
-            logging.error(f"Error in get_team_managers: {e}")
-            return {"error": str(e)}, 500
+@router.post("/create", response_model=Team)
+async def create_team(data: CreateTeamInput, current_user: dict = Depends(get_current_user)):
+    """Create a new team"""
+    try:
+        team_data = data.dict()
+        team_data["owner_id"] = current_user["id"]
+        result = TeamService.create_team(team_data)
+        return result
+    except Exception as e:
+        logging.error(f"Error in create_team: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
 
 
-@ns_team.route("/<string:team_id>/properties")
-class TeamManagers(Resource):
-    @ns_team.doc("get_team_properties")
-    @ns_team.response(200, "Success", [manager_response_model])
-    @jwt_required
-    def get(self, team_id: str):
-        """Get all properties of a team"""
-        try:
-            properties = TeamService.get_team_properties(team_id)
-            if len(properties) == 0:
-                return [], 200
-            return [property.model_dump() for property in properties], 200
-        except Exception as e:
-            logging.error(f"Error in get_team_properties: {e}")
-            return {"error": str(e)}, 500
+@router.get("/list", response_model=List[Team])
+async def list_teams(current_user: dict = Depends(get_current_user)):
+    """Get all teams owned by the current user"""
+    try:
+        teams = TeamService.get_owner_teams(current_user["id"])
+        return teams
+    except Exception as e:
+        logging.error(f"Error in get_owner_teams: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
 
 
-@ns_team.route("/assign_manager")
-class AssignManagerToTeam(Resource):
-    @ns_team.doc("assign_manager_to_team")
-    @ns_team.expect(assign_manager_to_team_model)
-    @ns_team.response(200, "Success")
-    @jwt_required
-    def post(self):
-        """Assign a manager to a team"""
-        try:
-            data = request.get_json()
-            data["owner_id"] = g.user_id
-            result = TeamService.assign_manager_to_team(data)
-            return result, 200
-        except Exception as e:
-            logging.error(f"Error in assign_manager_to_team: {e}")
-            return {"error": str(e)}, 500
+@router.post("/assign_property")
+async def assign_team_to_property(data: AssignTeamToPropertyInput, current_user: dict = Depends(get_current_user)):
+    """Assign a team to manage a property"""
+    try:
+        team_data = data.dict()
+        team_data["owner_id"] = current_user["id"]
+        result = TeamService.assign_team_to_property(team_data)
+        return result
+    except Exception as e:
+        logging.error(f"Error in assign_team_to_property: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
 
 
-@ns_team.route("/<string:team_id>/managers/<string:manager_id>")
-class TeamManager(Resource):
-    @ns_team.doc("remove_manager_from_team")
-    @ns_team.response(200, "Manager removed successfully")
-    @jwt_required
-    def delete(self, team_id: str, manager_id: str):
-        """Remove a manager from a team"""
-        try:
-            data = {"team_id": team_id, "manager_id": manager_id, "owner_id": g.user_id}
-            result = TeamService.remove_manager_from_team(data)
-            return result, 200
-        except Exception as e:
-            logging.error(f"Error in remove_manager_from_team: {e}")
-            return {"error": str(e)}, 500
+@router.get("/{team_id}/managers", response_model=List[Manager])
+async def get_team_managers(team_id: UUID, current_user: dict = Depends(get_current_user)):
+    """Get all managers of a team"""
+    try:
+        managers = TeamService.get_team_managers(str(team_id))
+        return managers
+    except Exception as e:
+        logging.error(f"Error in get_team_managers: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.get("/{team_id}/properties", response_model=List[Manager])
+async def get_team_properties(team_id: UUID, current_user: dict = Depends(get_current_user)):
+    """Get all properties of a team"""
+    try:
+        properties = TeamService.get_team_properties(str(team_id))
+        return properties
+    except Exception as e:
+        logging.error(f"Error in get_team_properties: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.post("/assign_manager")
+async def assign_manager_to_team(data: AssignManagerToTeamInput, current_user: dict = Depends(get_current_user)):
+    """Assign a manager to a team"""
+    try:
+        team_data = data.dict()
+        team_data["owner_id"] = current_user["id"]
+        result = TeamService.assign_manager_to_team(team_data)
+        return result
+    except Exception as e:
+        logging.error(f"Error in assign_manager_to_team: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.delete("/{team_id}/managers/{manager_id}")
+async def remove_manager_from_team(team_id: UUID, manager_id: UUID, current_user: dict = Depends(get_current_user)):
+    """Remove a manager from a team"""
+    try:
+        data = {"team_id": str(team_id), "manager_id": str(manager_id), "owner_id": current_user["id"]}
+        result = TeamService.remove_manager_from_team(data)
+        return result
+    except Exception as e:
+        logging.error(f"Error in remove_manager_from_team: {e}")
+        raise HTTPException(status_code=500, detail=str(e))

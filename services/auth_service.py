@@ -2,7 +2,6 @@
 
 from supabase_utils import supabase_client, supabase_admin_client
 import logging
-from flask import request
 import requests
 import time
 from gotrue import UserResponse, Session, AuthResponse

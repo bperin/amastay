@@ -1,17 +1,9 @@
 import logging
-import os
-import tempfile
-import time
 from geopy.geocoders import Nominatim
 from geopy.exc import GeocoderTimedOut, GeocoderServiceError
-from flask import g
-from models.booking import Booking
-from models.document import Document
-from models.hf_message import HfMessage
-from services.documents_service import DocumentsService
 from supabase_utils import supabase_client
 from models.property import Property
-from scraper import Scraper  # Adjust the import path if necessary
+
 from typing import List, Optional, Tuple
 
 
@@ -42,14 +34,14 @@ class PropertyService:
             return None, None, None
 
     @staticmethod
-    def create_property(name: str, address: str, description: Optional[str], property_url: str) -> Property:
+    def create_property(user_id: str, name: str, address: str, description: Optional[str], property_url: str) -> Property:
         try:
             property_data = {
                 "name": name,
                 "address": address,
                 "description": description,
                 "property_url": property_url,
-                "owner_id": g.user_id,
+                "owner_id": user_id,
             }
 
             # Geocode the address

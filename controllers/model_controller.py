@@ -1,63 +1,45 @@
-from auth_utils import jwt_required
-import logging
-from flask import request, current_app, g
-from flask_restx import Namespace, Resource, fields
+from fastapi import APIRouter, Depends, HTTPException
+from typing import Optional
+from pydantic import BaseModel
+from auth_utils import get_current_user
 from services.model_params_service import get_active_model_param
 from services.process_service import handle_incoming_sms
+import logging
 import uuid
+from uuid import UUID
 
-logging.basicConfig(level=logging.INFO)
-logger = logging.getLogger(__name__)
-
-ns_model = Namespace("model", description="Model operations")
-
-# Define input model
-input_model = ns_model.model(
-    "Input",
-    {
-        "message": fields.String(required=True, description="User input message"),
-        "phone": fields.String(required=True, description="Origination number"),
-        "send_message": fields.Boolean(required=True, description="Send SMS message"),
-    },
-)
-
-# Define output model
-output_model = ns_model.model(
-    "Output",
-    {
-        "response": fields.String(description="Model response"),
-    },
-)
+# Create router
+router = APIRouter(prefix="/model", tags=["model"])
 
 
-@ns_model.route("/query")
-class QueryModel(Resource):
-    @ns_model.expect(input_model)
-    def post(self):
-        try:
-            data = request.json
-            message = data.get("message")
-            phone = data.get("phone")
-            message_id = str(uuid.uuid4())
-
-            send_message = data.get("send_message", False)
-
-            response = handle_incoming_sms(message_id, phone, message, send_message)
-
-            return {"response": response}, 200
-
-        except Exception as e:
-            logger.exception(f"Error in query_model for phone {phone}: {str(e)}")
-            return {"error": "An unexpected error occurred"}, 500
+class SMSInput(BaseModel):
+    message: str
+    phone: str
+    send_message: bool
 
 
-@ns_model.route("/current")
-class ModelParams(Resource):
-    @jwt_required
-    def get(self):
-        try:
-            model_params = get_active_model_param()
-            return model_params.model_dump(), 200
-        except Exception as e:
-            logger.exception(f"Error fetching model parameters: {str(e)}")
-            return {"error": "An unexpected error occurred while fetching model parameters"}, 500
+class ModelResponse(BaseModel):
+    response: str
+
+
+@router.post("/query", response_model=ModelResponse)
+async def query_model(data: SMSInput, current_user: dict = Depends(get_current_user)):
+    """Query the model with SMS input"""
+    try:
+        message_id = str(uuid.uuid4())
+        response = handle_incoming_sms(message_id=message_id, origination_number=data.phone, message_body=data.message, send_message=data.send_message, current_user_id=current_user["id"])
+        return {"response": response}
+    except Exception as e:
+        logging.error(f"Error in query_model for phone {data.phone}: {str(e)}")
+        raise HTTPException(status_code=500, detail="An unexpected error occurred")
+
+
+@router.get("/current")
+async def get_model_params(current_user: dict = Depends(get_current_user)):
+    """Get current model parameters"""
+    try:
+        model_params = get_active_model_param()
+        return model_params
+    except Exception as e:
+        logging.error(f"Error fetching model parameters: {str(e)}")
+        raise HTTPException(status_code=500, detail="An unexpected error occurred while fetching model parameters")

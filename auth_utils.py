@@ -1,101 +1,105 @@
-from uuid import UUID
-import jwt
-import os
-import logging
-from flask import request, jsonify, g
+from fastapi import FastAPI, Depends, HTTPException, status, Request
+from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
+from typing import Optional, Dict, Any, Callable, List
 from functools import wraps
-from datetime import datetime, timezone
-from supabase_utils import supabase_client
-from supabase import create_client, Client
+import os
+import jwt
+from jwt import PyJWTError
 
-from dotenv import load_dotenv
-
-load_dotenv()  # Ensure environment variables are loaded
+app = FastAPI()
 
 JWT_SECRET = os.getenv("JWT_SECRET")
-JWT_ALGORITHM = "HS256"  # Supabase uses HS256 by default
+JWT_ALGORITHM = "HS256"
 SUPABASE_URL = os.getenv("SUPABASE_URL")
 
-# Configure logging
-logging.basicConfig(level=logging.DEBUG)
-logger = logging.getLogger(__name__)
+# We will use HTTPBearer for token extraction
+security = HTTPBearer()
 
 
-def jwt_required(f):
-    @wraps(f)
-    def decorated(*args, **kwargs):
-        auth_header = request.headers.get("Authorization")
+def get_current_user(credentials: HTTPAuthorizationCredentials = Depends(security)) -> Dict[str, Any]:
+    if credentials.scheme.lower() != "bearer":
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid authentication scheme.",
+        )
 
-        if not auth_header or not auth_header.startswith("Bearer "):
-            logger.warning("Missing or invalid JWT token")
-            return jsonify({"error": "Missing or invalid JWT token"}), 401
+    token = credentials.credentials
+    try:
+        payload = jwt.decode(
+            token,
+            JWT_SECRET,
+            algorithms=[JWT_ALGORITHM],
+            audience="authenticated",
+            issuer=f"{SUPABASE_URL}/auth/v1",
+        )
 
-        jwt_token = auth_header.split(" ")[1]
+        role = payload.get("role")
+        if role != "authenticated":
+            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Invalid role.")
 
-        try:
-            # Decode and verify the JWT token with audience and issuer
-            payload = jwt.decode(
-                jwt_token,
-                JWT_SECRET,
-                algorithms=[JWT_ALGORITHM],
-                audience="authenticated",
-                issuer=f"{SUPABASE_URL}/auth/v1",
-            )
-            logger.debug(f"JWT Payload: {payload}")
+        current_user = {"id": payload.get("sub"), "role": role, "user_type": payload.get("user_metadata", {}).get("user_type", None)}
 
-            # Check if the role is 'authenticated'
-            role = payload.get("role")
-            if role != "authenticated":
-                logger.warning("Invalid role")
-                return {"error": "Invalid role"}, 403
+        return current_user
 
-            g.current_user = {
-                "id": payload.get("sub"),
-                "role": role,
-            }
-            g.user_type = payload.get("user_metadata", {}).get("user_type", None)
-            g.user_id = payload.get("sub")
-            logger.debug(f"User ID: {g.user_id}")
-            logger.debug(f"User Type: {g.user_type}")
-
-        except jwt.ExpiredSignatureError:
-            logger.error("Token has expired")
-            return {"error": "JWT Token has expired"}, 401
-        except jwt.InvalidAudienceError:
-            logger.error("Invalid audience")
-            return {"error": "Invalid audience"}, 401
-        except jwt.InvalidIssuerError:
-            logger.error("Invalid issuer")
-            return {"error": "Invalid issuer"}, 401
-        except jwt.InvalidTokenError as e:
-            logger.error(f"Invalid JWT token: {str(e)}")
-            return {"error": "Invalid JWT token", "message": str(e)}, 401
-        except Exception as e:
-            logger.exception(f"Unexpected error in jwt_required: {str(e)}")
-            return {"error": "An unexpected error occurred"}, 500
-
-        return f(*args, **kwargs)
-
-    return decorated
+    except jwt.ExpiredSignatureError:
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="JWT token has expired.")
+    except jwt.InvalidAudienceError:
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid audience.")
+    except jwt.InvalidIssuerError:
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid issuer.")
+    except PyJWTError as e:
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail=f"Invalid JWT token: {str(e)}")
 
 
-def require_owner(f):
-    @wraps(f)
-    def decorated(*args, **kwargs):
-        if not hasattr(g, "user_type") or g.user_type != "owner":
-            logger.warning("Access denied: Owner privileges required")
-            return {"error": "Access denied: Owner privileges required"}, 403
-        return f(*args, **kwargs)
-
-    return decorated
+def get_current_user_id(current_user: dict) -> str:
+    """Extract user ID from the current user dict"""
+    return current_user["id"]
 
 
-def require_admin(f):
-    @wraps(f)
-    def decorated(*args, **kwargs):
-        if not hasattr(g, "user_type") or g.user_type != "owner":
-            logger.warning("Access denied: Owner privileges required")
-            return {"error": "Access denied: Owner privileges required"}, 403
-        return f(*args, **kwargs)
+def require_role(*allowed_roles: str):
+    """Create a dependency that checks if the user has one of the allowed roles"""
 
-    return decorated
+    async def role_checker(current_user: Dict[str, Any] = Depends(get_current_user)) -> Dict[str, Any]:
+        user_type = current_user.get("user_type")
+        if not user_type or user_type not in allowed_roles:
+            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=f"Access denied. Required roles: {', '.join(allowed_roles)}")
+        return current_user
+
+    return role_checker
+
+
+# Convenience dependencies for common role checks
+require_owner = require_role("owner")
+require_manager = require_role("manager")
+require_owner_or_manager = require_role("owner", "manager")
+
+
+def require_roles(roles: List[str], require_all: bool = False):
+    """
+    Create a dependency that checks if the user has the specified roles
+
+    Args:
+        roles: List of required roles
+        require_all: If True, user must have all roles. If False, any one role is sufficient.
+    """
+
+    async def role_checker(current_user: Dict[str, Any] = Depends(get_current_user)) -> Dict[str, Any]:
+        user_type = current_user.get("user_type")
+        if not user_type:
+            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="User type not found")
+
+        if require_all:
+            has_permission = all(role in user_type for role in roles)
+        else:
+            has_permission = any(role in user_type for role in roles)
+
+        if not has_permission:
+            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=f"Access denied. Required roles: {', '.join(roles)}")
+        return current_user
+
+    return role_checker
+
+
+# Example usage:
+require_admin_and_owner = require_roles(["admin", "owner"], require_all=True)
+require_admin_or_owner = require_roles(["admin", "owner"], require_all=False)
