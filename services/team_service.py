@@ -1,5 +1,4 @@
 from typing import Dict, List, Optional
-from flask import jsonify
 import logging
 from models.manager import Manager
 from models.property import Property

@@ -1,5 +1,5 @@
 # app.py
-
+import uvicorn
 import os
 import logging
 from datetime import datetime
@@ -80,7 +80,7 @@ def custom_openapi():
     return app.openapi_schema
 
 
-def create_app():
+async def create_app():
 
     db_config.test_database_connection()
     breakpoint()
@@ -115,6 +115,4 @@ def create_app():
 app = create_app()
 
 if __name__ == "__main__":
-    import uvicorn
-
     uvicorn.run(app, host="0.0.0.0", port=5001, reload=True)

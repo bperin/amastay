@@ -8,7 +8,6 @@ from auth_utils import get_current_user, require_owner, require_manager, require
 from models.property import Property
 from models.property_information import PropertyInformation
 from geopy.geocoders import Nominatim
-from geopy.exc import GeocoderTimedOut, GeocoderServiceError
 import logging
 
 # Create router

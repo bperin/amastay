@@ -10,7 +10,7 @@ class SignupInput(BaseModel):
     password: str
 
     class Config:
-        json_schema_extra = {"example": {"first_name": "John", "last_name": "Doe", "email": "john.doe@example.com", "phone": "+1234567890", "password": "securepassword123"}}
+        json_schema_extra = {"example": {"first_name": "John", "last_name": "Doe", "email": "john.doe@example.com", "phone": "+ 1234567890", "password": "securepassword123"}}
 
 
 class OTPInput(BaseModel):

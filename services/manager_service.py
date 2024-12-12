@@ -5,7 +5,6 @@ from phone_utils import PhoneUtils
 from models.manager import Manager
 from supabase_utils import supabase_client, supabase_admin_client
 from gotrue.types import InviteUserByEmailOptions
-from flask import g
 
 
 class ManagerService:

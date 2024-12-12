@@ -1,7 +1,5 @@
 import logging
 from typing import List, Optional
-
-from flask import g
 from models.property_information import PropertyInformation
 from models.property import Property
 from supabase_utils import supabase_client
@@ -10,7 +8,7 @@ from .property_service import PropertyService
 
 class PropertyInformationService:
     @staticmethod
-    def add_property_information(data: dict) -> PropertyInformation:
+    def add_property_information(user_id: str, data: dict) -> PropertyInformation:
         try:
             property_id = data.get("property_id")
             if not property_id:
@@ -18,7 +16,7 @@ class PropertyInformationService:
 
             # Get the property and check ownership
             property = PropertyService.get_property(property_id)
-            if not property or property.owner_id != g.user_id:
+            if not property or property.owner_id != user_id:
                 raise ValueError("Property not found or you don't have permission to add information")
 
             new_info_response = supabase_client.table("property_information").insert(data).execute()
@@ -32,7 +30,7 @@ class PropertyInformationService:
             raise
 
     @staticmethod
-    def update_property_information(data: dict) -> Optional[PropertyInformation]:
+    def update_property_information(user_id: str, data: dict) -> Optional[PropertyInformation]:
         try:
             if "id" not in data:
                 raise ValueError("id is required for updating")
@@ -46,7 +44,7 @@ class PropertyInformationService:
             property_info = PropertyInformation(**response.data)
 
             property = PropertyService.get_property(property_info.property_id)
-            if not property or property.owner_id != g.user_id:
+            if not property or property.owner_id != user_id:
                 raise ValueError("You don't have permission to update this property information")
 
             # Create a dictionary with only the fields that can be updated
@@ -76,7 +74,7 @@ class PropertyInformationService:
             raise
 
     @staticmethod
-    def remove_property_information(id: str) -> bool:
+    def remove_property_information(user_id: str, id: str) -> bool:
         try:
             # Find the property information
             response = supabase_client.from_("property_information").select("*").eq("id", id).single().execute()
@@ -89,7 +87,7 @@ class PropertyInformationService:
 
             # Get the property and check ownership
             property = PropertyService.get_property(property_info.property_id)
-            if not property or property.owner_id != g.user_id:
+            if not property or property.owner_id != user_id:
                 raise ValueError("You don't have permission to remove this property information")
 
             # Delete the property information

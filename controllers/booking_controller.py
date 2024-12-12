@@ -120,7 +120,7 @@ async def get_property_bookings(property_id: UUID, current_user: dict = Depends(
         raise HTTPException(status_code=500, detail=str(e))
 
 
-@router.get("/details/{booking_id}", response_model=BookingWithDetails)
+@router.get("/details/{booking_id}", response_model=Booking)
 async def get_booking_details(booking_id: UUID, current_user: dict = Depends(get_current_user)):
     """Get a booking with its property and guest details"""
     try:

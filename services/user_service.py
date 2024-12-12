@@ -1,5 +1,4 @@
 from typing import Optional
-from flask import jsonify, make_response
 import logging
 from supabase_utils import supabase_client, supabase_admin_client
 
@@ -15,15 +14,14 @@ class UserService:
 
             # Update user's phone using admin client
             response = supabase_admin_client.auth.admin.update_user_by_id(user_id, {"phone": phone_number})
-
             if response.user:
-                return make_response(jsonify({"message": "Phone number updated successfully"}), 200)
+                return {"message": "Phone number updated successfully"}
             else:
-                return make_response(jsonify({"error": "Failed to update phone number"}), 400)
+                return {"error": "Failed to update phone number"}
 
         except Exception as e:
             logging.error(f"Error updating phone number: {e}")
-            return make_response(jsonify({"error": str(e)}), 500)
+            return {"error": str(e)}
 
     @staticmethod
     def get_user_profile(user_id: str):
@@ -31,11 +29,11 @@ class UserService:
         try:
             response = supabase_admin_client.auth.admin.get_user_by_id(user_id)
             if response.user:
-                return make_response(jsonify({"id": response.user.id, "email": response.user.email, "phone": response.user.phone, "metadata": response.user.user_metadata}), 200)
-            return make_response(jsonify({"error": "User not found"}), 404)
+                return {"id": response.user.id, "email": response.user.email, "phone": response.user.phone, "metadata": response.user.user_metadata}
+            return {"error": "User not found"}
         except Exception as e:
             logging.error(f"Error retrieving user profile: {e}")
-            return make_response(jsonify({"error": str(e)}), 500)
+            return {"error": str(e)}
 
     @staticmethod
     def update_user_profile(user_id: str, update_data: dict):
@@ -47,8 +45,8 @@ class UserService:
             response = supabase_admin_client.auth.admin.update_user_by_id(user_id, {"user_metadata": valid_fields})
 
             if response.user:
-                return make_response(jsonify({"message": "Profile updated successfully"}), 200)
-            return make_response(jsonify({"error": "Failed to update profile"}), 400)
+                return {"message": "Profile updated successfully"}
+            return {"error": "Failed to update profile"}
         except Exception as e:
             logging.error(f"Error updating user profile: {e}")
-            return make_response(jsonify({"error": str(e)}), 500)
+            return {"error": str(e)}

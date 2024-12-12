@@ -10,9 +10,7 @@ from services.guest_service import GuestService
 from services.pinpoint_service import PinpointService
 from services.property_service import PropertyService
 from supabase_utils import supabase_client
-from models.booking_with_details import BookingWithDetails
 from models.property import Property
-from flask import g
 
 
 class BookingService:
@@ -245,33 +243,33 @@ class BookingService:
         response = supabase_client.table("bookings").select("*, properties(*)").eq("id", booking_id).single().execute()
         return Booking(**response.data) if response.data else None
 
+    # @staticmethod
+    # def _build_booking_details(booking_data: Dict[str, Any]) -> BookingWithDetails:
+    #     """
+    #     Helper method to build a BookingWithDetails object from booking data.
+
+    #     Args:
+    #         booking_data (Dict[str, Any]): Raw booking data including properties
+
+    #     Returns:
+    #         BookingWithDetails: Constructed booking details object
+    #     """
+    #     # Create booking and property objects
+    #     booking = Booking(**{k: v for k, v in booking_data.items() if k != "properties"})
+    #     property_data = booking_data.get("properties")
+    #     property_obj = Property(**property_data) if property_data else None
+
+    #     # Get guests for this booking
+    #     guests_response = supabase_client.table("booking_guests").select("guests(*)").eq("booking_id", booking.id).execute()
+
+    #     guests = []
+    #     if guests_response.data:
+    #         guests = [Guest(**guest_data["guests"]) for guest_data in guests_response.data if guest_data.get("guests")]
+
+    #     return BookingWithDetails(booking=booking, property=property_obj, guests=guests)
+
     @staticmethod
-    def _build_booking_details(booking_data: Dict[str, Any]) -> BookingWithDetails:
-        """
-        Helper method to build a BookingWithDetails object from booking data.
-
-        Args:
-            booking_data (Dict[str, Any]): Raw booking data including properties
-
-        Returns:
-            BookingWithDetails: Constructed booking details object
-        """
-        # Create booking and property objects
-        booking = Booking(**{k: v for k, v in booking_data.items() if k != "properties"})
-        property_data = booking_data.get("properties")
-        property_obj = Property(**property_data) if property_data else None
-
-        # Get guests for this booking
-        guests_response = supabase_client.table("booking_guests").select("guests(*)").eq("booking_id", booking.id).execute()
-
-        guests = []
-        if guests_response.data:
-            guests = [Guest(**guest_data["guests"]) for guest_data in guests_response.data if guest_data.get("guests")]
-
-        return BookingWithDetails(booking=booking, property=property_obj, guests=guests)
-
-    @staticmethod
-    def get_booking_with_details(booking_id: str) -> Optional[BookingWithDetails]:
+    def get_booking_with_details(user_id: str, booking_id: str) -> Optional[Booking]:
         """
         Retrieves a booking with its associated property and guest information.
         Verifies the user has access to the booking through property ownership or management.
@@ -285,7 +283,7 @@ class BookingService:
             # Verify user has access through property ownership or management
             property_data = booking_response.data.get("properties")
             if property_data:
-                user_id = str(g.user_id)
+                user_id = str(user_id)
                 if str(property_data.get("owner_id")) != user_id and str(property_data.get("manager_id")) != user_id:
                     return None
 
@@ -296,7 +294,7 @@ class BookingService:
             raise
 
     @staticmethod
-    def get_all_bookings_with_details() -> List[BookingWithDetails]:
+    def get_all_bookings_with_details() -> List[Booking]:
         """
         Retrieves all bookings with their associated properties and guests.
         """
@@ -306,14 +304,14 @@ class BookingService:
             if not bookings_response.data:
                 return []
 
-            return [BookingService._build_booking_details(booking_data) for booking_data in bookings_response.data]
+            return [Booking(**booking_data) for booking_data in bookings_response.data]
 
         except Exception as e:
             logging.error(f"Error retrieving all bookings with details: {e}")
             raise
 
     @staticmethod
-    def get_bookings_by_owner_with_details(owner_id: str) -> List[BookingWithDetails]:
+    def get_bookings_by_owner_with_details(owner_id: str) -> List[Booking]:
         """
         Retrieves all bookings with their associated properties and guests
         for properties owned by the current user.
@@ -324,7 +322,7 @@ class BookingService:
             if not bookings_response.data:
                 return []
 
-            return [BookingService._build_booking_details(booking_data) for booking_data in bookings_response.data]
+            return [Booking(**booking_data) for booking_data in bookings_response.data]
 
         except Exception as e:
             logging.error(f"Error retrieving bookings for owner: {e}")
@@ -373,7 +371,7 @@ class BookingService:
             raise
 
     @staticmethod
-    def get_booking_by_manager(booking_id: str) -> Optional[Booking]:
+    def get_booking_by_manager(user_id: str, booking_id: str) -> Optional[Booking]:
         """
         Retrieves a specific booking that belongs to properties managed by the manager.
 
@@ -391,7 +389,7 @@ class BookingService:
 
             # Verify the property is managed by the manager
             property_data = response.data.get("properties")
-            if not property_data or str(property_data.get("manager_id")) != str(g.user_id):
+            if not property_data or str(property_data.get("manager_id")) != str(user_id):
                 return None
 
             return Booking(**response.data)
@@ -400,7 +398,7 @@ class BookingService:
             raise
 
     @staticmethod
-    def delete_booking(booking_id: str) -> bool:
+    def delete_booking(user_id: str, booking_id: str) -> bool:
         """
         Deletes a booking from the database.
 
@@ -420,7 +418,7 @@ class BookingService:
             if not property_obj:
                 raise ValueError(f"Property with ID {property_id} not found")
 
-            if str(property_obj.owner_id) != str(g.user_id) and str(property_obj.manager_id) != str(g.user_id):
+            if str(property_obj.owner_id) != str(user_id) and str(property_obj.manager_id) != str(user_id):
                 raise ValueError(f"User does not have permission to delete booking for property {property_id}")
 
             # First delete associated booking_guests entries

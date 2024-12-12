@@ -103,3 +103,4 @@ def require_roles(roles: List[str], require_all: bool = False):
 # Example usage:
 require_admin_and_owner = require_roles(["admin", "owner"], require_all=True)
 require_admin_or_owner = require_roles(["admin", "owner"], require_all=False)
+require_admin = require_roles(["admin"], require_all=True)

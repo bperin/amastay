@@ -25,7 +25,7 @@ async def test_database_connection():
         breakpoint()
         # Try connecting
         await database.connect()
-
+        breakpoint()
         # Execute simple test query
         await database.fetch_one("SELECT 1")
 

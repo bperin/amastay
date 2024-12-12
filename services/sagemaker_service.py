@@ -13,7 +13,6 @@ from models.booking import Booking
 from models.property import Property
 from models.guest import Guest
 from models.property_information import PropertyInformation
-from models.sagemaker_response import SageMakerResponse
 from services.message_service import MessageService
 from services.model_params_service import get_active_model_param
 
@@ -107,15 +106,13 @@ class SageMakerService:
             payload = {"messages": messages, "max_new_tokens": 2048}
 
             raw_sagemaker_response = cls.predictor.predict(payload)
-            sagemaker_response = SageMakerResponse(**raw_sagemaker_response)
-            model_response = sagemaker_response.choices[0].message.content
 
             # Save messages
             user_message = cls.message_service.add_message(booking_id=booking.id, sender_id=guest.id, sender_type=0, content=prompt, sms_id=message_id)
 
             cls.message_service.add_message(booking_id=booking.id, sender_id=None, sender_type=1, content=model_response, sms_id=None, question_id=user_message.id)
 
-            return model_response
+            return "model_response"
 
         except Exception as e:
             logger.error(f"Error querying model: {str(e)}\n{traceback.format_exc()}")
