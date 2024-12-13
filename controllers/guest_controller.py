@@ -21,7 +21,7 @@ class GuestInput(BaseModel):
     last_name: Optional[str] = None
 
 
-@router.post("/add", response_model=Guest)
+@router.post("/add", response_model=Guest, operation_id="add")
 async def add_guest(data: GuestInput, current_user: dict = Depends(get_current_user)):
     """Add a guest to a booking"""
     try:
@@ -52,7 +52,7 @@ async def add_guest(data: GuestInput, current_user: dict = Depends(get_current_u
         raise HTTPException(status_code=500, detail=str(e))
 
 
-@router.delete("/{booking_id}/{guest_id}")
+@router.delete("/{booking_id}/{guest_id}", operation_id="remove_guest")
 async def remove_guest(booking_id: UUID, guest_id: UUID, current_user: dict = Depends(get_current_user)):
     """Remove a guest from a booking"""
     try:
@@ -66,7 +66,7 @@ async def remove_guest(booking_id: UUID, guest_id: UUID, current_user: dict = De
         raise HTTPException(status_code=500, detail=str(e))
 
 
-@router.get("/guests/{booking_id}", response_model=List[Guest])
+@router.get("/guests/{booking_id}", response_model=List[Guest], operation_id="list_booking_guests")
 async def list_booking_guests(booking_id: UUID, current_user: dict = Depends(get_current_user)):
     """List all guests for a booking"""
     try:

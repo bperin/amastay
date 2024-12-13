@@ -12,7 +12,7 @@ class SMSWebhook(BaseModel):
     message_id: str
 
 
-@router.post("/sms")
+@router.post("/sms", operation_id="sms")
 async def sms_webhook(data: SMSWebhook):
     """Receives and processes incoming SMS webhooks"""
     try:

@@ -2,6 +2,8 @@ from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, HttpUrl
 from typing import List, Optional
 from uuid import UUID
+from models.booking import Booking
+from services.booking_service import BookingService
 from services.property_service import PropertyService
 from services.property_information_service import PropertyInformationService
 from auth_utils import get_current_user, require_owner, require_manager, require_owner_or_manager
@@ -48,7 +50,7 @@ class UpdatePropertyInfoInput(BaseModel):
     is_recommendation: Optional[bool] = None
 
 
-@router.post("/create", response_model=Property, status_code=201)
+@router.post("/create", response_model=Property, status_code=201, operation_id="create")
 async def create_property(data: CreatePropertyInput, current_user: dict = Depends(require_owner)):
     """Creates a new property (owners only)"""
     try:
@@ -69,7 +71,7 @@ async def create_property(data: CreatePropertyInput, current_user: dict = Depend
         raise HTTPException(status_code=500, detail="An unexpected error occurred")
 
 
-@router.patch("/update", response_model=Property)
+@router.patch("/update", response_model=Property, operation_id="update")
 async def update_property(data: UpdatePropertyInput, current_user: dict = Depends(require_manager)):
     """Updates a property (managers only)"""
     try:
@@ -80,7 +82,7 @@ async def update_property(data: UpdatePropertyInput, current_user: dict = Depend
         raise HTTPException(status_code=500, detail=str(e))
 
 
-@router.delete("/{property_id}")
+@router.delete("/{property_id}", operation_id="delete")
 async def delete_property(property_id: UUID, current_user: dict = Depends(get_current_user)):
     """Deletes a property"""
     try:
@@ -93,7 +95,7 @@ async def delete_property(property_id: UUID, current_user: dict = Depends(get_cu
         raise HTTPException(status_code=500, detail=str(e))
 
 
-@router.get("/list", response_model=List[Property])
+@router.get("/list", response_model=List[Property], operation_id="list")
 async def list_properties(current_user: dict = Depends(require_owner_or_manager)):
     """Lists all properties for the current user"""
     try:
@@ -117,7 +119,7 @@ async def add_property_information(data: PropertyInfoInput, current_user: dict =
         raise HTTPException(status_code=500, detail=str(e))
 
 
-@router.get("/information/{property_id}", response_model=List[PropertyInformation])
+@router.get("/information/{property_id}", response_model=List[PropertyInformation], operation_id="get_property_information")
 async def get_property_information(property_id: UUID, current_user: dict = Depends(get_current_user)):
     """Gets all information for a property"""
     try:
@@ -130,7 +132,7 @@ async def get_property_information(property_id: UUID, current_user: dict = Depen
         raise HTTPException(status_code=500, detail=str(e))
 
 
-@router.patch("/information/update", response_model=PropertyInformation)
+@router.patch("/information/update", response_model=PropertyInformation, operation_id="update_property_information")
 async def update_property_information(data: UpdatePropertyInfoInput, current_user: dict = Depends(get_current_user)):
     """Updates property information"""
     try:
@@ -145,7 +147,7 @@ async def update_property_information(data: UpdatePropertyInfoInput, current_use
         raise HTTPException(status_code=500, detail=str(e))
 
 
-@router.get("/{property_id}", response_model=Property)
+@router.get("/{property_id}", response_model=Property, operation_id="get_property")
 async def get_property(property_id: UUID, current_user: dict = Depends(get_current_user)):
     """Gets a specific property"""
     try:
@@ -155,4 +157,15 @@ async def get_property(property_id: UUID, current_user: dict = Depends(get_curre
         return property
     except Exception as e:
         logging.error(f"Error in get_property: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.get("/property/{property_id}/bookings", response_model=List[Booking], operation_id="get_bookings_for_property")
+async def get_property_bookings(property_id: UUID, current_user: dict = Depends(get_current_user)):
+    """Retrieves all bookings for a specific property"""
+    try:
+        bookings = BookingService.get_bookings_by_property_id(str(property_id))
+        return bookings
+    except Exception as e:
+        logging.error(f"Error in get_property_bookings: {e}")
         raise HTTPException(status_code=500, detail=str(e))

@@ -130,6 +130,25 @@ class BookingService:
             raise
 
     @staticmethod
+    def get_all_bookings_as_admin(admin_id: str) -> List[Booking]:
+        """
+        Retrieves all bookings from the Supabase 'bookings' table.
+
+        Returns:
+            List[Booking]: A list of all bookings, each cast to a Booking object.
+        """
+        try:
+            response = supabase_client.table("bookings").select("*, properties!inner(*)").execute()
+
+            if not response.data:
+                return []
+
+            return [Booking(**booking_data) for booking_data in response.data]
+        except Exception as e:
+            print(f"Error retrieving all bookings: {e}")
+            raise
+
+    @staticmethod
     def get_all_bookings_by_manager(manager_id: str) -> List[Booking]:
         """
         Retrieves all bookings from the Supabase 'bookings' table.

@@ -1,4 +1,5 @@
 # app.py
+import asyncio
 import uvicorn
 import os
 import logging
@@ -25,7 +26,7 @@ from controllers.guest_controller import router as guest_router
 from controllers.manager_controller import router as manager_router
 from controllers.user_controller import router as user_router
 from controllers.team_controller import router as team_router
-
+from controllers.admin.admin_controller import router as admin_router
 
 # Set up logging
 logging.basicConfig(
@@ -80,11 +81,10 @@ def custom_openapi():
     return app.openapi_schema
 
 
-async def create_app():
-
-    db_config.test_database_connection()
-    breakpoint()
-    """Create and configure the FastAPI application"""
+@app.on_event("startup")
+async def startup_event():
+    """Initialize services on startup"""
+    await db_config.test_database_connection()
 
     try:
         BedrockService.initialize()
@@ -104,15 +104,10 @@ async def create_app():
     app.include_router(manager_router, prefix="/api/v1/managers")
     app.include_router(user_router, prefix="/api/v1/users")
     app.include_router(team_router, prefix="/api/v1/teams")
-
+    app.include_router(admin_router, prefix="/api/v1/admin")
     # Override the default openapi schema
     app.openapi = custom_openapi
 
-    return app
-
-
-# Create the application instance
-app = create_app()
 
 if __name__ == "__main__":
-    uvicorn.run(app, host="0.0.0.0", port=5001, reload=True)
+    uvicorn.run("app:app", host="0.0.0.0", port=5001, reload=False, workers=2)

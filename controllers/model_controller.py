@@ -22,7 +22,7 @@ class ModelResponse(BaseModel):
     response: str
 
 
-@router.post("/query", response_model=ModelResponse)
+@router.post("/query", response_model=ModelResponse, operation_id="query")
 async def query_model(data: SMSInput, current_user: dict = Depends(get_current_user)):
     """Query the model with SMS input"""
     try:
@@ -34,7 +34,7 @@ async def query_model(data: SMSInput, current_user: dict = Depends(get_current_u
         raise HTTPException(status_code=500, detail="An unexpected error occurred")
 
 
-@router.get("/current")
+@router.get("/current", operation_id="current")
 async def get_model_params(current_user: dict = Depends(get_current_user)):
     """Get current model parameters"""
     try:

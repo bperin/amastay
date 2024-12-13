@@ -34,7 +34,7 @@ class UpdateBookingInput(BaseModel):
     check_out: Optional[datetime] = None
 
 
-@router.post("/create", response_model=Booking, status_code=201)
+@router.post("/create", response_model=Booking, status_code=201, operation_id="create_booking")
 async def create_booking(data: CreateBookingInput, current_user: dict = Depends(get_current_user)):
     """Creates a new booking"""
     try:
@@ -48,7 +48,7 @@ async def create_booking(data: CreateBookingInput, current_user: dict = Depends(
         raise HTTPException(status_code=500, detail="An unexpected error occurred")
 
 
-@router.get("/list", response_model=List[Booking])
+@router.get("/list", response_model=List[Booking], operation_id="get_all_bookings")
 async def list_bookings(current_user: dict = Depends(get_current_user)):
     """Lists all bookings"""
     try:
@@ -59,18 +59,18 @@ async def list_bookings(current_user: dict = Depends(get_current_user)):
         raise HTTPException(status_code=500, detail=str(e))
 
 
-@router.get("/list_details", response_model=List[Booking])
-async def list_bookings_with_details(current_user: dict = Depends(get_current_user)):
-    """Lists all bookings with details"""
-    try:
-        bookings = BookingService.get_bookings_by_owner_with_details(current_user["id"])
-        return bookings
-    except Exception as e:
-        logging.error(f"Error in list_bookings_details: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+# @router.get("/list_details", response_model=List[Booking], operation_id="list_details")
+# async def list_bookings_with_details(current_user: dict = Depends(get_current_user)):
+#     """Lists all bookings with details"""
+#     try:
+#         bookings = BookingService.get_bookings_by_owner_with_details(current_user["id"])
+#         return bookings
+#     except Exception as e:
+#         logging.error(f"Error in list_bookings_details: {e}")
+#         raise HTTPException(status_code=500, detail=str(e))
 
 
-@router.get("/{booking_id}", response_model=Booking)
+@router.get("/{booking_id}", response_model=[Booking], operation_id="get_booking")
 async def get_booking(booking_id: UUID, current_user: dict = Depends(get_current_user)):
     """Retrieves a booking by its ID"""
     try:
@@ -83,7 +83,7 @@ async def get_booking(booking_id: UUID, current_user: dict = Depends(get_current
         raise HTTPException(status_code=500, detail=str(e))
 
 
-@router.patch("/update", response_model=Booking)
+@router.patch("/update", response_model=Booking, operation_id="update_booking")
 async def update_booking(data: UpdateBookingInput, current_user: dict = Depends(get_current_user)):
     """Updates a booking"""
     try:
@@ -96,7 +96,7 @@ async def update_booking(data: UpdateBookingInput, current_user: dict = Depends(
         raise HTTPException(status_code=500, detail=str(e))
 
 
-@router.delete("/{booking_id}")
+@router.delete("/{booking_id}", operation_id="delete_booking")
 async def delete_booking(booking_id: UUID, current_user: dict = Depends(get_current_user)):
     """Deletes a booking"""
     try:
@@ -109,18 +109,7 @@ async def delete_booking(booking_id: UUID, current_user: dict = Depends(get_curr
         raise HTTPException(status_code=500, detail=str(e))
 
 
-@router.get("/property/{property_id}", response_model=List[Booking])
-async def get_property_bookings(property_id: UUID, current_user: dict = Depends(get_current_user)):
-    """Retrieves all bookings for a specific property"""
-    try:
-        bookings = BookingService.get_bookings_by_property_id(str(property_id))
-        return bookings
-    except Exception as e:
-        logging.error(f"Error in get_property_bookings: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
-
-
-@router.get("/details/{booking_id}", response_model=Booking)
+@router.get("/details/{booking_id}", response_model=Booking, operation_id="get_booking_details")
 async def get_booking_details(booking_id: UUID, current_user: dict = Depends(get_current_user)):
     """Get a booking with its property and guest details"""
     try:
@@ -133,7 +122,7 @@ async def get_booking_details(booking_id: UUID, current_user: dict = Depends(get
         raise HTTPException(status_code=500, detail=str(e))
 
 
-@router.get("/upcoming")
+@router.get("/upcoming", operation_id="get_upcoming_booking")
 async def get_upcoming_booking(phone: str, current_user: dict = Depends(get_current_user)):
     """Get the next upcoming booking for a guest by their phone number"""
     try:
@@ -149,7 +138,7 @@ async def get_upcoming_booking(phone: str, current_user: dict = Depends(get_curr
         raise HTTPException(status_code=500, detail=str(e))
 
 
-@router.get("/guest/{guest_id}", response_model=Booking)
+@router.get("/guest/{guest_id}", response_model=Booking, operation_id="get_guest_booking")
 async def get_guest_booking(guest_id: UUID, current_user: dict = Depends(get_current_user)):
     """Get the next booking for a specific guest by their ID"""
     try:

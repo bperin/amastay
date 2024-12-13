@@ -3,7 +3,9 @@ import pydantic
 
 import ormar
 import sqlalchemy
+import dotenv
 
+dotenv.load_dotenv()
 
 DATABASE_URL = "postgresql://postgres.cjpqoecwszjepmrijxit:dU7FwqM2JowJt4r.V@VfodBAHP@aws-0-us-west-1.pooler.supabase.com:6543/postgres"
 base_ormar_config = ormar.OrmarConfig(
@@ -22,12 +24,13 @@ async def test_database_connection():
         # Get database instance from base config
         database = base_ormar_config.database
 
-        breakpoint()
         # Try connecting
         await database.connect()
-        breakpoint()
-        # Execute simple test query
-        await database.fetch_one("SELECT 1")
+
+        # Execute a simple query to test the connection
+        query = "SELECT current_timestamp"
+        result = await database.fetch_one(query)
+        print(f"Database query result: {result}")
 
         # Close connection
         await database.disconnect()

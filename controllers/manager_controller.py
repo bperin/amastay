@@ -27,7 +27,7 @@ class UpdateManagerInput(BaseModel):
     phone: Optional[str] = None
 
 
-@router.post("/invite")
+@router.post("/invite", operation_id="invite")
 async def invite_manager(data: ManagerInviteInput, current_user: dict = Depends(get_current_user)):
     """Send invitation to a new manager"""
     try:
@@ -40,7 +40,7 @@ async def invite_manager(data: ManagerInviteInput, current_user: dict = Depends(
         raise HTTPException(status_code=500, detail="Internal server error")
 
 
-@router.get("/list", response_model=List[Manager])
+@router.get("/list", response_model=List[Manager], operation_id="list")
 async def list_managers(current_user: dict = Depends(get_current_user)):
     """List all managers for the owner"""
     try:
@@ -51,7 +51,7 @@ async def list_managers(current_user: dict = Depends(get_current_user)):
         raise HTTPException(status_code=500, detail="Internal server error")
 
 
-@router.get("/list_pending", response_model=List[Manager])
+@router.get("/list_pending", response_model=List[Manager], operation_id="list_pending")
 async def list_pending_managers(current_user: dict = Depends(get_current_user)):
     """List all pending managers for the owner"""
     try:
@@ -62,7 +62,7 @@ async def list_pending_managers(current_user: dict = Depends(get_current_user)):
         raise HTTPException(status_code=500, detail="Internal server error")
 
 
-@router.get("/{manager_id}", response_model=Manager)
+@router.get("/{manager_id}", response_model=Manager, operation_id="get_manager")
 async def get_manager(manager_id: UUID, current_user: dict = Depends(get_current_user)):
     """Get a specific manager"""
     try:
@@ -75,7 +75,7 @@ async def get_manager(manager_id: UUID, current_user: dict = Depends(get_current
         raise HTTPException(status_code=500, detail="Internal server error")
 
 
-@router.put("/update", response_model=Manager)
+@router.put("/update", response_model=Manager, operation_id="update")
 async def update_manager(data: UpdateManagerInput, current_user: dict = Depends(get_current_user)):
     """Update a manager"""
     try:
@@ -90,7 +90,7 @@ async def update_manager(data: UpdateManagerInput, current_user: dict = Depends(
         raise HTTPException(status_code=500, detail="Internal server error")
 
 
-@router.delete("/{manager_id}")
+@router.delete("/{manager_id}", operation_id="delete")
 async def delete_manager(manager_id: UUID, current_user: dict = Depends(get_current_user)):
     """Delete a manager"""
     try:

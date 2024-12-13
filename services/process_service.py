@@ -12,7 +12,6 @@ from services.pinpoint_service import PinpointService
 from services.documents_service import DocumentsService
 from services.property_information_service import PropertyInformationService
 from services.property_service import PropertyService
-from services.sagemaker_service import SageMakerService
 from services.bedrock_service import BedrockService
 from services.guest_service import GuestService
 

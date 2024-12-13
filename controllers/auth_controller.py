@@ -17,7 +17,7 @@ logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/authentication", tags=["authentication"])
 
 
-@router.post("/signup", response_model=AuthResponse)
+@router.post("/signup", response_model=AuthResponse, operation_id="signup")
 async def signup(data: SignupInput):
     """Signs up a new user and sends an OTP to their phone number."""
     try:
@@ -32,17 +32,18 @@ async def signup(data: SignupInput):
         raise HTTPException(status_code=500, detail="An unexpected error occurred")
 
 
-@router.post("/refresh_token", response_model=Session)
+@router.post("/refresh_token", response_model=Session, operation_id="refresh_token")
 async def refresh_token(data: RefreshTokenInput):
     """Refreshes the session tokens using the provided refresh token."""
     try:
         return AuthService.refresh_token(data.refresh_token)
     except Exception as e:
         logger.error(f"Token refresh failed: {e}")
+
         raise HTTPException(status_code=500, detail=str(e))
 
 
-@router.get("/me", response_model=UserResponse)
+@router.get("/me", response_model=UserResponse, operation_id="me")
 async def get_current_user_info(current_user: str = Depends(get_current_user)):
     """Retrieves the current logged-in user's information."""
     try:
@@ -52,13 +53,13 @@ async def get_current_user_info(current_user: str = Depends(get_current_user)):
         raise HTTPException(status_code=500, detail=str(e))
 
 
-@router.get("/logout")
+@router.get("/logout", operation_id="logout")
 async def logout():
     """Logs out the current user."""
     return AuthService.logout()
 
 
-@router.post("/signin", response_model=Session)
+@router.post("/signin", response_model=Session, operation_id="signin")
 async def login(data: LoginInput):
     """Logs in a user with email and password."""
     try:
@@ -68,7 +69,7 @@ async def login(data: LoginInput):
         raise HTTPException(status_code=500, detail=str(e))
 
 
-@router.post("/google", response_model=Session)
+@router.post("/google", response_model=Session, operation_id="google")
 async def google_sign_in(data: GoogleSignInInput):
     """Signs in or signs up a user with Google credentials."""
     try:
@@ -78,7 +79,7 @@ async def google_sign_in(data: GoogleSignInInput):
         raise HTTPException(status_code=500, detail=str(e))
 
 
-@router.post("/request-password-reset")
+@router.post("/request-password-reset", operation_id="request_password_reset")
 async def request_password_reset(data: PasswordResetRequestInput):
     """Request a password reset link to be sent to email."""
     try:
@@ -88,7 +89,7 @@ async def request_password_reset(data: PasswordResetRequestInput):
         raise HTTPException(status_code=400, detail=str(e))
 
 
-@router.post("/reset-password")
+@router.post("/reset-password", operation_id="reset_password")
 async def reset_password(data: PasswordResetInput):
     """Reset password using the token received via email."""
     try:

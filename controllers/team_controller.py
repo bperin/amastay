@@ -27,7 +27,7 @@ class AssignManagerToTeamInput(BaseModel):
     manager_id: UUID
 
 
-@router.post("/create", response_model=Team)
+@router.post("/create", response_model=Team, operation_id="create")
 async def create_team(data: CreateTeamInput, current_user: dict = Depends(get_current_user)):
     """Create a new team"""
     try:
@@ -40,7 +40,7 @@ async def create_team(data: CreateTeamInput, current_user: dict = Depends(get_cu
         raise HTTPException(status_code=500, detail=str(e))
 
 
-@router.get("/list", response_model=List[Team])
+@router.get("/list", response_model=List[Team], operation_id="list")
 async def list_teams(current_user: dict = Depends(get_current_user)):
     """Get all teams owned by the current user"""
     try:
@@ -51,7 +51,7 @@ async def list_teams(current_user: dict = Depends(get_current_user)):
         raise HTTPException(status_code=500, detail=str(e))
 
 
-@router.post("/assign_property")
+@router.post("/assign_property", operation_id="assign_property")
 async def assign_team_to_property(data: AssignTeamToPropertyInput, current_user: dict = Depends(get_current_user)):
     """Assign a team to manage a property"""
     try:
@@ -64,7 +64,7 @@ async def assign_team_to_property(data: AssignTeamToPropertyInput, current_user:
         raise HTTPException(status_code=500, detail=str(e))
 
 
-@router.get("/{team_id}/managers", response_model=List[Manager])
+@router.get("/{team_id}/managers", response_model=List[Manager], operation_id="get_team_managers")
 async def get_team_managers(team_id: UUID, current_user: dict = Depends(get_current_user)):
     """Get all managers of a team"""
     try:
@@ -75,7 +75,7 @@ async def get_team_managers(team_id: UUID, current_user: dict = Depends(get_curr
         raise HTTPException(status_code=500, detail=str(e))
 
 
-@router.get("/{team_id}/properties", response_model=List[Manager])
+@router.get("/{team_id}/properties", response_model=List[Manager], operation_id="get_team_properties")
 async def get_team_properties(team_id: UUID, current_user: dict = Depends(get_current_user)):
     """Get all properties of a team"""
     try:
@@ -86,7 +86,7 @@ async def get_team_properties(team_id: UUID, current_user: dict = Depends(get_cu
         raise HTTPException(status_code=500, detail=str(e))
 
 
-@router.post("/assign_manager")
+@router.post("/assign_manager", operation_id="assign_manager")
 async def assign_manager_to_team(data: AssignManagerToTeamInput, current_user: dict = Depends(get_current_user)):
     """Assign a manager to a team"""
     try:
@@ -99,7 +99,7 @@ async def assign_manager_to_team(data: AssignManagerToTeamInput, current_user: d
         raise HTTPException(status_code=500, detail=str(e))
 
 
-@router.delete("/{team_id}/managers/{manager_id}")
+@router.delete("/{team_id}/managers/{manager_id}", operation_id="remove_manager")
 async def remove_manager_from_team(team_id: UUID, manager_id: UUID, current_user: dict = Depends(get_current_user)):
     """Remove a manager from a team"""
     try:

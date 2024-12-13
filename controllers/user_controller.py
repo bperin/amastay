@@ -23,19 +23,19 @@ class UserProfile(BaseModel):
     metadata: Dict[str, Any]
 
 
-@router.get("/profile", response_model=UserProfile)
+@router.get("/profile", response_model=UserProfile, operation_id="get_profile")
 async def get_profile(current_user: dict = Depends(get_current_user)):
     """Get user profile information"""
     return UserService.get_user_profile(current_user["id"])
 
 
-@router.put("/profile")
+@router.put("/profile", operation_id="update_profile")
 async def update_profile(data: ProfileUpdate, current_user: dict = Depends(get_current_user)):
     """Update user profile information"""
     return UserService.update_user_profile(current_user["id"], data.dict())
 
 
-@router.post("/phone")
+@router.post("/phone", operation_id="add_phone")
 async def add_phone(data: PhoneUpdate, current_user: dict = Depends(get_current_user)):
     """Add or update phone number"""
     return UserService.add_phone_number(current_user["id"], data.phone_number)
