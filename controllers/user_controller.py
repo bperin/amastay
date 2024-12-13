@@ -4,7 +4,7 @@ from typing import Optional, Dict, Any
 from services.user_service import UserService
 from auth_utils import get_current_user
 
-router = APIRouter(prefix="/users", tags=["users"])
+router = APIRouter(tags=["users"])
 
 
 class ProfileUpdate(BaseModel):

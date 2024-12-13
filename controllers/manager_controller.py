@@ -1,14 +1,23 @@
-from fastapi import APIRouter, Depends, HTTPException
-from pydantic import BaseModel, EmailStr
 from typing import List, Optional
 from uuid import UUID
-from services.manager_service import ManagerService
-from auth_utils import get_current_user
+from fastapi import APIRouter, Depends, HTTPException
+from pydantic import BaseModel, EmailStr
+
+# Group model imports together
 from models.manager import Manager
+from models.team import Team
+from models.property import Property
+
+# Group service imports together
+from services.manager_service import ManagerService
+from services.team_service import TeamService
+from services.property_service import PropertyService
+
+from auth_utils import get_current_user
 import logging
 
 
-router = APIRouter(prefix="/managers", tags=["managers"])
+router = APIRouter(tags=["managers"])
 
 
 class ManagerInviteInput(BaseModel):

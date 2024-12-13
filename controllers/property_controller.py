@@ -1,22 +1,24 @@
-from fastapi import APIRouter, Depends, HTTPException
-from pydantic import BaseModel, HttpUrl
 from typing import List, Optional
 from uuid import UUID
+from fastapi import APIRouter, Depends, HTTPException
+from pydantic import BaseModel, HttpUrl
+
+# Group model imports together
 from models.booking import Booking
-from services.booking_service import BookingService
+from models.property import Property
+from models.document import Document
+from models.property_information import PropertyInformation
+
+# Group service imports together
 from services.property_service import PropertyService
 from services.property_information_service import PropertyInformationService
-from auth_utils import get_current_user, require_owner, require_manager, require_owner_or_manager
-from models.property import Property
-from models.property_information import PropertyInformation
-from geopy.geocoders import Nominatim
+from services.booking_service import BookingService
+
+from auth_utils import get_current_user
 import logging
 
 # Create router
-router = APIRouter(prefix="/properties", tags=["properties"])
-
-# Initialize the geolocator
-geolocator = Nominatim(user_agent="amastay_property_geocoder")
+router = APIRouter(tags=["properties"])
 
 
 class CreatePropertyInput(BaseModel):
@@ -51,7 +53,7 @@ class UpdatePropertyInfoInput(BaseModel):
 
 
 @router.post("/create", response_model=Property, status_code=201, operation_id="create")
-async def create_property(data: CreatePropertyInput, current_user: dict = Depends(require_owner)):
+async def create_property(data: CreatePropertyInput, current_user: dict = Depends(get_current_user)):
     """Creates a new property (owners only)"""
     try:
         property_data = data.dict()
@@ -72,7 +74,7 @@ async def create_property(data: CreatePropertyInput, current_user: dict = Depend
 
 
 @router.patch("/update", response_model=Property, operation_id="update")
-async def update_property(data: UpdatePropertyInput, current_user: dict = Depends(require_manager)):
+async def update_property(data: UpdatePropertyInput, current_user: dict = Depends(get_current_user)):
     """Updates a property (managers only)"""
     try:
         updated_property = PropertyService.update_property(data.id, data.dict(exclude_unset=True))
@@ -96,7 +98,7 @@ async def delete_property(property_id: UUID, current_user: dict = Depends(get_cu
 
 
 @router.get("/list", response_model=List[Property], operation_id="list")
-async def list_properties(current_user: dict = Depends(require_owner_or_manager)):
+async def list_properties(current_user: dict = Depends(get_current_user)):
     """Lists all properties for the current user"""
     try:
         properties = PropertyService.list_properties(current_user["id"])

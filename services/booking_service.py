@@ -1,16 +1,23 @@
+# Standard library
 import os
-from typing import List, Optional, Dict, Any
 import logging
+from typing import List, Optional, Dict, Any
 from datetime import datetime
-from phone_utils import PhoneUtils
+
+# Models
 from models.booking import Booking
 from models.guest import Guest
 from models.booking_guest import BookingGuest
+from models.property import Property
+
+# Services
 from services.guest_service import GuestService
 from services.pinpoint_service import PinpointService
 from services.property_service import PropertyService
+
+# Utils
+from phone_utils import PhoneUtils
 from supabase_utils import supabase_client
-from models.property import Property
 
 
 class BookingService:

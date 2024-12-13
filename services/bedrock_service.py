@@ -1,15 +1,24 @@
+# Standard library
 import os
 import logging
-import boto3
 from typing import Optional, List
+
+# Third-party
+import boto3
 from botocore.config import Config
+
+# Models
 from models.booking import Booking
 from models.guest import Guest
 from models.hf_message import HfMessage
 from models.property import Property
 from models.property_information import PropertyInformation
 from models.system_prompt import SystemPrompt
-from services import booking_service, guest_service, property_service
+
+# Services
+from services.booking_service import BookingService
+from services.guest_service import GuestService
+from services.property_service import PropertyService
 from services.message_service import MessageService
 from services.model_params_service import get_active_model_param
 

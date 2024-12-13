@@ -1,15 +1,23 @@
-from fastapi import APIRouter, Depends, HTTPException
-from pydantic import BaseModel
 from typing import List, Optional
 from uuid import UUID
-from datetime import datetime
+from fastapi import APIRouter, Depends, HTTPException
+from pydantic import BaseModel
+
+# Group model imports together
 from models.booking import Booking
+from models.guest import Guest
+from models.property import Property
+
+# Group service imports together
 from services.booking_service import BookingService
+from services.guest_service import GuestService
+from services.property_service import PropertyService
+
 from auth_utils import get_current_user
 import logging
 
 
-router = APIRouter(prefix="/bookings", tags=["bookings"])
+router = APIRouter(tags=["bookings"])
 
 
 class GuestInput(BaseModel):
@@ -21,8 +29,8 @@ class GuestInput(BaseModel):
 class CreateBookingInput(BaseModel):
     property_id: UUID
     notes: Optional[str] = None
-    check_in: datetime
-    check_out: datetime
+    check_in: str
+    check_out: str
     guests: Optional[List[GuestInput]] = None
 
 
@@ -30,8 +38,8 @@ class UpdateBookingInput(BaseModel):
     booking_id: UUID
     property_id: Optional[UUID] = None
     notes: Optional[str] = None
-    check_in: Optional[datetime] = None
-    check_out: Optional[datetime] = None
+    check_in: Optional[str] = None
+    check_out: Optional[str] = None
 
 
 @router.post("/create", response_model=Booking, status_code=201, operation_id="create_booking")
@@ -70,7 +78,7 @@ async def list_bookings(current_user: dict = Depends(get_current_user)):
 #         raise HTTPException(status_code=500, detail=str(e))
 
 
-@router.get("/{booking_id}", response_model=[Booking], operation_id="get_booking")
+@router.get("/{booking_id}", response_model=List[Booking], operation_id="get_booking")
 async def get_booking(booking_id: UUID, current_user: dict = Depends(get_current_user)):
     """Retrieves a booking by its ID"""
     try:

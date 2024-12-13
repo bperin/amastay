@@ -3,7 +3,7 @@ from pydantic import BaseModel
 from services.process_service import handle_incoming_sms
 import logging
 
-router = APIRouter(prefix="/webhooks", tags=["webhooks"])
+router = APIRouter(tags=["webhooks"])
 
 
 class SMSWebhook(BaseModel):

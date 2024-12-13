@@ -1,7 +1,7 @@
 # models/property_information.py
 
 import ormar
-from typing import Optional
+from typing import Optional, TYPE_CHECKING
 from db_config import base_ormar_config
 from models.property import Property
 

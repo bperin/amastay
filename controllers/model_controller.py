@@ -9,7 +9,7 @@ import uuid
 from uuid import UUID
 
 # Create router
-router = APIRouter(prefix="/model", tags=["model"])
+router = APIRouter(tags=["model"])
 
 
 class SMSInput(BaseModel):

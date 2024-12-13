@@ -1,28 +1,34 @@
-from fastapi import APIRouter, Depends, HTTPException
-from pydantic import BaseModel
 from typing import List, Optional
 from uuid import UUID
+from fastapi import APIRouter, Depends, HTTPException
+from pydantic import BaseModel
+
+# Group model imports together
 from models.guest import Guest
+from models.booking import Booking
+
+# Group service imports together
 from services.guest_service import GuestService
 from services.booking_service import BookingService
 from services.pinpoint_service import PinpointService
+
 from auth_utils import get_current_user
 import logging
 import os
 
 
-router = APIRouter(prefix="/guests", tags=["guests"])
+router = APIRouter(tags=["guests"])
 
 
-class GuestInput(BaseModel):
+class AddGuestInput(BaseModel):
     booking_id: UUID
     phone: str
     first_name: str
     last_name: Optional[str] = None
 
 
-@router.post("/add", response_model=Guest, operation_id="add")
-async def add_guest(data: GuestInput, current_user: dict = Depends(get_current_user)):
+@router.post("/add", response_model=Guest, operation_id="add_guest")
+async def add_guest(data: AddGuestInput, current_user: dict = Depends(get_current_user)):
     """Add a guest to a booking"""
     try:
         # Create or get guest
@@ -66,7 +72,7 @@ async def remove_guest(booking_id: UUID, guest_id: UUID, current_user: dict = De
         raise HTTPException(status_code=500, detail=str(e))
 
 
-@router.get("/guests/{booking_id}", response_model=List[Guest], operation_id="list_booking_guests")
+@router.get("/guests/{booking_id}", response_model=List[Guest], operation_id="get_guests")
 async def list_booking_guests(booking_id: UUID, current_user: dict = Depends(get_current_user)):
     """List all guests for a booking"""
     try:

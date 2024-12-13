@@ -105,9 +105,10 @@ async def startup_event():
     app.include_router(user_router, prefix="/api/v1/users")
     app.include_router(team_router, prefix="/api/v1/teams")
     app.include_router(admin_router, prefix="/api/v1/admin")
+
     # Override the default openapi schema
     app.openapi = custom_openapi
 
 
 if __name__ == "__main__":
-    uvicorn.run("app:app", host="0.0.0.0", port=5001, reload=False, workers=2)
+    uvicorn.run("app:app", host="0.0.0.0", port=5001, reload=True, workers=2)

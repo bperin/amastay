@@ -3,6 +3,7 @@
 import ormar
 from typing import Optional
 from db_config import base_ormar_config
+from pydantic import BaseModel
 
 
 class Guest(ormar.Model):

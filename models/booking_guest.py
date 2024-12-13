@@ -1,6 +1,6 @@
 # models/booking_guest.py
 import ormar
-from typing import Optional
+from typing import Optional, TYPE_CHECKING
 from db_config import base_ormar_config
 from models.booking import Booking
 from models.guest import Guest
