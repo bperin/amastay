@@ -146,11 +146,11 @@ async def get_upcoming_booking(phone: str, current_user: dict = Depends(get_curr
         raise HTTPException(status_code=500, detail=str(e))
 
 
-@router.get("/guest/{guest_id}", response_model=Booking, operation_id="get_guest_booking")
-async def get_guest_booking(guest_id: UUID, current_user: dict = Depends(get_current_user)):
+@router.get("/guests/{booking_id}}", response_model=List[Guest], operation_id="get_guest_booking")
+async def get_guest_booking(booking_id: UUID, current_user: dict = Depends(get_current_user)):
     """Get the next booking for a specific guest by their ID"""
     try:
-        booking = BookingService.get_next_booking_by_guest_id(str(guest_id))
+        booking = BookingService.get(str(guest_id))
         if not booking:
             raise HTTPException(status_code=404, detail="No bookings found for this guest")
         return booking

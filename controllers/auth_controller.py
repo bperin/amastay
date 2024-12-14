@@ -82,7 +82,7 @@ async def google_sign_in(data: GoogleSignInInput):
         raise HTTPException(status_code=500, detail=str(e))
 
 
-@router.post("/request-password-reset", operation_id="request_password_reset")
+@router.post("/request_password_reset", operation_id="request_password_reset")
 async def request_password_reset(data: PasswordResetRequestInput):
     """Request a password reset link to be sent to email."""
     try:
@@ -92,7 +92,7 @@ async def request_password_reset(data: PasswordResetRequestInput):
         raise HTTPException(status_code=400, detail=str(e))
 
 
-@router.post("/reset-password", operation_id="reset_password")
+@router.post("/reset_password", operation_id="reset_password")
 async def reset_password(data: PasswordResetInput):
     """Reset password using the token received via email."""
     try:

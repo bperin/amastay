@@ -36,7 +36,7 @@ class UpdateManagerInput(BaseModel):
     phone: Optional[str] = None
 
 
-@router.post("/invite", operation_id="invite")
+@router.post("/invite", operation_id="invite_manager")
 async def invite_manager(data: ManagerInviteInput, current_user: dict = Depends(get_current_user)):
     """Send invitation to a new manager"""
     try:
@@ -49,7 +49,7 @@ async def invite_manager(data: ManagerInviteInput, current_user: dict = Depends(
         raise HTTPException(status_code=500, detail="Internal server error")
 
 
-@router.get("/list", response_model=List[Manager], operation_id="list")
+@router.get("/list", response_model=List[Manager], operation_id="list_managers")
 async def list_managers(current_user: dict = Depends(get_current_user)):
     """List all managers for the owner"""
     try:
@@ -60,7 +60,7 @@ async def list_managers(current_user: dict = Depends(get_current_user)):
         raise HTTPException(status_code=500, detail="Internal server error")
 
 
-@router.get("/list_pending", response_model=List[Manager], operation_id="list_pending")
+@router.get("/list_pending", response_model=List[Manager], operation_id="list_pending_managers")
 async def list_pending_managers(current_user: dict = Depends(get_current_user)):
     """List all pending managers for the owner"""
     try:
@@ -84,7 +84,7 @@ async def get_manager(manager_id: UUID, current_user: dict = Depends(get_current
         raise HTTPException(status_code=500, detail="Internal server error")
 
 
-@router.put("/update", response_model=Manager, operation_id="update")
+@router.put("/update", response_model=Manager, operation_id="update_manager")
 async def update_manager(data: UpdateManagerInput, current_user: dict = Depends(get_current_user)):
     """Update a manager"""
     try:
@@ -99,7 +99,7 @@ async def update_manager(data: UpdateManagerInput, current_user: dict = Depends(
         raise HTTPException(status_code=500, detail="Internal server error")
 
 
-@router.delete("/{manager_id}", operation_id="delete")
+@router.delete("/{manager_id}", operation_id="delete_manager")
 async def delete_manager(manager_id: UUID, current_user: dict = Depends(get_current_user)):
     """Delete a manager"""
     try:

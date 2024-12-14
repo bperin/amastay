@@ -27,6 +27,7 @@ from controllers.manager_controller import router as manager_router
 from controllers.user_controller import router as user_router
 from controllers.team_controller import router as team_router
 from controllers.admin.admin_controller import router as admin_router
+from controllers.property_information_controller import router as property_information_router
 
 # Set up logging
 logging.basicConfig(
@@ -105,7 +106,7 @@ async def startup_event():
     app.include_router(user_router, prefix="/api/v1/users")
     app.include_router(team_router, prefix="/api/v1/teams")
     app.include_router(admin_router, prefix="/api/v1/admin")
-
+    app.include_router(property_information_router, prefix="/api/v1/property_information")
     # Override the default openapi schema
     app.openapi = custom_openapi
 
