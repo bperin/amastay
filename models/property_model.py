@@ -2,13 +2,14 @@ from typing import Optional
 
 import ormar
 
-from db_config import base_ormar_config
+from models.base_meta import BaseMeta
 from models.owner_model import Owner
 from models.manager_model import Manager
 
 
 class Property(ormar.Model):
-    ormar_config = base_ormar_config.copy(tablename="properties")
+    class Meta(BaseMeta):
+        tablename = "properties"
 
     id: ormar.UUID = ormar.UUID(primary_key=True)
 

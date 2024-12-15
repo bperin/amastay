@@ -1,11 +1,14 @@
 import ormar
-from typing import Optional, TYPE_CHECKING
+from typing import Optional
 from db_config import base_ormar_config
 from models.property_model import Property
 
 
 class Booking(ormar.Model):
-    ormar_config = base_ormar_config.copy(tablename="bookings")
+    class Meta:
+        tablename = "bookings"
+        metadata = base_ormar_config.metadata
+        database = base_ormar_config.database
 
     id: ormar.UUID = ormar.UUID(primary_key=True)
     notes: Optional[str] = ormar.Text(nullable=True)
@@ -16,4 +19,4 @@ class Booking(ormar.Model):
     created_at: str = ormar.String(max_length=50)
     updated_at: str = ormar.String(max_length=50)
 
-    property: Optional[Property] = ormar.ForeignKey(Property, nullable=False)
+    property: Optional[Property] = ormar.ForeignKey(Property, nullable=True)

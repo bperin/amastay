@@ -4,7 +4,10 @@ from db_config import base_ormar_config
 
 
 class Owner(ormar.Model):
-    ormar_config = base_ormar_config.copy(tablename="owners")
+    class Meta:
+        tablename = "owners"
+        metadata = base_ormar_config.metadata
+        database = base_ormar_config.database
 
     id: ormar.UUID = ormar.UUID(primary_key=True)
     phone: str = ormar.String(max_length=20)

@@ -8,8 +8,9 @@ from dotenv import load_dotenv
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.openapi.utils import get_openapi
-import db_config
+from db_config import connect_to_database, close_database_connection, engine, metadata
 
+from models.property_model import Property
 from services.bedrock_service import BedrockService
 
 # Load environment variables
@@ -79,7 +80,8 @@ async def startup_event():
 
     setup_logging()
 
-    await db_config.connect_to_database()
+    await connect_to_database()
+    metadata.create_all(bind=engine)
 
     try:
         BedrockService.initialize()
@@ -90,7 +92,7 @@ async def startup_event():
 
     # Include routers
     app.include_router(auth_router, prefix="/api/v1/auth")
-    app.include_router(property_router, prefix="/api/v1/properties")
+    # app.include_router(property_router, prefix="/api/v1/properties")
 
     app.include_router(booking_router, prefix="/api/v1/bookings")
     app.include_router(guest_router, prefix="/api/v1/guests")
@@ -102,6 +104,9 @@ async def startup_event():
     app.include_router(team_router, prefix="/api/v1/teams")
     app.include_router(admin_router, prefix="/api/v1/admin")
     app.include_router(property_information_router, prefix="/api/v1/property_information")
+
+    property_router = OrmarCRUDRouter(schema=Property)
+    app.include_router(property_router, prefix="/api/v1/properties")
     # Override the default openapi schema
     app.openapi = custom_openapi
 
@@ -109,7 +114,7 @@ async def startup_event():
 @app.on_event("shutdown")
 async def shutdown_event():
     """Close database connection on shutdown"""
-    await db_config.close_database_connection()
+    await close_database_connection()
 
 
 def setup_logging():
