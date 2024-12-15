@@ -2,7 +2,7 @@ import logging
 import os
 import tempfile
 import time
-from models.property import Property
+from models.property_model import Property
 from scraper import Scraper
 from services.documents_service import DocumentsService
 from supabase_utils import supabase_client, supabase_admin_client

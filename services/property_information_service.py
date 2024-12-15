@@ -1,7 +1,7 @@
 import logging
 from typing import List, Optional
-from models.property_information import PropertyInformation
-from models.property import Property
+from models.property_information_model import PropertyInformation
+from models.property_model import Property
 from supabase_utils import supabase_client
 from .property_service import PropertyService
 

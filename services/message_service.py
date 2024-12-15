@@ -1,6 +1,6 @@
 from uuid import UUID
 from supabase_utils import supabase_client
-from models.message import Message
+from models.message_model import Message
 from typing import Optional
 from datetime import datetime
 

@@ -6,9 +6,7 @@ from typing import Optional
 from uuid import UUID
 from pydantic import BaseModel, EmailStr
 from auth_utils import get_current_user
-from models.manager import Manager
 from services.auth_service import AuthService
-from services.manager_service import ManagerService
 from gotrue import AuthResponse, UserResponse, User, Session
 from gotrue.types import Provider
 from .inputs.auth_inputs import SignupInput, LoginInput, GoogleSignInInput, PasswordResetRequestInput, PasswordResetInput, RefreshTokenInput, OTPInput

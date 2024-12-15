@@ -4,9 +4,9 @@ from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
 
 # Group model imports together
-from models.team import Team
-from models.manager import Manager
-from models.property import Property
+from models.team_model import Team
+from models.manager_model import Manager
+from models.property_model import Property
 
 # Group service imports together
 from services.team_service import TeamService

@@ -4,10 +4,10 @@ from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, HttpUrl
 
 # Group model imports together
-from models.booking import Booking
-from models.property import Property
-from models.document import Document
-from models.property_information import PropertyInformation
+from models.booking_model import Booking
+from models.property_model import Property
+from models.document_model import Document
+from models.property_information_model import PropertyInformation
 
 # Group service imports together
 from services.property_service import PropertyService

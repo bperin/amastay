@@ -3,8 +3,7 @@ from uuid import UUID
 from geopy.geocoders import Nominatim
 from geopy.exc import GeocoderTimedOut, GeocoderServiceError
 from supabase_utils import supabase_client
-from models.property import Property
-
+from models.property_model import Property
 from typing import List, Optional, Tuple
 
 

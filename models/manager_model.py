@@ -1,7 +1,7 @@
 import ormar
 from typing import Optional
 from db_config import base_ormar_config
-from models.owner import Owner
+from models.owner_model import Owner
 
 
 class Manager(ormar.Model):

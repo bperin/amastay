@@ -4,7 +4,7 @@ import traceback
 from typing import List, Optional
 import requests
 
-from models.document import Document
+from models.document_model import Document
 from phone_utils import PhoneUtils
 from services.booking_service import BookingService
 from services.message_service import MessageService
@@ -14,6 +14,7 @@ from services.property_information_service import PropertyInformationService
 from services.property_service import PropertyService
 from services.bedrock_service import BedrockService
 from services.guest_service import GuestService
+from services.model_params_service import get_active_model_param
 
 logger = logging.getLogger(__name__)
 

@@ -4,9 +4,9 @@ from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
 
 # Group model imports together
-from models.booking import Booking
-from models.guest import Guest
-from models.property import Property
+from models.booking_model import Booking
+from models.guest_model import Guest
+from models.property_model import Property
 
 # Group service imports together
 from services.booking_service import BookingService
@@ -150,7 +150,7 @@ async def get_upcoming_booking(phone: str, current_user: dict = Depends(get_curr
 async def get_guest_booking(booking_id: UUID, current_user: dict = Depends(get_current_user)):
     """Get the next booking for a specific guest by their ID"""
     try:
-        booking = BookingService.get(str(guest_id))
+        booking = BookingService.get(str(booking_id))
         if not booking:
             raise HTTPException(status_code=404, detail="No bookings found for this guest")
         return booking

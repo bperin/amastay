@@ -4,8 +4,8 @@ from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
 
 # Group model imports together
-from models.guest import Guest
-from models.booking import Booking
+from models.guest_model import Guest
+from models.booking_model import Booking
 
 # Group service imports together
 from services.guest_service import GuestService

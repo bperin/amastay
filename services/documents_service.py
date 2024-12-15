@@ -2,7 +2,7 @@ import os
 import tempfile
 import time
 from typing import List
-from models.document import Document
+from models.document_model import Document
 from supabase_utils import supabase_client, supabase_admin_client
 import logging
 
