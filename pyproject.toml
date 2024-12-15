@@ -37,6 +37,8 @@ sqlalchemy = ">=1.4.42,<2.0.0"
 asyncpg = "^0.30.0"
 psycopg2 = "^2.9.10"
 email-validator = "^2.2.0"
+fastapi-pagination = "^0.12.32"
+fastapi-crudrouter = "^0.8.6"
 
 [tool.poetry.group.dev.dependencies]
 pyright = "^1.1.382.post1"

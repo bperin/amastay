@@ -5,10 +5,10 @@ from typing import List, Optional, Dict, Any
 from datetime import datetime
 
 # Models
-from models.booking import Booking
-from models.guest import Guest
-from models.booking_guest import BookingGuest
-from models.property import Property
+from models.booking_model import Booking
+from models.guest_model import Guest
+from models.booking_guest_model import BookingGuest
+from models.property_model import Property
 
 # Services
 from services.guest_service import GuestService

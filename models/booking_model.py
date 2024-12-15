@@ -1,7 +1,7 @@
 import ormar
 from typing import Optional, TYPE_CHECKING
 from db_config import base_ormar_config
-from models.property import Property
+from models.property_model import Property
 
 
 class Booking(ormar.Model):

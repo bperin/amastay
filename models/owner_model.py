@@ -1,5 +1,3 @@
-# models/owner.py
-
 import ormar
 from typing import Optional
 from db_config import base_ormar_config

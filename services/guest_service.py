@@ -1,7 +1,7 @@
 from typing import Dict, List, Optional
 from phone_utils import PhoneUtils
 import logging
-from models.guest import Guest
+from models.guest_model import Guest
 from supabase_utils import supabase_admin_client, supabase_client
 
 

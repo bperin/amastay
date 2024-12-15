@@ -1,8 +1,8 @@
 from typing import Dict, List, Optional
 import logging
-from models.manager import Manager
-from models.property import Property
-from models.team import Team
+from models.manager_model import Manager
+from models.property_model import Property
+from models.team_model import Team
 from supabase_utils import supabase_client
 from datetime import datetime
 from pydantic import BaseModel

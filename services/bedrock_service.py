@@ -8,11 +8,11 @@ import boto3
 from botocore.config import Config
 
 # Models
-from models.booking import Booking
-from models.guest import Guest
+from models.booking_model import Booking
+from models.guest_model import Guest
 from models.hf_message import HfMessage
-from models.property import Property
-from models.property_information import PropertyInformation
+from models.property_model import Property
+from models.property_information_model import PropertyInformation
 from models.system_prompt import SystemPrompt
 
 # Services

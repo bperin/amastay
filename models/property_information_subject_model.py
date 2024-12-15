@@ -1,5 +1,3 @@
-# models/property_information_subject.py
-
 from pydantic import BaseModel
 from typing import Optional
 

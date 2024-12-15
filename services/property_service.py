@@ -1,4 +1,5 @@
 import logging
+from uuid import UUID
 from geopy.geocoders import Nominatim
 from geopy.exc import GeocoderTimedOut, GeocoderServiceError
 from supabase_utils import supabase_client
@@ -34,14 +35,15 @@ class PropertyService:
             return None, None, None
 
     @staticmethod
-    def create_property(user_id: str, name: str, address: str, description: Optional[str], property_url: str) -> Property:
+    async def create_property(owner_id: UUID, name: str, address: str, description: Optional[str], property_url: str, manager_id: Optional[UUID]) -> Property:
         try:
             property_data = {
                 "name": name,
                 "address": address,
                 "description": description,
                 "property_url": property_url,
-                "owner_id": user_id,
+                "owner_id": owner_id,
+                "manager_id": manager_id,
             }
 
             # Geocode the address
@@ -60,14 +62,8 @@ class PropertyService:
             if normalized_address:
                 property_data["address"] = normalized_address
 
-            # Insert the property into the 'properties' table
-            response = supabase_client.table("properties").insert(property_data).execute()
-            if not response.data:
-                logging.error("Failed to insert property: No data returned.", response)
-                raise Exception("Failed to insert property: No data returned.")
-
-            data = response.data[0]
-            new_property = Property(**data)
+            # Create new property using ORM model
+            new_property = await Property.objects.create(**property_data)
             return new_property
 
         except Exception as e:

@@ -24,6 +24,7 @@ class CreatePropertyInput(BaseModel):
     name: str
     address: str
     description: Optional[str] = None
+    manager_id: Optional[UUID] = None
     property_url: HttpUrl
 
 
@@ -35,34 +36,14 @@ class UpdatePropertyInput(BaseModel):
     property_url: Optional[HttpUrl] = None
 
 
-class PropertyInfoInput(BaseModel):
-    property_id: UUID
-    name: str
-    detail: str
-    is_recommendation: bool
-    metadata_url: Optional[HttpUrl] = None
-    category_id: Optional[UUID] = None
-
-
-class UpdatePropertyInfoInput(BaseModel):
-    id: UUID
-    name: Optional[str] = None
-    detail: Optional[str] = None
-    is_recommendation: Optional[bool] = None
-
-
 @router.post("/create", response_model=Property, status_code=201, operation_id="create_property")
-async def create_property(data: CreatePropertyInput, current_user: dict = Depends(get_current_user)):
+async def create_property(create_property_input: CreatePropertyInput, current_user: dict = Depends(get_current_user)):
     """Creates a new property (owners only)"""
     try:
-        property_data = data.dict()
-
-        # Clean property URL by removing query parameters
-        if property_data["property_url"]:
-            property_data["property_url"] = str(property_data["property_url"]).split("?")[0]
 
         # Create property with named parameters
-        new_property = PropertyService.create_property(**property_data)
+        new_property = PropertyService.create_property(owner_id=current_user["id"], name=create_property_input.name, address=create_property_input.address, description=create_property_input.description, property_url=create_property_input.property_url)
+        new_property.owner_id.to_pydantic()
         return new_property
     except ValueError as ve:
         logging.error(f"Validation error in create_property: {ve}")

@@ -1,11 +1,10 @@
-# models/property.py
 from typing import Optional
 
 import ormar
 
 from db_config import base_ormar_config
-from models.owner import Owner
-from models.manager import Manager
+from models.owner_model import Owner
+from models.manager_model import Manager
 
 
 class Property(ormar.Model):

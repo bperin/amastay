@@ -9,10 +9,10 @@ from sagemaker.deserializers import JSONDeserializer
 from sagemaker.session import Session
 import boto3
 
-from models.booking import Booking
-from models.property import Property
-from models.guest import Guest
-from models.property_information import PropertyInformation
+from models.booking_model import Booking
+from models.property_model import Property
+from models.guest_model import Guest
+from models.property_information_model import PropertyInformation
 from services.message_service import MessageService
 from services.model_params_service import get_active_model_param
 

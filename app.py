@@ -1,5 +1,5 @@
 # app.py
-import asyncio
+from fastapi_crudrouter import OrmarCRUDRouter
 import uvicorn
 import os
 import logging
@@ -29,14 +29,6 @@ from controllers.team_controller import router as team_router
 from controllers.admin.admin_controller import router as admin_router
 from controllers.property_information_controller import router as property_information_router
 
-# Set up logging
-logging.basicConfig(
-    level=logging.DEBUG,
-    format="%(asctime)s - %(name)s - %(levelname)s - %(filename)s:%(lineno)d - %(message)s",
-)
-file_handler = logging.FileHandler("app.log")
-file_handler.setLevel(logging.DEBUG)
-file_handler.setFormatter(logging.Formatter("%(asctime)s - %(name)s - %(levelname)s - %(filename)s:%(lineno)d - %(message)s"))
 
 # Create FastAPI app
 app = FastAPI(title="Amastay API", description="Amastay API", version="0.2", docs_url="/swagger")
@@ -84,8 +76,10 @@ def custom_openapi():
 
 @app.on_event("startup")
 async def startup_event():
-    """Initialize services on startup"""
-    await db_config.test_database_connection()
+
+    setup_logging()
+
+    await db_config.connect_to_database()
 
     try:
         BedrockService.initialize()
@@ -97,6 +91,7 @@ async def startup_event():
     # Include routers
     app.include_router(auth_router, prefix="/api/v1/auth")
     app.include_router(property_router, prefix="/api/v1/properties")
+
     app.include_router(booking_router, prefix="/api/v1/bookings")
     app.include_router(guest_router, prefix="/api/v1/guests")
     app.include_router(health_router, prefix="/api/v1/health")
@@ -109,6 +104,24 @@ async def startup_event():
     app.include_router(property_information_router, prefix="/api/v1/property_information")
     # Override the default openapi schema
     app.openapi = custom_openapi
+
+
+@app.on_event("shutdown")
+async def shutdown_event():
+    """Close database connection on shutdown"""
+    await db_config.close_database_connection()
+
+
+def setup_logging():
+    """Configure logging with file and console handlers"""
+    logging.basicConfig(
+        level=logging.DEBUG,
+        format="%(asctime)s - %(name)s - %(levelname)s - %(filename)s:%(lineno)d - %(message)s",
+    )
+    file_handler = logging.FileHandler("app.log")
+    file_handler.setLevel(logging.DEBUG)
+    file_handler.setFormatter(logging.Formatter("%(asctime)s - %(name)s - %(levelname)s - %(filename)s:%(lineno)d - %(message)s"))
+    logging.getLogger().addHandler(file_handler)
 
 
 if __name__ == "__main__":
