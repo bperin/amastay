@@ -1,20 +1,19 @@
-import ormar
-from typing import Optional
-from db_config import base_ormar_config
-from models.base_model import BaseModel
-from models.owner_model import Owner
+from typing import Optional, List
+from sqlmodel import SQLModel, Field, Relationship
+from .base_model import BaseModel
 
 
-class Manager(ormar.Model):
+class Manager(BaseModel, table=True):
+    """Manager model representing property managers"""
 
-    class Meta(BaseModel.Meta):
-        tablename = "managers"
+    __tablename__ = "managers"
 
-    first_name: str = ormar.String(max_length=100, nullable=True)
-    last_name: Optional[str] = ormar.String(max_length=100, nullable=True)
-    email: str = ormar.String(max_length=255, nullable=False)
-    phone: Optional[str] = ormar.String(max_length=20, nullable=False)
-    verified: bool = ormar.Boolean(default=False)
-    phone_verified: bool = ormar.Boolean(default=False)
+    first_name: str = Field(max_length=100)
+    last_name: Optional[str] = Field(max_length=100)
+    email: str = Field(max_length=255)
+    phone: str = Field(max_length=20)
+    verified: bool = Field(default=False)
+    phone_verified: bool = Field(default=False)
 
-    # owner: Optional[Owner] = ormar.ForeignKey(Owner, nullable=True)
+    # Relationship attributes
+    properties: List["Property"] = Relationship(back_populates="manager")

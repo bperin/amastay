@@ -1,13 +1,16 @@
-import uuid
-import ormar
-from typing import Optional
+from typing import Optional, List
+from sqlmodel import Field, Relationship
 from models.base_model import BaseModel
 
 
-class Guest(ormar.Model):
-    class Meta(BaseModel.Meta):
-        tablename = "guests"
+class Guest(BaseModel, table=True):
+    """Model representing a guest in the system"""
 
-    phone: str = ormar.String(max_length=20)
-    first_name: Optional[str] = ormar.String(max_length=100, nullable=True)
-    last_name: Optional[str] = ormar.String(max_length=100, nullable=True)
+    __tablename__ = "guests"
+
+    phone: str = Field(max_length=20)
+    first_name: Optional[str] = Field(max_length=100, default=None)
+    last_name: Optional[str] = Field(max_length=100, default=None)
+
+    # Relationship attributes
+    bookings: List["BookingGuest"] = Relationship(back_populates="guest")

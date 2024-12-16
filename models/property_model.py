@@ -1,24 +1,25 @@
 from typing import Optional
 import uuid
-
-import ormar
-
-from models.base_model import BaseModel
-from models.owner_model import Owner
-from models.manager_model import Manager
+from sqlmodel import SQLModel, Field, Relationship
+from .base_model import BaseModel
 
 
-class Property(BaseModel):
+class Property(BaseModel, table=True):
+    """Property model representing real estate properties"""
 
-    class Meta(BaseModel.Meta):
-        tablename = "properties"
+    __tablename__ = "properties"
 
-    name: str = ormar.String(max_length=100)
-    description: str = ormar.Text(nullable=True)
-    address: str = ormar.String(max_length=200)
-    lat: float = ormar.Float()
-    lng: float = ormar.Float()
-    property_url: str = ormar.String(max_length=200)
+    name: str = Field(max_length=100)
+    description: Optional[str] = Field(default=None)
+    address: str = Field(max_length=200)
+    lat: float
+    lng: float
+    property_url: str = Field(max_length=200)
 
-    # owner: Optional[Owner] = ormar.ForeignKey(Owner, nullable=False)
-    # manager: Optional[Manager] = ormar.ForeignKey(Manager, nullable=True)
+    # Relationships will be defined here
+    owner_id: Optional[uuid.UUID] = Field(default=None, foreign_key="owners.id")
+    manager_id: Optional[uuid.UUID] = Field(default=None, foreign_key="managers.id")
+
+    # Relationship attributes
+    owner: Optional["Owner"] = Relationship(back_populates="properties")
+    manager: Optional["Manager"] = Relationship(back_populates="properties")

@@ -1,15 +1,13 @@
-import ormar
-from typing import Optional
-from db_config import base_ormar_config
+from sqlmodel import Field
 from models.base_model import BaseModel
 
 
-class ModelParams(ormar.Model):
+class ModelParams(BaseModel, table=True):
+    """Model representing AI model parameters"""
 
-    class Meta(BaseModel.Meta):
-        tablename = "model_params"
+    __tablename__ = "model_params"
 
-    prompt: str = ormar.Text()
-    top_p: float = ormar.Float()
-    temperature: float = ormar.Float()
-    active: bool = ormar.Boolean(default=False)
+    prompt: str = Field()  # SQLModel will use Text type for str without max_length
+    top_p: float = Field()
+    temperature: float = Field()
+    active: bool = Field(default=False)

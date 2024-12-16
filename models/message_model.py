@@ -1,21 +1,24 @@
-import ormar
-from typing import Optional, TYPE_CHECKING
-from db_config import base_ormar_config
+from typing import Optional
+import uuid
+from sqlmodel import Field, Relationship
 from models.base_model import BaseModel
 from models.booking_model import Booking
 from models.guest_model import Guest
 
 
-class Message(ormar.Model):
+class Message(BaseModel, table=True):
+    """Model representing messages in the system"""
 
-    class Meta(BaseModel.Meta):
-        tablename = "messages"
+    __tablename__ = "messages"
 
-    content: str = ormar.Text()  # Using Text for potentially longer messages
-    sender_type: int = ormar.Integer()  # 0 for guest, 1 for AI, 2 for owner
+    content: str = Field()  # SQLModel will use Text type for str without max_length
+    sender_type: int = Field()  # 0 for guest, 1 for AI, 2 for owner
+    sms_id: Optional[str] = Field(max_length=100, default=None)
+    question_id: Optional[uuid.UUID] = Field(default=None)
 
-    sms_id: Optional[str] = ormar.String(max_length=100, nullable=True)
-    question_id: Optional[ormar.UUID] = ormar.UUID(nullable=True)
+    booking_id: Optional[uuid.UUID] = Field(default=None, foreign_key="bookings.id")
+    sender_id: Optional[uuid.UUID] = Field(default=None, foreign_key="guests.id")
 
-    # booking: Optional[Booking] = ormar.ForeignKey(Booking)
-    # sender: Optional[Guest] = ormar.ForeignKey(Guest, nullable=True)
+    # Relationship attributes
+    booking: Optional[Booking] = Relationship(back_populates="messages")
+    sender: Optional[Guest] = Relationship(back_populates="sent_messages")

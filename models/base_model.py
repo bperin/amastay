@@ -1,18 +1,17 @@
 # models/base_model.py
 import uuid
 from datetime import datetime
-import ormar
-from sqlalchemy import func  # Import SQLAlchemy functions for server defaults
-from db_config import base_ormar_config
+from typing import Optional
+from sqlmodel import SQLModel, Field
+from sqlalchemy import func
 
 
-class BaseModel(ormar.Model):
-    class Meta:
-        pkname = "id"
-        metadata = base_ormar_config.metadata
-        database = base_ormar_config.database
+class BaseModel(SQLModel, table=True):
+    """Base model with common fields for all models"""
 
-    # Common Fields
-    id: uuid.UUID = ormar.UUID(primary_key=True, default=uuid.uuid4, nullable=False)
-    created_at: datetime = ormar.DateTime(server_default=func.now(), nullable=False)
-    updated_at: datetime = ormar.DateTime(server_default=func.now(), server_onupdate=func.now(), nullable=False)
+    id: Optional[uuid.UUID] = Field(default_factory=uuid.uuid4, primary_key=True, nullable=False)
+    created_at: datetime = Field(default_factory=datetime.utcnow, sa_column_kwargs={"server_default": func.now()})
+    updated_at: datetime = Field(default_factory=datetime.utcnow, sa_column_kwargs={"server_default": func.now(), "onupdate": func.now()})
+
+    class Config:
+        arbitrary_types_allowed = True

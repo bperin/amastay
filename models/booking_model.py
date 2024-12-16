@@ -1,18 +1,22 @@
+from typing import Optional, List
 import uuid
-import ormar
-from typing import Optional
-from db_config import base_ormar_config
+from sqlmodel import Field, Relationship
 from models.base_model import BaseModel
 from models.property_model import Property
 
 
-class Booking(ormar.Model):
-    class Meta(BaseModel.Meta):
-        tablename = "bookings"
+class Booking(BaseModel, table=True):
+    """Model representing a booking in the system"""
 
-    notes: Optional[str] = ormar.Text(nullable=True)
+    __tablename__ = "bookings"
 
-    check_in: str = ormar.String(max_length=50)
-    check_out: str = ormar.String(max_length=50)
+    notes: Optional[str] = Field(default=None)
+    check_in: str = Field(max_length=50)
+    check_out: str = Field(max_length=50)
 
-    # property: Optional[Property] = ormar.ForeignKey(Property, nullable=True)
+    property_id: Optional[uuid.UUID] = Field(default=None, foreign_key="properties.id")
+
+    # Relationship attributes
+    property: Optional[Property] = Relationship(back_populates="bookings")
+    guests: List["BookingGuest"] = Relationship(back_populates="booking")
+    messages: List["Message"] = Relationship(back_populates="booking")

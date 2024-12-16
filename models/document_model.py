@@ -1,18 +1,20 @@
-import ormar
-from typing import Optional, TYPE_CHECKING
-from db_config import base_ormar_config
+from typing import Optional
+import uuid
+from sqlmodel import Field, Relationship
 from models.base_model import BaseModel
 from models.property_model import Property
 
 
-class Document(ormar.Model):
+class Document(BaseModel, table=True):
+    """Model representing document files in the system"""
 
-    class Meta(BaseModel.Meta):
-        tablename = "documents"
+    __tablename__ = "documents"
 
-    file_id: str = ormar.String(max_length=100)
-    file_url: str = ormar.String(max_length=255)
+    file_id: str = Field(max_length=100)
+    file_url: str = Field(max_length=255)
+    primary: bool = Field(default=False)
 
-    primary: bool = ormar.Boolean(default=False)
+    property_id: Optional[uuid.UUID] = Field(default=None, foreign_key="properties.id")
 
-    # property: Optional[Property] = ormar.ForeignKey(Property, nullable=True)
+    # Relationship attributes
+    property: Optional[Property] = Relationship(back_populates="documents")

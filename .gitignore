@@ -5,7 +5,8 @@ __pycache__/
 *.so
 
 .DS_Store
-
+.depending
+depending
 # Poetry
 dist/
 *.egg-info/
