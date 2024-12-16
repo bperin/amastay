@@ -1,25 +1,38 @@
-from typing import Optional
-import uuid
-from sqlmodel import SQLModel, Field, Relationship
-from .base_model import BaseModel
+from typing import Optional, List
+from pydantic import BaseModel
 
 
-class Property(BaseModel, table=True):
+class Property(BaseModel):
     """Property model representing real estate properties"""
 
-    __tablename__ = "properties"
+    id: str = ""
+    name: str = ""
+    description: Optional[str] = ""
+    address: str = ""
+    lat: Optional[float] = 0.0
+    lng: Optional[float] = 0.0
+    property_url: str = ""
+    created_at: str = ""
+    updated_at: str = ""
 
-    name: str = Field(max_length=100)
-    description: Optional[str] = Field(default=None)
-    address: str = Field(max_length=200)
-    lat: float
-    lng: float
-    property_url: str = Field(max_length=200)
+    # Foreign key references
+    owner_id: str = ""
+    manager_id: str = ""
 
-    # Relationships will be defined here
-    owner_id: Optional[uuid.UUID] = Field(default=None, foreign_key="owners.id")
-    manager_id: Optional[uuid.UUID] = Field(default=None, foreign_key="managers.id")
+    # Relationships (using forward refs)
+    owner: Optional["Owner"] = None
+    manager: Optional["Manager"] = None
 
-    # Relationship attributes
-    owner: Optional["Owner"] = Relationship(back_populates="properties")
-    manager: Optional["Manager"] = Relationship(back_populates="properties")
+
+class CreateProperty(BaseModel):
+    name: str
+    description: Optional[str] = None
+    address: str
+    property_url: str
+
+
+class UpdateProperty(BaseModel):
+    name: Optional[str] = None
+    description: Optional[str] = None
+    address: Optional[str] = None
+    property_url: Optional[str] = None

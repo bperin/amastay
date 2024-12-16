@@ -1,16 +1,16 @@
 # app.py
 import asyncio
-from fastapi_crudrouter import OrmarCRUDRouter
+
+from fastapi_crudrouter import SQLAlchemyCRUDRouter
+from sqlmodel import Session
 import uvicorn
 import logging
 from dotenv import load_dotenv
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.openapi.utils import get_openapi
-from db_config import connect_to_database, close_database_connection, engine, metadata
-
-from models.property_model import Property
 from services.bedrock_service import BedrockService
+from models.property_model import Property
 
 # Load environment variables
 load_dotenv(override=True)
@@ -29,6 +29,7 @@ from controllers.user_controller import router as user_router
 from controllers.team_controller import router as team_router
 from controllers.admin.admin_controller import router as admin_router
 from controllers.property_information_controller import router as property_information_router
+from controllers.property_controller import router as property_router
 
 # Create FastAPI app
 app = FastAPI(title="Amastay API", description="Amastay API", version="0.2", docs_url="/swagger")
@@ -78,18 +79,6 @@ def custom_openapi():
 async def startup_event():
     setup_logging()
 
-    # Connect to the database
-    await connect_to_database()
-
-    # Import all models to ensure they are registered with metadata before creating tables
-    from models.owner_model import Owner
-    from models.manager_model import Manager
-
-    # Add imports for other models as necessary
-
-    # Create tables based on metadata
-    metadata.create_all(bind=engine)
-
     try:
         # If BedrockService.initialize() is asynchronous, await it
         if asyncio.iscoroutinefunction(BedrockService.initialize):
@@ -103,7 +92,7 @@ async def startup_event():
 
     # Include routers
     app.include_router(auth_router, prefix="/api/v1/auth")
-    # app.include_router(property_router, prefix="/api/v1/properties")  # Commented out to prevent conflicts
+    app.include_router(property_router, prefix="/api/v1/properties")  # Commented out to prevent conflicts
     app.include_router(booking_router, prefix="/api/v1/bookings")
     app.include_router(guest_router, prefix="/api/v1/guests")
     app.include_router(health_router, prefix="/api/v1/health")
@@ -115,10 +104,6 @@ async def startup_event():
     app.include_router(admin_router, prefix="/api/v1/admin")
     app.include_router(property_information_router, prefix="/api/v1/property_information")
 
-    # Initialize OrmarCRUDRouter for Property
-    property_crud_router = OrmarCRUDRouter(schema=Property, prefix="/api/v1/properties", tags=["Properties"], model=Property)
-    app.include_router(property_crud_router)
-
     # Override the default OpenAPI schema
     app.openapi = custom_openapi
 
@@ -126,7 +111,7 @@ async def startup_event():
 @app.on_event("shutdown")
 async def shutdown_event():
     """Close database connection on shutdown"""
-    await close_database_connection()
+    print("Shutting down...")
 
 
 def setup_logging():

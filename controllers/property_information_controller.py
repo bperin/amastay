@@ -7,7 +7,7 @@ from pydantic import BaseModel, HttpUrl
 from models.booking_model import Booking
 from models.property_model import Property
 from models.document_model import Document
-from models.property_information_model import PropertyInformation
+from models.property_information_model import CreatePropertyInformation, PropertyInformation, UpdatePropertyInformation
 
 # Group service imports together
 from services.property_service import PropertyService
@@ -21,24 +21,8 @@ import logging
 router = APIRouter(tags=["property information"])
 
 
-class PropertyInfoInput(BaseModel):
-    property_id: UUID
-    name: str
-    detail: str
-    is_recommendation: bool
-    metadata_url: Optional[HttpUrl] = None
-    category_id: Optional[UUID] = None
-
-
-class UpdatePropertyInfoInput(BaseModel):
-    id: UUID
-    name: Optional[str] = None
-    detail: Optional[str] = None
-    is_recommendation: Optional[bool] = None
-
-
 @router.post("/create", response_model=PropertyInformation, operation_id="create_property_information")
-async def add_property_information(data: PropertyInfoInput, current_user: dict = Depends(get_current_user)):
+async def add_property_information(data: CreatePropertyInformation, current_user: dict = Depends(get_current_user)):
     """Adds information to a property"""
     try:
         property_info = PropertyInformationService.add_property_information(data.dict())
@@ -64,7 +48,7 @@ async def get_property_information(property_id: UUID, current_user: dict = Depen
 
 
 @router.patch("/update", response_model=PropertyInformation, operation_id="update_property_information")
-async def update_property_information(data: UpdatePropertyInfoInput, current_user: dict = Depends(get_current_user)):
+async def update_property_information(data: UpdatePropertyInformation, current_user: dict = Depends(get_current_user)):
     """Updates property information"""
     try:
         updated_info = PropertyInformationService.update_property_information(data.dict(exclude_unset=True))

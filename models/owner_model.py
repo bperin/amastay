@@ -1,18 +1,32 @@
 # models/owner_model.py
 from typing import Optional, List
-from sqlmodel import SQLModel, Field, Relationship
-from .base_model import BaseModel
+from pydantic import BaseModel
 
 
-class Owner(BaseModel, table=True):
+class Owner(BaseModel):
     """Owner model representing property owners"""
 
-    __tablename__ = "owners"
+    id: str = None
+    phone: str = None
+    bio: Optional[str] = None
+    first_name: str = None
+    last_name: str = None
+    created_at: str = None
+    updated_at: str = None
 
-    phone: str = Field(max_length=20)
-    bio: Optional[str] = Field(default=None)
-    first_name: str = Field(max_length=100)
-    last_name: str = Field(max_length=100)
+    # Relationships
+    properties: Optional[List["Property"]] = None
 
-    # Relationship attributes
-    properties: List["Property"] = Relationship(back_populates="owner")
+
+class CreateOwner(BaseModel):
+    phone: str
+    first_name: str
+    last_name: str
+    bio: Optional[str] = None
+
+
+class UpdateOwner(BaseModel):
+    phone: Optional[str] = None
+    first_name: Optional[str] = None
+    last_name: Optional[str] = None
+    bio: Optional[str] = None

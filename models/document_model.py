@@ -1,20 +1,31 @@
 from typing import Optional
-import uuid
-from sqlmodel import Field, Relationship
-from models.base_model import BaseModel
-from models.property_model import Property
+from pydantic import BaseModel, Field
+from models import *
 
 
-class Document(BaseModel, table=True):
+class Document(BaseModel):
     """Model representing document files in the system"""
 
-    __tablename__ = "documents"
+    id: str = None
+    file_id: str = None
+    file_url: str = None
+    primary: bool = False
+    property_id: str = None
+    created_at: str = None
+    updated_at: str = None
 
-    file_id: str = Field(max_length=100)
-    file_url: str = Field(max_length=255)
-    primary: bool = Field(default=False)
+    # Relationships
+    property_: Optional["Property"] = Field(default=None, alias="property")
 
-    property_id: Optional[uuid.UUID] = Field(default=None, foreign_key="properties.id")
 
-    # Relationship attributes
-    property: Optional[Property] = Relationship(back_populates="documents")
+class CreateDocument(BaseModel):
+    file_id: str
+    file_url: str
+    primary: bool = False
+    property_id: str
+
+
+class UpdateDocument(BaseModel):
+    file_id: Optional[str] = None
+    file_url: Optional[str] = None
+    primary: Optional[bool] = None

@@ -1,19 +1,27 @@
 from typing import Optional
-import uuid
-from sqlmodel import Field, Relationship
-from models.base_model import BaseModel
-from models.booking_model import Booking
-from models.guest_model import Guest
+from pydantic import BaseModel
+from models import *
 
 
-class BookingGuest(BaseModel, table=True):
+class BookingGuest(BaseModel):
     """Association model between bookings and guests"""
 
-    __tablename__ = "booking_guests"
+    id: str = None
+    booking_id: str = None
+    guest_id: str = None
+    created_at: str = None
+    updated_at: str = None
 
-    booking_id: Optional[uuid.UUID] = Field(default=None, foreign_key="bookings.id")
-    guest_id: Optional[uuid.UUID] = Field(default=None, foreign_key="guests.id")
+    # Relationships
+    booking: Optional["Booking"] = None
+    guest: Optional["Guest"] = None
 
-    # Relationship attributes
-    booking: Optional[Booking] = Relationship(back_populates="guests")
-    guest: Optional[Guest] = Relationship(back_populates="bookings")
+
+class CreateBookingGuest(BaseModel):
+    booking_id: str
+    guest_id: str
+
+
+class UpdateBookingGuest(BaseModel):
+    booking_id: Optional[str] = None
+    guest_id: Optional[str] = None

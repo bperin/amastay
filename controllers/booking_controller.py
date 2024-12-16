@@ -4,9 +4,9 @@ from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
 
 # Group model imports together
-from models.booking_model import Booking
-from models.guest_model import Guest
-from models.property_model import Property
+from models.booking_model import Booking, CreateBooking, UpdateBooking
+from models.guest_model import Guest, CreateGuest, UpdateGuest
+from models.property_model import Property, CreateProperty, UpdateProperty
 
 # Group service imports together
 from services.booking_service import BookingService
@@ -20,30 +20,8 @@ import logging
 router = APIRouter(tags=["bookings"])
 
 
-class GuestInput(BaseModel):
-    first_name: Optional[str] = None
-    last_name: Optional[str] = None
-    phone: str
-
-
-class CreateBookingInput(BaseModel):
-    property_id: UUID
-    notes: Optional[str] = None
-    check_in: str
-    check_out: str
-    guests: Optional[List[GuestInput]] = None
-
-
-class UpdateBookingInput(BaseModel):
-    booking_id: UUID
-    property_id: Optional[UUID] = None
-    notes: Optional[str] = None
-    check_in: Optional[str] = None
-    check_out: Optional[str] = None
-
-
 @router.post("/create", response_model=Booking, status_code=201, operation_id="create_booking")
-async def create_booking(data: CreateBookingInput, current_user: dict = Depends(get_current_user)):
+async def create_booking(data: CreateBooking, current_user: dict = Depends(get_current_user)):
     """Creates a new booking"""
     try:
         new_booking = BookingService.create_booking(property_id=str(data.property_id), check_in=data.check_in, check_out=data.check_out, notes=data.notes, guests=data.guests)
@@ -92,7 +70,7 @@ async def get_booking(booking_id: UUID, current_user: dict = Depends(get_current
 
 
 @router.patch("/update", response_model=Booking, operation_id="update_booking")
-async def update_booking(data: UpdateBookingInput, current_user: dict = Depends(get_current_user)):
+async def update_booking(data: UpdateBooking, current_user: dict = Depends(get_current_user)):
     """Updates a booking"""
     try:
         updated_booking = BookingService.update_booking(booking_id=str(data.booking_id), property_id=str(data.property_id) if data.property_id else None, check_in=data.check_in, check_out=data.check_out, notes=data.notes)

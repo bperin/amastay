@@ -1,19 +1,36 @@
 from typing import Optional, List
-from sqlmodel import SQLModel, Field, Relationship
-from .base_model import BaseModel
+from pydantic import BaseModel
+from models import *
 
 
-class Manager(BaseModel, table=True):
+class Manager(BaseModel):
     """Manager model representing property managers"""
 
-    __tablename__ = "managers"
+    id: str = None
+    first_name: str = None
+    last_name: Optional[str] = None
+    email: str = None
+    phone: str = None
+    verified: bool = False
+    phone_verified: bool = False
+    created_at: str = None
+    updated_at: str = None
 
-    first_name: str = Field(max_length=100)
-    last_name: Optional[str] = Field(max_length=100)
-    email: str = Field(max_length=255)
-    phone: str = Field(max_length=20)
-    verified: bool = Field(default=False)
-    phone_verified: bool = Field(default=False)
+    # Relationships
+    properties: Optional[List["Property"]] = []
 
-    # Relationship attributes
-    properties: List["Property"] = Relationship(back_populates="manager")
+
+class CreateManager(BaseModel):
+    first_name: str
+    last_name: Optional[str] = None
+    email: str
+    phone: str
+
+
+class UpdateManager(BaseModel):
+    first_name: Optional[str] = None
+    last_name: Optional[str] = None
+    email: Optional[str] = None
+    phone: Optional[str] = None
+    verified: Optional[bool] = None
+    phone_verified: Optional[bool] = None

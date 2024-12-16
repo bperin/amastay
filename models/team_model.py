@@ -1,13 +1,19 @@
 from typing import Optional
-from uuid import UUID, uuid4
 from pydantic import BaseModel
-from datetime import datetime
+from models.owner_model import Owner
 
 
 class Team(BaseModel):
-    id: str
+    id: str = None
+    name: str = None
+    owner_id: str = None
+    description: str = None
+    created_at: str = None
+    updated_at: str = None
+
+    owner: Optional[Owner] = None
+
+
+class CreateTeam(BaseModel):
     name: str
-    owner_id: str
     description: str
-    created_at: str
-    updated_at: str

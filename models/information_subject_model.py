@@ -3,7 +3,7 @@ from typing import Optional
 
 
 class InformationSubject(BaseModel):
-    id: str
-    name: str
-    created_at: Optional[str]
-    updated_at: Optional[str]
+    id: str = None
+    name: str = None
+    created_at: str = None
+    updated_at: str = None

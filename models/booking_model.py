@@ -1,22 +1,34 @@
+from __future__ import annotations
 from typing import Optional, List
-import uuid
-from sqlmodel import Field, Relationship
-from models.base_model import BaseModel
-from models.property_model import Property
+from pydantic import BaseModel, Field
+from models import *
 
 
-class Booking(BaseModel, table=True):
+class Booking(BaseModel):
     """Model representing a booking in the system"""
 
-    __tablename__ = "bookings"
+    id: str = ""
+    notes: Optional[str] = ""
+    check_in: str = ""
+    check_out: str = ""
+    property_id: str = ""
+    created_at: str = ""
+    updated_at: str = ""
 
-    notes: Optional[str] = Field(default=None)
-    check_in: str = Field(max_length=50)
-    check_out: str = Field(max_length=50)
+    # Relationships
+    property_: Optional[Property] = Field(default=None, alias="property")
+    guests: Optional[List[BookingGuest]] = None
+    messages: Optional[List[Message]] = None
 
-    property_id: Optional[uuid.UUID] = Field(default=None, foreign_key="properties.id")
 
-    # Relationship attributes
-    property: Optional[Property] = Relationship(back_populates="bookings")
-    guests: List["BookingGuest"] = Relationship(back_populates="booking")
-    messages: List["Message"] = Relationship(back_populates="booking")
+class CreateBooking(BaseModel):
+    notes: Optional[str] = None
+    check_in: str
+    check_out: str
+    property_id: str
+
+
+class UpdateBooking(BaseModel):
+    notes: Optional[str] = None
+    check_in: Optional[str] = None
+    check_out: Optional[str] = None

@@ -1,64 +1,49 @@
-# db_config.py
 import os
-import databases
-import sqlalchemy
+from databases import Database
+from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession
+from sqlalchemy.orm import sessionmaker
+from sqlalchemy import MetaData
 from dotenv import load_dotenv
 
-load_dotenv()
+load_dotenv(override=True)
 
-DB_HOST = os.getenv("DB_HOST")  # db.cjpqoecwszjepmrijxit.supabase.co
-DB_PORT = os.getenv("DB_PORT")  # 5432
-DB_USER = os.getenv("DB_USER")  # postgres
+DB_HOST = os.getenv("DB_HOST")
+DB_PORT = os.getenv("DB_PORT")
+DB_USER = os.getenv("DB_USER")
 DB_PASSWORD = os.getenv("DB_PASSWORD")
-DB_NAME = os.getenv("DB_NAME")  # postgres
+DB_NAME = os.getenv("DB_NAME")
 
-# For Supabase, we need to include the project reference in the username
-SUPABASE_PROJECT_REF = "cjpqoecwszjepmrijxit"  # This is from your DB_HOST
-FULL_DB_USER = f"{DB_USER}.{SUPABASE_PROJECT_REF}"
+# Use async PostgreSQL driver
+DATABASE_URL = f"postgresql+asyncpg://{DB_USER}:{DB_PASSWORD}@{DB_HOST}:{DB_PORT}/{DB_NAME}"
 
-# Direct connection URL format for Supabase with modified username
-DATABASE_URL = f"postgresql://{FULL_DB_USER}:{DB_PASSWORD}@{DB_HOST}:{DB_PORT}/{DB_NAME}"
+print("connecting to", DATABASE_URL)
 
-# Debug print to verify the URL (remove in production)
-print(f"Connecting to: {DATABASE_URL}")
+# Create async SQLAlchemy components
+metadata = MetaData()
+database = Database(DATABASE_URL)
 
-metadata = sqlalchemy.MetaData()
-database = databases.Database(DATABASE_URL)
-engine = sqlalchemy.create_engine(
-    DATABASE_URL,
-    # Add these parameters for better connection handling
-    pool_size=5,
-    max_overflow=10,
-    pool_timeout=30,
-    pool_recycle=1800,
-)
+# Create async engine
+engine = create_async_engine(DATABASE_URL, pool_size=5, max_overflow=10, pool_timeout=30, pool_recycle=1800, echo=True)
+
+# Create async session factory
+SessionLocal = sessionmaker(bind=engine, class_=AsyncSession, expire_on_commit=False, autocommit=False, autoflush=False)
 
 
-# Initialize Ormar's base configuration
-class BaseOrmarConfig:
-    metadata = metadata
-    database = database
-    engine = engine
+async def get_session() -> AsyncSession:
+    try:
+        async with SessionLocal() as session:
+            yield session
+    except Exception as e:
+        print(f"Session error: {e}")
+        await session.rollback()
+        raise
+    finally:
+        await session.close()
 
 
-base_ormar_config = BaseOrmarConfig()
-
-
-# Functions to manage the database connection
 async def connect_to_database():
     await database.connect()
 
 
 async def close_database_connection():
     await database.disconnect()
-
-
-async def test_database_connection():
-    try:
-        query = "SELECT current_timestamp"
-        result = await database.fetch_one(query)
-        print(f"Database query result: {result}")
-        return True
-    except Exception as e:
-        print(f"Database connection test failed: {str(e)}")
-        return False

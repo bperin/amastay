@@ -1,13 +1,28 @@
-from sqlmodel import Field
-from models.base_model import BaseModel
+from typing import Optional
+from pydantic import BaseModel
 
 
-class ModelParams(BaseModel, table=True):
+class ModelParams(BaseModel):
     """Model representing AI model parameters"""
 
-    __tablename__ = "model_params"
+    id: str = ""
+    prompt: str = ""
+    top_p: float = 0.5
+    temperature: float = 0.5
+    active: bool = False
+    created_at: str = None
+    updated_at: str = None
 
-    prompt: str = Field()  # SQLModel will use Text type for str without max_length
-    top_p: float = Field()
-    temperature: float = Field()
-    active: bool = Field(default=False)
+
+class CreateModelParams(BaseModel):
+    prompt: str
+    top_p: float
+    temperature: float
+    active: bool
+
+
+class UpdateModelParams(BaseModel):
+    prompt: Optional[str] = None
+    top_p: Optional[float] = None
+    temperature: Optional[float] = None
+    active: Optional[bool] = None

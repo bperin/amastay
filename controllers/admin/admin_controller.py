@@ -7,7 +7,7 @@ import os
 import jwt
 from jwt import PyJWTError
 from auth_utils import get_current_user, require_admin
-from models.booking_guest_model import Booking
+from models.booking_model import Booking
 from services.booking_service import BookingService
 
 

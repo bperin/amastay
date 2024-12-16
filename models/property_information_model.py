@@ -1,24 +1,39 @@
 # models/property_information.py
 
+from __future__ import annotations
 from typing import Optional
-import uuid
-from sqlmodel import Field, Relationship
-from models.base_model import BaseModel
-from models.property_model import Property
+from pydantic import BaseModel, Field
 
 
-class PropertyInformation(BaseModel, table=True):
+class PropertyInformation(BaseModel):
     """Model representing property information details"""
 
-    __tablename__ = "property_information"
+    id: str = ""
+    name: str = ""
+    detail: str = ""
+    is_recommendation: bool = False
+    metadata_url: str = ""
+    category: str = ""
+    property_id: Optional[str] = None
+    created_at: str = None
+    updated_at: str = None
 
-    name: str = Field(max_length=255)
-    detail: str = Field()  # SQLModel will use Text type for str without max_length
-    is_recommendation: bool = Field(default=False)
-    metadata_url: str = Field(max_length=255)
-    category: str = Field(max_length=100)
+    # Relationships
+    property_: Optional[Property] = Field(default=None, alias="property")
 
-    property_id: Optional[uuid.UUID] = Field(default=None, foreign_key="properties.id")
 
-    # Relationship attributes
-    property: Optional[Property] = Relationship(back_populates="information")
+class CreatePropertyInformation(BaseModel):
+    property_id: str
+    name: str
+    detail: Optional[str] = None
+    is_recommendation: bool = False
+    metadata_url: Optional[str] = None
+
+
+class UpdatePropertyInformation(BaseModel):
+    id: str
+    name: Optional[str] = None
+    detail: Optional[str] = None
+    is_recommendation: Optional[bool] = None
+    metadata_url: Optional[str] = None
+    category: Optional[str] = None
