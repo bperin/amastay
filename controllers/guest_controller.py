@@ -7,6 +7,8 @@ from pydantic import BaseModel
 from models import *
 
 # Group service imports together
+from models.booking_guest_model import CreateBookingGuest
+from models.guest_model import Guest
 from services.guest_service import GuestService
 from services.booking_service import BookingService
 from services.pinpoint_service import PinpointService
@@ -50,12 +52,11 @@ async def add_guest(data: CreateBookingGuest, current_user: dict = Depends(get_c
         raise HTTPException(status_code=500, detail=str(e))
 
 
-@router.delete("remove_guest/{booking_guest_id}", operation_id="remove_guest")
-async def remove_guest(booking_id: str, guest_id: str, current_user: dict = Depends(get_current_user)):
+@router.delete("delete/{booking_guest_id}", operation_id="remove_guest_from_booking")
+async def remove_guest(booking_guest_id: str, current_user: dict = Depends(get_current_user)):
     """Remove a guest from a booking"""
     try:
-        data = {"booking_id": booking_id, "guest_id": guest_id}
-        success = GuestService.remove_guest(data)
+        success = GuestService.remove_booking_guest(booking_guest_id)
         if success:
             return {"message": "Guest removed successfully"}
         raise HTTPException(status_code=400, detail="Failed to remove guest")

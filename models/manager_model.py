@@ -21,10 +21,18 @@ class Manager(BaseModel):
 
 
 class CreateManager(BaseModel):
-    first_name: str
+    first_name: Optional[str] = None
     last_name: Optional[str] = None
     email: str
     phone: str
+
+
+class ManagerInvite(BaseModel):
+    first_name: Optional[str] = None
+    last_name: Optional[str] = None
+    email: str
+    phone: str
+    team_id: Optional[str] = None
 
 
 class UpdateManager(BaseModel):

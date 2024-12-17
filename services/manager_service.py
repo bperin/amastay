@@ -2,7 +2,7 @@ from typing import List, Optional
 from datetime import datetime
 import logging
 from phone_utils import PhoneUtils
-from models.manager_model import Manager
+from models.manager_model import Manager, ManagerInvite
 from supabase_utils import supabase_client, supabase_admin_client
 from gotrue.types import InviteUserByEmailOptions
 
@@ -10,7 +10,7 @@ from gotrue.types import InviteUserByEmailOptions
 class ManagerService:
 
     @staticmethod
-    def create_manager_invitation(first_name: str, last_name: str, phone: str, owner_id: str, email: str, team_id: Optional[str] = None) -> dict:
+    def create_manager_invitation(data: ManagerInvite, owner_id: str) -> dict:
         """
         Creates an invitation for a manager to join a team.
 
@@ -20,18 +20,19 @@ class ManagerService:
             team_id: ID of the team the manager is being invited to
         """
         try:
-            phone = PhoneUtils.normalize_phone(phone)
+            phone = PhoneUtils.normalize_phone(data.phone)
 
             # Create the user account with manager role
-            user_metadata = {"first_name": first_name, "last_name": last_name, "phone": phone, "user_type": "manager", "owner_id": owner_id}
+            user_metadata = {"first_name": data.first_name, "last_name": data.last_name, "phone": phone, "user_type": "manager", "owner_id": owner_id}
+
             options = InviteUserByEmailOptions(data=user_metadata)
-            response = supabase_admin_client.auth.admin.invite_user_by_email(email=email, options=options)
+            response = supabase_admin_client.auth.admin.invite_user_by_email(email=data.email, options=options)
 
             if not response.user:
                 raise ValueError("Failed to create manager account")
 
             # Create manager record in managers table
-            manager_data = {"id": response.user.id, "owner_id": owner_id, "first_name": first_name, "last_name": last_name, "phone": phone, "email": email}
+            manager_data = {"id": response.user.id, "owner_id": owner_id, "first_name": data.first_name, "last_name": data.last_name, "phone": phone, "email": data.email}
 
             result = supabase_client.from_("managers").insert(manager_data).execute()
             if not result.data:

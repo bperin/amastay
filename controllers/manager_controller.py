@@ -4,7 +4,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, EmailStr
 
 # Group model imports together
-from models.manager_model import Manager
+from models.manager_model import Manager, ManagerInvite, UpdateManager
 from models.team_model import Team
 from models.property_model import Property
 
@@ -12,7 +12,7 @@ from models.property_model import Property
 from services.manager_service import ManagerService
 from services.team_service import TeamService
 from services.property_service import PropertyService
-
+from models import *
 from auth_utils import get_current_user
 import logging
 
@@ -20,27 +20,11 @@ import logging
 router = APIRouter(tags=["managers"])
 
 
-class ManagerInviteInput(BaseModel):
-    first_name: str
-    last_name: str
-    email: EmailStr
-    phone: str
-    team_id: Optional[str] = None
-
-
-class UpdateManagerInput(BaseModel):
-    id: str
-    first_name: Optional[str] = None
-    last_name: Optional[str] = None
-    email: Optional[EmailStr] = None
-    phone: Optional[str] = None
-
-
 @router.post("/invite", operation_id="invite_manager")
-async def invite_manager(data: ManagerInviteInput, current_user: dict = Depends(get_current_user)):
+async def invite_manager(data: ManagerInvite, current_user: dict = Depends(get_current_user)):
     """Send invitation to a new manager"""
     try:
-        result = ManagerService.create_manager_invitation(first_name=data.first_name, last_name=data.last_name, phone=data.phone, owner_id=current_user["id"], email=str(data.email), team_id=str(data.team_id) if data.team_id else None)
+        result = ManagerService.create_manager_invitation(data, current_user["id"])
         return result
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
@@ -71,7 +55,7 @@ async def list_pending_managers(current_user: dict = Depends(get_current_user)):
         raise HTTPException(status_code=500, detail="Internal server error")
 
 
-@router.get("/{manager_id}", response_model=Manager, operation_id="get_manager")
+@router.get("/get/{manager_id}", response_model=Manager, operation_id="get_manager")
 async def get_manager(manager_id: str, current_user: dict = Depends(get_current_user)):
     """Get a specific manager"""
     try:
@@ -85,10 +69,10 @@ async def get_manager(manager_id: str, current_user: dict = Depends(get_current_
 
 
 @router.put("/update", response_model=Manager, operation_id="update_manager")
-async def update_manager(data: UpdateManagerInput, current_user: dict = Depends(get_current_user)):
+async def update_manager(data: UpdateManager, current_user: dict = Depends(get_current_user)):
     """Update a manager"""
     try:
-        manager = ManagerService.update_manager(data.dict(exclude_unset=True))
+        manager = ManagerService.update_manager(data)
         if not manager:
             raise HTTPException(status_code=404, detail="Manager not found")
         return manager
@@ -99,11 +83,11 @@ async def update_manager(data: UpdateManagerInput, current_user: dict = Depends(
         raise HTTPException(status_code=500, detail="Internal server error")
 
 
-@router.delete("/{manager_id}", operation_id="delete_manager")
-async def delete_manager(manager_id: UUID, current_user: dict = Depends(get_current_user)):
+@router.delete("/delete/{manager_id}", operation_id="delete_manager")
+async def delete_manager(manager_id: str, current_user: dict = Depends(get_current_user)):
     """Delete a manager"""
     try:
-        if ManagerService.delete_manager(str(manager_id)):
+        if ManagerService.delete_manager(maanger_id):
             return {"message": "Manager deleted successfully"}
         raise HTTPException(status_code=404, detail="Manager not found")
     except Exception as e:

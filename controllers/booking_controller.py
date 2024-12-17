@@ -34,7 +34,7 @@ async def list_bookings(current_user: dict = Depends(get_current_user)):
         raise HTTPException(status_code=500, detail=str(e))
 
 
-@router.get("/{booking_id}", response_model=List[Booking], operation_id="get_booking")
+@router.get("/get/{booking_id}", response_model=List[Booking], operation_id="get_booking")
 async def get_booking(booking_id: str, current_user: dict = Depends(get_current_user)):
     """Retrieves a booking by its ID"""
     try:
@@ -60,7 +60,7 @@ async def update_booking(data: UpdateBooking, current_user: dict = Depends(get_c
         raise HTTPException(status_code=500, detail=str(e))
 
 
-@router.delete("/{booking_id}", operation_id="delete_booking")
+@router.delete("/delete/{booking_id}", operation_id="delete_booking")
 async def delete_booking(booking_id: str, current_user: dict = Depends(get_current_user)):
     """Deletes a booking"""
     try:

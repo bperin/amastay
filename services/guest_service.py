@@ -66,6 +66,19 @@ class GuestService:
             raise
 
     @staticmethod
+    def remove_booking_guest(booking_guest_id: str) -> bool:
+        """Remove a guest from a booking"""
+        try:
+
+            result = supabase_client.table("booking_guests").delete().eq("booking_id", booking_guest_id).execute()
+
+            return bool(result.data)
+
+        except Exception as e:
+            logging.error(f"Error removing guest: {e}")
+            raise
+
+    @staticmethod
     def get_guests_by_booking(booking_id: str) -> List[Guest]:
         """Get all guests for a booking"""
         try:
