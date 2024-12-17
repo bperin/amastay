@@ -18,6 +18,9 @@ class BookingGuest(BaseModel):
 
 
 class CreateBookingGuest(BaseModel):
+    phone: str
+    first_name: Optional[str] = None
+    last_name: Optional[str] = None
     booking_id: str
     guest_id: str
 
@@ -25,3 +28,6 @@ class CreateBookingGuest(BaseModel):
 class UpdateBookingGuest(BaseModel):
     booking_id: Optional[str] = None
     guest_id: Optional[str] = None
+    phone: Optional[str] = None
+    first_name: Optional[str] = None
+    last_name: Optional[str] = None

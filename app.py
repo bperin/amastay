@@ -1,8 +1,5 @@
 # app.py
 import asyncio
-
-from fastapi_crudrouter import SQLAlchemyCRUDRouter
-from sqlmodel import Session
 import uvicorn
 import logging
 from dotenv import load_dotenv
@@ -15,7 +12,6 @@ from models.property_model import Property
 # Load environment variables
 load_dotenv(override=True)
 
-# Import controllers (excluding property_controller for testing OrmarCRUDRouter)
 from controllers.auth_controller import router as auth_router
 
 # from controllers.property_controller import router as property_router  # Commented out to prevent conflicts
@@ -32,7 +28,7 @@ from controllers.property_information_controller import router as property_infor
 from controllers.property_controller import router as property_router
 
 # Create FastAPI app
-app = FastAPI(title="Amastay API", description="Amastay API", version="0.2", docs_url="/swagger")
+app = FastAPI(title="Amastay API", description="Amastay API", version="0.3", docs_url="/swagger")
 
 # Configure CORS
 app.add_middleware(
@@ -92,7 +88,7 @@ async def startup_event():
 
     # Include routers
     app.include_router(auth_router, prefix="/api/v1/auth")
-    app.include_router(property_router, prefix="/api/v1/properties")  # Commented out to prevent conflicts
+    app.include_router(property_router, prefix="/api/v1/properties")
     app.include_router(booking_router, prefix="/api/v1/bookings")
     app.include_router(guest_router, prefix="/api/v1/guests")
     app.include_router(health_router, prefix="/api/v1/health")

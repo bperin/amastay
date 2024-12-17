@@ -24,12 +24,12 @@ router = APIRouter(tags=["properties"])
 async def create_property(create_property_input: CreateProperty, current_user: dict = Depends(get_current_user)):
     """Creates a new property (owners only)"""
     try:
-
+        breakpoint()
         # Create property with named parameters
-        new_property = PropertyService.create_property(owner_id=current_user["id"], name=create_property_input.name, address=create_property_input.address, description=create_property_input.description, property_url=create_property_input.property_url)
-        new_property.owner_id.to_pydantic()
+        new_property = await PropertyService.create_property(owner_id=current_user["id"], create_property_request=create_property_input)
         return new_property
     except ValueError as ve:
+        breakpoint()
         logging.error(f"Validation error in create_property: {ve}")
         raise HTTPException(status_code=400, detail=str(ve))
     except Exception as e:
@@ -48,11 +48,35 @@ async def update_property(data: UpdateProperty, current_user: dict = Depends(get
         raise HTTPException(status_code=500, detail=str(e))
 
 
+@router.patch("/admin/update", response_model=Property, operation_id="admin_update_property")
+async def admin_update_property(data: UpdateProperty, current_user: dict = Depends(get_current_user)):
+    """Updates a property (managers only)"""
+    try:
+        updated_property = PropertyService.update_property(data.id, data.dict(exclude_unset=True))
+        return updated_property
+    except Exception as e:
+        logging.error(f"Error in update_property: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
 @router.delete("/{property_id}", operation_id="delete_property")
-async def delete_property(property_id: UUID, current_user: dict = Depends(get_current_user)):
+async def delete_property(property_id: str, current_user: dict = Depends(get_current_user)):
     """Deletes a property"""
     try:
-        success = PropertyService.delete_property(str(property_id), current_user["id"])
+        success = PropertyService.delete_property(property_id, current_user["id"])
+        if success:
+            return {"message": "Property deleted successfully"}
+        raise HTTPException(status_code=400, detail="Failed to delete property")
+    except Exception as e:
+        logging.error(f"Error in delete_property: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.delete("/{property_id}", operation_id="delete_property")
+async def delete_property(property_id: str, current_user: dict = Depends(get_current_user)):
+    """Deletes a property"""
+    try:
+        success = PropertyService.delete_property(property_id, current_user["id"])
         if success:
             return {"message": "Property deleted successfully"}
         raise HTTPException(status_code=400, detail="Failed to delete property")
@@ -73,10 +97,10 @@ async def list_properties(current_user: dict = Depends(get_current_user)):
 
 
 @router.get("/{property_id}", response_model=Property, operation_id="get_property")
-async def get_property(property_id: UUID, current_user: dict = Depends(get_current_user)):
+async def get_property(property_id: str, current_user: dict = Depends(get_current_user)):
     """Gets a specific property"""
     try:
-        property = PropertyService.get_property(str(property_id))
+        property = PropertyService.get_property(property_id)
         if not property:
             raise HTTPException(status_code=404, detail="Property not found")
         return property
@@ -86,10 +110,10 @@ async def get_property(property_id: UUID, current_user: dict = Depends(get_curre
 
 
 @router.get("/{property_id}/bookings", response_model=List[Booking], operation_id="get_bookings_for_property")
-async def get_property_bookings(property_id: UUID, current_user: dict = Depends(get_current_user)):
+async def get_property_bookings(property_id: str, current_user: dict = Depends(get_current_user)):
     """Retrieves all bookings for a specific property"""
     try:
-        bookings = BookingService.get_bookings_by_property_id(str(property_id))
+        bookings = BookingService.get_bookings_by_property_id(property_id)
         return bookings
     except Exception as e:
         logging.error(f"Error in get_property_bookings: {e}")

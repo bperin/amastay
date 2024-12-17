@@ -4,8 +4,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
 
 # Group model imports together
-from models.guest_model import Guest
-from models.booking_model import Booking
+from models import *
 
 # Group service imports together
 from services.guest_service import GuestService
@@ -17,18 +16,11 @@ import logging
 import os
 
 
-router = APIRouter(tags=["guests"])
+router = APIRouter(tags=["booking_guests"])
 
 
-class AddGuestInput(BaseModel):
-    booking_id: UUID
-    phone: str
-    first_name: str
-    last_name: Optional[str] = None
-
-
-@router.post("/add", response_model=Guest, operation_id="add_guest")
-async def add_guest(data: AddGuestInput, current_user: dict = Depends(get_current_user)):
+@router.post("/create", response_model=Guest, operation_id="add_guest")
+async def add_guest(data: CreateBookingGuest, current_user: dict = Depends(get_current_user)):
     """Add a guest to a booking"""
     try:
         # Create or get guest
@@ -58,26 +50,15 @@ async def add_guest(data: AddGuestInput, current_user: dict = Depends(get_curren
         raise HTTPException(status_code=500, detail=str(e))
 
 
-@router.delete("/{booking_id}/{guest_id}", operation_id="remove_guest")
-async def remove_guest(booking_id: UUID, guest_id: UUID, current_user: dict = Depends(get_current_user)):
+@router.delete("remove_guest/{booking_guest_id}", operation_id="remove_guest")
+async def remove_guest(booking_id: str, guest_id: str, current_user: dict = Depends(get_current_user)):
     """Remove a guest from a booking"""
     try:
-        data = {"booking_id": str(booking_id), "guest_id": str(guest_id)}
+        data = {"booking_id": booking_id, "guest_id": guest_id}
         success = GuestService.remove_guest(data)
         if success:
             return {"message": "Guest removed successfully"}
         raise HTTPException(status_code=400, detail="Failed to remove guest")
     except Exception as e:
         logging.error(f"Error in remove_guest: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
-
-
-@router.get("/guests/{booking_id}", response_model=List[Guest], operation_id="get_guests")
-async def list_booking_guests(booking_id: UUID, current_user: dict = Depends(get_current_user)):
-    """List all guests for a booking"""
-    try:
-        guests = GuestService.get_guests_by_booking(booking_id)
-        return guests
-    except Exception as e:
-        logging.error(f"Error in list_guests: {e}")
         raise HTTPException(status_code=500, detail=str(e))

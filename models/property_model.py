@@ -34,5 +34,6 @@ class CreateProperty(BaseModel):
 class UpdateProperty(BaseModel):
     name: Optional[str] = None
     description: Optional[str] = None
+    manager_id: Optional[str] = None
     address: Optional[str] = None
     property_url: Optional[str] = None

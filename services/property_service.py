@@ -3,7 +3,7 @@ from uuid import UUID
 from geopy.geocoders import Nominatim
 from geopy.exc import GeocoderTimedOut, GeocoderServiceError
 from supabase_utils import supabase_client
-from models.property_model import Property
+from models.property_model import CreateProperty, Property
 from typing import List, Optional, Tuple
 
 
@@ -34,19 +34,14 @@ class PropertyService:
             return None, None, None
 
     @staticmethod
-    async def create_property(owner_id: UUID, name: str, address: str, description: Optional[str], property_url: str, manager_id: Optional[UUID]) -> Property:
+    async def create_property(create_property_request: CreateProperty, owner_id: str) -> Property:
         try:
-            property_data = {
-                "name": name,
-                "address": address,
-                "description": description,
-                "property_url": property_url,
-                "owner_id": owner_id,
-                "manager_id": manager_id,
-            }
 
+            create_property_data = create_property_request.model_dump()
+            create_property_data["owner_id"] = owner_id
+            breakpoint()
             # Geocode the address
-            address = property_data.get("address")
+            address = create_property_request.address
             if not address:
                 raise ValueError("Address is required for property creation")
 
@@ -55,15 +50,21 @@ class PropertyService:
             if lat is None or lng is None:
                 raise ValueError(f"Failed to geocode address: {address}")
             if lat and lng:
-                property_data["lat"] = lat
-                property_data["lng"] = lng
+                create_property_data["lat"] = lat
+                create_property_data["lng"] = lng
 
             if normalized_address:
-                property_data["address"] = normalized_address
+                create_property_data["address"] = normalized_address
 
-            # Create new property using ORM model
-            new_property = await Property.objects.create(**property_data)
-            return new_property
+            create_property_data["manager_id"] = None
+
+            response = supabase_client.table("properties").insert(create_property_data).execute()
+
+            if not response.data:
+                logging.error("failed to create property")
+                raise ("failed to create property")
+            breakpoint()
+            return Property(**response.data[0])
 
         except Exception as e:
             logging.error(f"Exception in create_property: {e}")

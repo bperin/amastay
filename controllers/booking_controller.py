@@ -1,21 +1,10 @@
-from typing import List, Optional
+from typing import List
 from uuid import UUID
 from fastapi import APIRouter, Depends, HTTPException
-from pydantic import BaseModel
-
-# Group model imports together
 from models.booking_model import Booking, CreateBooking, UpdateBooking
-from models.guest_model import Guest, CreateGuest, UpdateGuest
-from models.property_model import Property, CreateProperty, UpdateProperty
-
-# Group service imports together
 from services.booking_service import BookingService
-from services.guest_service import GuestService
-from services.property_service import PropertyService
-
 from auth_utils import get_current_user
 import logging
-
 
 router = APIRouter(tags=["bookings"])
 
@@ -45,22 +34,11 @@ async def list_bookings(current_user: dict = Depends(get_current_user)):
         raise HTTPException(status_code=500, detail=str(e))
 
 
-# @router.get("/list_details", response_model=List[Booking], operation_id="list_details")
-# async def list_bookings_with_details(current_user: dict = Depends(get_current_user)):
-#     """Lists all bookings with details"""
-#     try:
-#         bookings = BookingService.get_bookings_by_owner_with_details(current_user["id"])
-#         return bookings
-#     except Exception as e:
-#         logging.error(f"Error in list_bookings_details: {e}")
-#         raise HTTPException(status_code=500, detail=str(e))
-
-
 @router.get("/{booking_id}", response_model=List[Booking], operation_id="get_booking")
-async def get_booking(booking_id: UUID, current_user: dict = Depends(get_current_user)):
+async def get_booking(booking_id: str, current_user: dict = Depends(get_current_user)):
     """Retrieves a booking by its ID"""
     try:
-        booking = BookingService.get_booking_by_manager(str(booking_id))
+        booking = BookingService.get_booking_by_manager(booking_id)
         if not booking:
             raise HTTPException(status_code=404, detail="Booking not found")
         return booking
@@ -83,7 +61,7 @@ async def update_booking(data: UpdateBooking, current_user: dict = Depends(get_c
 
 
 @router.delete("/{booking_id}", operation_id="delete_booking")
-async def delete_booking(booking_id: UUID, current_user: dict = Depends(get_current_user)):
+async def delete_booking(booking_id: str, current_user: dict = Depends(get_current_user)):
     """Deletes a booking"""
     try:
         success = BookingService.delete_booking(str(booking_id))
@@ -92,46 +70,4 @@ async def delete_booking(booking_id: UUID, current_user: dict = Depends(get_curr
         raise HTTPException(status_code=400, detail="Failed to delete booking")
     except Exception as e:
         logging.error(f"Error in delete_booking: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
-
-
-@router.get("/details/{booking_id}", response_model=Booking, operation_id="get_booking_details")
-async def get_booking_details(booking_id: UUID, current_user: dict = Depends(get_current_user)):
-    """Get a booking with its property and guest details"""
-    try:
-        booking_details = BookingService.get_booking_with_details(str(booking_id))
-        if not booking_details:
-            raise HTTPException(status_code=404, detail="Booking not found")
-        return booking_details
-    except Exception as e:
-        logging.error(f"Error in get_booking_details: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
-
-
-@router.get("/upcoming", operation_id="get_upcoming_booking")
-async def get_upcoming_booking(phone: str, current_user: dict = Depends(get_current_user)):
-    """Get the next upcoming booking for a guest by their phone number"""
-    try:
-        if not phone:
-            raise HTTPException(status_code=400, detail="Phone number is required")
-
-        booking = BookingService.get_next_upcoming_booking_by_phone(phone)
-        if not booking:
-            raise HTTPException(status_code=404, detail="No upcoming bookings found")
-        return {"booking": booking}
-    except Exception as e:
-        logging.error(f"Error in get_upcoming_booking: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
-
-
-@router.get("/guests/{booking_id}}", response_model=List[Guest], operation_id="get_guest_booking")
-async def get_guest_booking(booking_id: UUID, current_user: dict = Depends(get_current_user)):
-    """Get the next booking for a specific guest by their ID"""
-    try:
-        booking = BookingService.get(str(booking_id))
-        if not booking:
-            raise HTTPException(status_code=404, detail="No bookings found for this guest")
-        return booking
-    except Exception as e:
-        logging.error(f"Error in get_guest_booking: {e}")
         raise HTTPException(status_code=500, detail=str(e))

@@ -25,11 +25,11 @@ class ManagerInviteInput(BaseModel):
     last_name: str
     email: EmailStr
     phone: str
-    team_id: Optional[UUID] = None
+    team_id: Optional[str] = None
 
 
 class UpdateManagerInput(BaseModel):
-    id: UUID
+    id: str
     first_name: Optional[str] = None
     last_name: Optional[str] = None
     email: Optional[EmailStr] = None
@@ -72,10 +72,10 @@ async def list_pending_managers(current_user: dict = Depends(get_current_user)):
 
 
 @router.get("/{manager_id}", response_model=Manager, operation_id="get_manager")
-async def get_manager(manager_id: UUID, current_user: dict = Depends(get_current_user)):
+async def get_manager(manager_id: str, current_user: dict = Depends(get_current_user)):
     """Get a specific manager"""
     try:
-        manager = ManagerService.get_manager(str(manager_id))
+        manager = ManagerService.get_manager(manager_id)
         if not manager:
             raise HTTPException(status_code=404, detail="Manager not found")
         return manager

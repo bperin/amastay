@@ -26,13 +26,13 @@ class CreateTeamInput(BaseModel):
 
 
 class AssignTeamToPropertyInput(BaseModel):
-    team_id: UUID
-    property_id: UUID
+    team_id: str
+    property_id: str
 
 
 class AssignManagerToTeamInput(BaseModel):
-    team_id: UUID
-    manager_id: UUID
+    team_id: str
+    manager_id: str
 
 
 @router.post("/create", response_model=Team, operation_id="create")
@@ -73,10 +73,10 @@ async def assign_team_to_property(data: AssignTeamToPropertyInput, current_user:
 
 
 @router.get("/{team_id}/managers", response_model=List[Manager], operation_id="get_team_managers")
-async def get_team_managers(team_id: UUID, current_user: dict = Depends(get_current_user)):
+async def get_team_managers(team_id: str, current_user: dict = Depends(get_current_user)):
     """Get all managers of a team"""
     try:
-        managers = TeamService.get_team_managers(str(team_id))
+        managers = TeamService.get_team_managers(team_id)
         return managers
     except Exception as e:
         logging.error(f"Error in get_team_managers: {e}")
@@ -108,10 +108,10 @@ async def assign_manager_to_team(data: AssignManagerToTeamInput, current_user: d
 
 
 @router.delete("/{team_id}/managers/{manager_id}", operation_id="remove_manager")
-async def remove_manager_from_team(team_id: UUID, manager_id: UUID, current_user: dict = Depends(get_current_user)):
+async def remove_manager_from_team(team_id: str, manager_id: str, current_user: dict = Depends(get_current_user)):
     """Remove a manager from a team"""
     try:
-        data = {"team_id": str(team_id), "manager_id": str(manager_id), "owner_id": current_user["id"]}
+        data = {"team_id": team_id, "manager_id": manager_id, "owner_id": current_user["id"]}
         result = TeamService.remove_manager_from_team(data)
         return result
     except Exception as e:

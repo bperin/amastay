@@ -19,7 +19,7 @@ class PropertyInformation(BaseModel):
     updated_at: str = None
 
     # Relationships
-    property_: Optional[Property] = Field(default=None, alias="property")
+    property_: Optional["Property"] = Field(default=None, alias="property")
 
 
 class CreatePropertyInformation(BaseModel):
