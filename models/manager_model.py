@@ -1,23 +1,23 @@
 from typing import Optional, List
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from models import *
 
 
 class Manager(BaseModel):
     """Manager model representing property managers"""
 
-    id: str = None
-    first_name: str = None
+    id: str = ""
+    first_name: str = ""
     last_name: Optional[str] = None
-    email: str = None
-    phone: str = None
+    email: str = ""
+    phone: str = ""
     verified: bool = False
     phone_verified: bool = False
-    created_at: str = None
-    updated_at: str = None
+    created_at: str = ""
+    updated_at: str = ""
 
-    # Relationships
-    properties: Optional[List["Property"]] = []
+    # Relationships with Field alias
+    properties: List["Property"] = Field(default_factory=list)
 
 
 class CreateManager(BaseModel):

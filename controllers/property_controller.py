@@ -12,6 +12,7 @@ from models.property_information_model import PropertyInformation
 # Group service imports together
 from services.property_service import PropertyService
 from services.booking_service import BookingService
+from services.scraper_service import ScraperService
 
 from auth_utils import get_current_user
 import logging
@@ -24,9 +25,10 @@ router = APIRouter(tags=["properties"])
 async def create_property(create_property_input: CreateProperty, current_user: dict = Depends(get_current_user)):
     """Creates a new property (owners only)"""
     try:
-        breakpoint()
+
         # Create property with named parameters
         new_property = await PropertyService.create_property(owner_id=current_user["id"], create_property_request=create_property_input)
+        await ScraperService.scrape_property(new_property)
         return new_property
     except ValueError as ve:
         breakpoint()
@@ -41,7 +43,7 @@ async def create_property(create_property_input: CreateProperty, current_user: d
 async def update_property(data: UpdateProperty, current_user: dict = Depends(get_current_user)):
     """Updates a property (managers only)"""
     try:
-        updated_property = PropertyService.update_property(data.id, data.dict(exclude_unset=True))
+        updated_property = await PropertyService.update_property(data.id, data.dict(exclude_unset=True))
         return updated_property
     except Exception as e:
         logging.error(f"Error in update_property: {e}")
@@ -59,24 +61,11 @@ async def admin_update_property(data: UpdateProperty, current_user: dict = Depen
         raise HTTPException(status_code=500, detail=str(e))
 
 
-@router.delete("/{property_id}", operation_id="delete_property")
+@router.delete("/delete/{property_id}", operation_id="delete_property")
 async def delete_property(property_id: str, current_user: dict = Depends(get_current_user)):
     """Deletes a property"""
     try:
-        success = PropertyService.delete_property(property_id, current_user["id"])
-        if success:
-            return {"message": "Property deleted successfully"}
-        raise HTTPException(status_code=400, detail="Failed to delete property")
-    except Exception as e:
-        logging.error(f"Error in delete_property: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
-
-
-@router.delete("/{property_id}", operation_id="delete_property")
-async def delete_property(property_id: str, current_user: dict = Depends(get_current_user)):
-    """Deletes a property"""
-    try:
-        success = PropertyService.delete_property(property_id, current_user["id"])
+        success = await PropertyService.delete_property(property_id, current_user["id"])
         if success:
             return {"message": "Property deleted successfully"}
         raise HTTPException(status_code=400, detail="Failed to delete property")
@@ -90,13 +79,15 @@ async def list_properties(current_user: dict = Depends(get_current_user)):
     """Lists all properties for the current user"""
     try:
         properties = PropertyService.list_properties(current_user["id"])
-        return properties
+        if not properties:
+            return []
+        return [property.model_dump() for property in properties]
     except Exception as e:
         logging.error(f"Error in list_properties: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
 
-@router.get("/{property_id}", response_model=Property, operation_id="get_property")
+@router.get("/get/{property_id}", response_model=Property, operation_id="get_property")
 async def get_property(property_id: str, current_user: dict = Depends(get_current_user)):
     """Gets a specific property"""
     try:
@@ -109,7 +100,7 @@ async def get_property(property_id: str, current_user: dict = Depends(get_curren
         raise HTTPException(status_code=500, detail=str(e))
 
 
-@router.get("/{property_id}/bookings", response_model=List[Booking], operation_id="get_bookings_for_property")
+@router.get("/bookings/{property_id}", response_model=List[Booking], operation_id="get_bookings_for_property")
 async def get_property_bookings(property_id: str, current_user: dict = Depends(get_current_user)):
     """Retrieves all bookings for a specific property"""
     try:

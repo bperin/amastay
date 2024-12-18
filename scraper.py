@@ -5,6 +5,8 @@ import os
 from bs4 import BeautifulSoup
 from selenium import webdriver
 from selenium.webdriver.chrome.options import Options
+import asyncio
+from concurrent.futures import ThreadPoolExecutor
 
 # Configure logging
 logging.basicConfig(
@@ -72,8 +74,15 @@ class Scraper:
         clean_text = "\n".join(filtered_lines)
         return clean_text
 
-    def scrape(self):
+    async def scrape(self):
         """Scrape content from the page using Selenium to render it."""
+        # Run Selenium in a thread pool since it's not async-native
+        loop = asyncio.get_event_loop()
+        with ThreadPoolExecutor() as pool:
+            return await loop.run_in_executor(pool, self._scrape_sync)
+
+    def _scrape_sync(self):
+        """Synchronous scraping implementation to run in thread pool."""
         self.init_selenium()
         logging.info(f"Starting Selenium scrape for URL: {self.url}")
 
@@ -88,7 +97,6 @@ class Scraper:
                 combined_text = []
                 for url in urls:
                     self.driver.get(url)
-                    # Adjust the sleep time as needed based on page load speed
                     time.sleep(2)
 
                     page_source = self.driver.page_source
@@ -104,7 +112,6 @@ class Scraper:
                 return final_text if final_text else "No content found"
 
             else:
-                # Handle non-Airbnb URLs
                 self.driver.get(self.url)
                 time.sleep(2)
 

@@ -1,20 +1,20 @@
 from typing import Optional
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from models import *
 
 
 class BookingGuest(BaseModel):
     """Association model between bookings and guests"""
 
-    id: str = None
-    booking_id: str = None
-    guest_id: str = None
-    created_at: str = None
-    updated_at: str = None
+    id: str = ""
+    booking_id: str = ""
+    guest_id: str = ""
+    created_at: str = ""
+    updated_at: str = ""
 
-    # Relationships
-    booking: Optional["Booking"] = None
-    guest: Optional["Guest"] = None
+    # Relationships with Field alias
+    booking: Optional["Booking"] = Field(default=None)
+    guest: Optional["Guest"] = Field(default=None)
 
 
 class CreateBookingGuest(BaseModel):
@@ -22,7 +22,6 @@ class CreateBookingGuest(BaseModel):
     first_name: Optional[str] = None
     last_name: Optional[str] = None
     booking_id: str
-    guest_id: str
 
 
 class UpdateBookingGuest(BaseModel):

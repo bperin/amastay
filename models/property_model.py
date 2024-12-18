@@ -17,11 +17,15 @@ class Property(BaseModel):
 
     # Foreign key references
     owner_id: str = ""
-    manager_id: str = ""
+    manager_id: Optional[str] = ""
 
     # Relationships (using forward refs)
     owner: Optional["Owner"] = None
     manager: Optional["Manager"] = None
+
+    class Config:
+        from_attributes = True
+        arbitrary_types_allowed = True
 
 
 class CreateProperty(BaseModel):

@@ -49,7 +49,9 @@ async def list_pending_managers(current_user: dict = Depends(get_current_user)):
     """List all pending managers for the owner"""
     try:
         managers = ManagerService.get_pending_managers_by_owner(current_user["id"])
-        return managers
+        if not managers:
+            return []
+        return [manager.model_dump() for manager in managers]
     except Exception as e:
         logging.error(f"Error listing managers: {e}")
         raise HTTPException(status_code=500, detail="Internal server error")
@@ -62,7 +64,7 @@ async def get_manager(manager_id: str, current_user: dict = Depends(get_current_
         manager = ManagerService.get_manager(manager_id)
         if not manager:
             raise HTTPException(status_code=404, detail="Manager not found")
-        return manager
+        return manager.model_dump()
     except Exception as e:
         logging.error(f"Error getting manager: {e}")
         raise HTTPException(status_code=500, detail="Internal server error")
@@ -75,7 +77,7 @@ async def update_manager(data: UpdateManager, current_user: dict = Depends(get_c
         manager = ManagerService.update_manager(data)
         if not manager:
             raise HTTPException(status_code=404, detail="Manager not found")
-        return manager
+        return manager.model_dump()
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
     except Exception as e:
@@ -87,7 +89,7 @@ async def update_manager(data: UpdateManager, current_user: dict = Depends(get_c
 async def delete_manager(manager_id: str, current_user: dict = Depends(get_current_user)):
     """Delete a manager"""
     try:
-        if ManagerService.delete_manager(maanger_id):
+        if ManagerService.delete_manager(manager_id):
             return {"message": "Manager deleted successfully"}
         raise HTTPException(status_code=404, detail="Manager not found")
     except Exception as e:

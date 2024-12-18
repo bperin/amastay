@@ -1,19 +1,19 @@
 from typing import Optional, List
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 
 class Guest(BaseModel):
     """Model representing a guest in the system"""
 
-    id: str = None
-    phone: str = None
+    id: str = ""
+    phone: str = ""
     first_name: Optional[str] = None
     last_name: Optional[str] = None
-    created_at: str = None
-    updated_at: str = None
+    created_at: str = ""
+    updated_at: str = ""
 
-    # Relationships
-    bookings: Optional[List["BookingGuest"]] = []
+    # Relationships with Field alias
+    bookings: List["BookingGuest"] = Field(default_factory=list)
 
 
 class CreateGuest(BaseModel):

@@ -13,7 +13,7 @@ router = APIRouter(tags=["bookings"])
 async def create_booking(data: CreateBooking, current_user: dict = Depends(get_current_user)):
     """Creates a new booking"""
     try:
-        new_booking = BookingService.create_booking(property_id=str(data.property_id), check_in=data.check_in, check_out=data.check_out, notes=data.notes, guests=data.guests)
+        new_booking = BookingService.create_booking(property_id=str(data.property_id), check_in=data.check_in, check_out=data.check_out, notes=data.notes)
         return new_booking
     except ValueError as ve:
         logging.error(f"Validation error in create_booking: {ve}")
@@ -28,6 +28,17 @@ async def list_bookings(current_user: dict = Depends(get_current_user)):
     """Lists all bookings"""
     try:
         bookings = BookingService.get_all_bookings_by_owner(current_user["id"])
+        return bookings
+    except Exception as e:
+        logging.error(f"Error in list_bookings: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.get("/list/properites/{property_id}", response_model=List[Booking], operation_id="get_bookings_for_property")
+async def list_bookings_for_property(property_id: str, current_user: dict = Depends(get_current_user)):
+    """Lists all bookings for property"""
+    try:
+        bookings = BookingService.get_all_bookings_by_property_id(property_id)
         return bookings
     except Exception as e:
         logging.error(f"Error in list_bookings: {e}")

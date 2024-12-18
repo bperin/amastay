@@ -44,7 +44,7 @@ async def add_guest(data: CreateBookingGuest, current_user: dict = Depends(get_c
             except Exception as sms_error:
                 logging.error(f"Error sending welcome SMS: {sms_error}")
 
-            return guest
+            return guest.model_dump()
         raise HTTPException(status_code=400, detail="Failed to add guest")
 
     except Exception as e:
@@ -52,7 +52,7 @@ async def add_guest(data: CreateBookingGuest, current_user: dict = Depends(get_c
         raise HTTPException(status_code=500, detail=str(e))
 
 
-@router.delete("delete/{booking_guest_id}", operation_id="remove_guest_from_booking")
+@router.delete("/delete/{booking_guest_id}", operation_id="remove_guest_from_booking")
 async def remove_guest(booking_guest_id: str, current_user: dict = Depends(get_current_user)):
     """Remove a guest from a booking"""
     try:
@@ -60,6 +60,19 @@ async def remove_guest(booking_guest_id: str, current_user: dict = Depends(get_c
         if success:
             return {"message": "Guest removed successfully"}
         raise HTTPException(status_code=400, detail="Failed to remove guest")
+    except Exception as e:
+        logging.error(f"Error in remove_guest: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.get("/guests/{booking_id}", response_model=List[Guest], operation_id="get_guests_for_booking")
+async def get_guests(booking_id: str, current_user: dict = Depends(get_current_user)):
+    """Remove a guest from a booking"""
+    try:
+        guests = GuestService.get_guests_by_booking(booking_id)
+        if not guests:
+            return []
+        return [guest.model_dump() for guest in guests]
     except Exception as e:
         logging.error(f"Error in remove_guest: {e}")
         raise HTTPException(status_code=500, detail=str(e))

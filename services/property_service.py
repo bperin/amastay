@@ -170,7 +170,7 @@ class PropertyService:
     @staticmethod
     def list_properties(owner_id: str) -> List[Property]:
         try:
-            query = supabase_client.table("properties").select("*")
+            query = supabase_client.from_("properties").select("*")
             if owner_id:
                 query = query.eq("owner_id", owner_id)
 

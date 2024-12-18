@@ -59,7 +59,7 @@ async def update_property_information(data: UpdatePropertyInformation, current_u
         raise HTTPException(status_code=500, detail=str(e))
 
 
-@router.delete("/{property_info_id}", operation_id="delete_property_information")
+@router.delete("/delete/{property_info_id}", operation_id="delete_property_information")
 async def delete_property_information(property_info_id: str, current_user: dict = Depends(get_current_user)):
     """Deletes property information"""
     try:

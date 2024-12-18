@@ -13,7 +13,7 @@ class ScraperService:
     STORAGE_BUCKET = "properties"
 
     @staticmethod
-    def scrape_property(property: Property) -> bool:
+    async def scrape_property(property: Property) -> bool:
         """
         Scrape property data and save to storage.
 
@@ -30,13 +30,13 @@ class ScraperService:
         try:
             if property.property_url:
                 scraper = Scraper(property.property_url)
-                scraped_data = scraper.scrape()
+                scraped_data = await scraper.scrape()
 
                 logging.info(f"Scraped data cleaned successfully for property {property.id}")
 
                 if scraped_data:
                     # Save the scraped data using the scraper's save method
-                    saved_filename = ScraperService.save_scraped_data(property.id, scraped_data)
+                    saved_filename = await ScraperService.save_scraped_data(property.id, scraped_data)
                     document_data = {
                         "property_id": property.id,
                         "file_id": saved_filename,
@@ -46,7 +46,8 @@ class ScraperService:
                     # Get the full URL for the storage object
                     file_url = supabase_client.storage.from_(DocumentsService.BUCKET_NAME).get_public_url(saved_filename)
                     document_data["file_url"] = file_url
-                    # Insert the document into the 'documents' table
+
+                    # Remove await from Supabase table insert since it's not async
                     document_response = supabase_client.table("documents").insert(document_data).execute()
 
                     log_message = f"Scraped data saved successfully for property {property.id}" if saved_filename else f"Failed to save scraped data for property {property.id}"
@@ -62,7 +63,7 @@ class ScraperService:
             raise
 
     @staticmethod
-    def save_scraped_data(property_id: str, scraped_data: str) -> Optional[str]:
+    async def save_scraped_data(property_id: str, scraped_data: str) -> Optional[str]:
         """
         Save scraped data as a text file to Supabase storage.
 
@@ -92,14 +93,12 @@ class ScraperService:
                 )
 
             if response:
-
                 logging.info(f"Document uploaded successfully as {filename}")
                 return filename
             logging.error(f"Failed to upload document to Supabase.")
             return None
 
         except Exception as e:
-
             logging.error(f"Error uploading document: {e}")
             raise
         finally:
