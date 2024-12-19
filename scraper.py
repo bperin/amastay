@@ -1,10 +1,14 @@
 import logging
 import re
+import os
 from bs4 import BeautifulSoup
-import undetected_chromedriver as uc
+from selenium import webdriver
+from selenium.webdriver.chrome.service import Service
+from selenium.webdriver.chrome.options import Options
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
+import asyncio
 
 # Configure logging
 logging.basicConfig(
@@ -13,13 +17,17 @@ logging.basicConfig(
     handlers=[logging.FileHandler("scraper.log"), logging.StreamHandler()],
 )
 
+# Read environment variables
+chrome_binary_path = os.getenv("CHROME_BINARY", "/usr/bin/google-chrome")
+chromedriver_path = os.getenv("CHROME_DRIVER", "/opt/bin/chromedriver")  # Adjust based on the base image
+
 
 class Scraper:
     @staticmethod
     def init_selenium():
         """Initialize and return the Selenium WebDriver with options."""
         try:
-            options = uc.ChromeOptions()
+            options = Options()
             options.headless = True  # Enable headless mode
 
             # Essential arguments for running Chrome in Docker
@@ -34,11 +42,12 @@ class Scraper:
             options.add_argument("--disable-blink-features=AutomationControlled")  # Bypass detection
 
             # Specify the path to the Chrome binary inside Docker
-            options.binary_location = "/usr/bin/google-chrome"
+            options.binary_location = chrome_binary_path
 
-            # Initialize the Chrome driver without specifying driver path
-            driver = uc.Chrome(options=options)
-            logging.info("Selenium WebDriver initialized with undetected-chromedriver.")
+            # Initialize the Chrome driver
+            service = Service(executable_path=chromedriver_path)
+            driver = webdriver.Chrome(service=service, options=options)
+            logging.info("Selenium WebDriver initialized successfully.")
             return driver
 
         except Exception as e:
