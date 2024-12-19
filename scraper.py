@@ -1,14 +1,11 @@
 import logging
 import re
-import os
+import requests
 from bs4 import BeautifulSoup
-from selenium import webdriver
+from selenium import webdriver  # Import Selenium
 from selenium.webdriver.chrome.service import Service
 from selenium.webdriver.chrome.options import Options
-from selenium.webdriver.common.by import By
-from selenium.webdriver.support.ui import WebDriverWait
-from selenium.webdriver.support import expected_conditions as EC
-
+from webdriver_manager.chrome import ChromeDriverManager  # Automatically manage ChromeDriver
 
 # Configure logging
 logging.basicConfig(
@@ -17,49 +14,20 @@ logging.basicConfig(
     handlers=[logging.FileHandler("scraper.log"), logging.StreamHandler()],
 )
 
-# Read environment variables
-chrome_binary_path = os.getenv("CHROME_BINARY", "/usr/bin/google-chrome")
-chromedriver_path = os.getenv("CHROME_DRIVER", "/opt/bin/chromedriver")  # Adjust based on the base image
-
 
 class Scraper:
-    @staticmethod
-    def init_selenium():
-        """Initialize and return the Selenium WebDriver with options."""
-        try:
-            options = Options()
-            options.headless = False  # Enable headless mode
+    def __init__(self):
+        # Set up Selenium WebDriver
+        chrome_options = Options()
+        # chrome_options.add_argument("--headless")  # Run in headless mode
+        self.driver = webdriver.Chrome(service=Service(ChromeDriverManager().install()), options=chrome_options)
 
-            # Essential arguments for running Chrome in Docker
-            options.add_argument("--no-sandbox")
-            options.add_argument("--disable-dev-shm-usage")
-            options.add_argument("--disable-infobars")
-            options.add_argument("--disable-extensions")
-            options.add_argument("--enable-javascript")
-            options.add_argument("--window-size=1920x1080")  # Set window size for headless mode
-            options.add_argument("--disable-gpu")  # Disable GPU acceleration
-            options.add_argument("--remote-debugging-port=9222")  # Enable remote debugging
-            options.add_argument("--disable-blink-features=AutomationControlled")  # Bypass detection
-
-            # Specify the path to the Chrome binary inside Docker
-            options.binary_location = chrome_binary_path
-
-            # Initialize the Chrome driver
-            service = Service(executable_path=chromedriver_path)
-            driver = webdriver.Chrome(service=service, options=options)
-            logging.info("Selenium WebDriver initialized successfully.")
-            return driver
-
-        except Exception as e:
-            logging.error(f"Failed to initialize Selenium WebDriver: {e}", exc_info=True)
-            raise
-
-    @staticmethod
-    def filter_content(soup):
+    def filter_content(self, soup):
         """Filter out unwanted content and clean the text."""
         logging.debug("Filtering content from the soup object.")
+
         # Remove non-content tags
-        for tag in soup(["script", "style", "header", "footer", "nav", "aside", "noscript", "meta", "link", "button", "svg", "iframe", "form"]):
+        for tag in soup.select("script, style, header, footer, nav, aside, noscript, meta, link, button, svg, iframe, form"):
             tag.decompose()
 
         # Remove elements known to contain irrelevant content
@@ -88,13 +56,15 @@ class Scraper:
         logging.debug("Content filtering complete.")
         return clean_text
 
-    @staticmethod
-    async def scrape(url):
-        """Scrape content from the page using Selenium to render it."""
+    def scrape_url(self, url):
+        """Scrape content from a single URL using Selenium."""
         logging.info(f"Starting scrape for URL: {url}")
-        driver = Scraper.init_selenium()  # Initialize the driver
 
         try:
+            self.driver.get(url)  # Use Selenium to get the page
+            soup = BeautifulSoup(self.driver.page_source, "html.parser")  # Get the rendered HTML
+            filtered_text = self.filter_content(soup)
+
             airbnb_match = re.search(r"https://www\.airbnb\.com/rooms/(\d+)", url)
 
             if airbnb_match:
@@ -104,51 +74,39 @@ class Scraper:
                 combined_text = []
                 for scrape_url in urls:
                     logging.info(f"Scraping URL: {scrape_url}")
-                    driver.get(scrape_url)
-
-                    # Replace time.sleep with explicit waits for better reliability
                     try:
-                        WebDriverWait(driver, 10).until(EC.presence_of_element_located((By.TAG_NAME, "body")))
+                        self.driver.get(scrape_url)  # Use Selenium to get the page
+                        soup = BeautifulSoup(self.driver.page_source, "html.parser")  # Get the rendered HTML
+                        filtered_text = self.filter_content(soup)
+
+                        if filtered_text:
+                            if "/reviews" in scrape_url:
+                                section_name = "REVIEWS"
+                            elif "/amenities" in scrape_url:
+                                section_name = "AMENITIES"
+                            else:
+                                section_name = "MAIN LISTING"
+                            combined_text.append(f"\n=== {section_name} ===\n{filtered_text}")
                     except Exception as e:
-                        logging.warning(f"Timeout waiting for page to load: {e}")
-
-                    page_source = driver.page_source
-                    soup = BeautifulSoup(page_source, "html.parser")
-                    filtered_text = Scraper.filter_content(soup)
-
-                    if filtered_text:
-                        if "/reviews" in scrape_url:
-                            section_name = "REVIEWS"
-                        elif "/amenities" in scrape_url:
-                            section_name = "AMENITIES"
-                        else:
-                            section_name = "MAIN LISTING"
-                        combined_text.append(f"\n=== {section_name} ===\n{filtered_text}")
+                        logging.error(f"Error scraping {scrape_url}: {e}", exc_info=True)
 
                 final_text = "\n".join(combined_text)
                 logging.info(f"Filtered document length: {len(final_text)} characters")
                 return final_text if final_text else "No content found"
 
             else:
-                driver.get(url)
-
-                # Replace time.sleep with explicit waits for better reliability
-                try:
-                    WebDriverWait(driver, 10).until(EC.presence_of_element_located((By.TAG_NAME, "body")))
-                except Exception as e:
-                    logging.warning(f"Timeout waiting for page to load: {e}")
-
-                page_source = driver.page_source
-                soup = BeautifulSoup(page_source, "html.parser")
-                filtered_text = Scraper.filter_content(soup)
-
                 logging.info(f"Filtered document length: {len(filtered_text)} characters")
                 return filtered_text if filtered_text else "No content found"
 
         except Exception as e:
             logging.error(f"Error during scraping: {e}", exc_info=True)
             return None
-        finally:
-            if driver:
-                driver.quit()
-                logging.info("Selenium WebDriver closed.")
+
+    def close(self):
+        """Close the Selenium WebDriver."""
+        self.driver.quit()
+
+    async def scrape(self, url):
+        """Start scraping process for a single URL."""
+        result = self.scrape_url(url)
+        return result

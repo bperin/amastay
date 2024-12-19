@@ -27,7 +27,7 @@ async def create_property(create_property_input: CreateProperty, current_user: d
     try:
         # Create property with named parameters
         new_property = await PropertyService.create_property(owner_id=current_user["id"], create_property_request=create_property_input)
-        await ScraperService.scrape_property(new_property)
+        await ScraperService.scrape_property(new_property)  # Scrape reviews after property creation
 
         return new_property
     except ValueError as ve:

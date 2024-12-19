@@ -4,6 +4,7 @@ import tempfile
 import time
 from models.property_model import Property
 from scraper import Scraper
+import scraper
 from services.documents_service import DocumentsService
 from supabase_utils import supabase_client, supabase_admin_client
 from typing import Optional
@@ -31,6 +32,7 @@ class ScraperService:
             if property.property_url:
 
                 scraped_data = await Scraper().scrape(property.property_url)
+                breakpoint()
 
                 logging.info(f"Scraped data cleaned successfully for property {property.id}")
 
