@@ -19,17 +19,32 @@ class Scraper:
     @staticmethod
     def init_selenium():
         """Initialize and return the Selenium WebDriver with options."""
-        options = uc.ChromeOptions()
-        options.headless = True  # Enable headless mode
-        options.add_argument("--no-sandbox")
-        options.add_argument("--disable-dev-shm-usage")
-        options.add_argument("--disable-infobars")
-        options.add_argument("--disable-extensions")
-        options.add_argument("--enable-javascript")
-        options.add_argument("--window-size=1920x1080")  # Set window size for headless mode
+        try:
+            options = uc.ChromeOptions()
+            options.headless = True  # Enable headless mode
 
-        driver = uc.Chrome(options=options)  # Use undetected-chromedriver
-        return driver
+            # Essential arguments for running Chrome in Docker
+            options.add_argument("--no-sandbox")
+            options.add_argument("--disable-dev-shm-usage")
+            options.add_argument("--disable-infobars")
+            options.add_argument("--disable-extensions")
+            options.add_argument("--enable-javascript")
+            options.add_argument("--window-size=1920x1080")  # Set window size for headless mode
+            options.add_argument("--disable-gpu")  # Disable GPU acceleration
+            options.add_argument("--remote-debugging-port=9222")  # Enable remote debugging
+            options.add_argument("--disable-blink-features=AutomationControlled")  # Bypass detection
+
+            # Specify the path to the Chrome binary inside Docker
+            options.binary_location = "/usr/bin/google-chrome"
+
+            # Initialize the Chrome driver
+            driver = uc.Chrome(options=options)
+            logging.info("Selenium WebDriver initialized with undetected-chromedriver.")
+            return driver
+
+        except Exception as e:
+            logging.error(f"Failed to initialize Selenium WebDriver: {e}", exc_info=True)
+            raise
 
     @staticmethod
     def filter_content(soup):
@@ -79,17 +94,22 @@ class Scraper:
                 urls = [url, f"https://www.airbnb.com/rooms/{room_id}/reviews", f"https://www.airbnb.com/rooms/{room_id}/amenities"]
 
                 combined_text = []
-                for url in urls:
-                    logging.info(f"Scraping URL: {url}")
-                    driver.get(url)
-                    time.sleep(2)
+                for scrape_url in urls:
+                    logging.info(f"Scraping URL: {scrape_url}")
+                    driver.get(scrape_url)
+                    time.sleep(2)  # Consider replacing with explicit waits for better reliability
 
                     page_source = driver.page_source
                     soup = BeautifulSoup(page_source, "html.parser")
                     filtered_text = Scraper.filter_content(soup)
 
                     if filtered_text:
-                        section_name = "MAIN LISTING" if url == url else "REVIEWS" if "/reviews" in url else "AMENITIES"
+                        if "/reviews" in scrape_url:
+                            section_name = "REVIEWS"
+                        elif "/amenities" in scrape_url:
+                            section_name = "AMENITIES"
+                        else:
+                            section_name = "MAIN LISTING"
                         combined_text.append(f"\n=== {section_name} ===\n{filtered_text}")
 
                 final_text = "\n".join(combined_text)
@@ -98,7 +118,7 @@ class Scraper:
 
             else:
                 driver.get(url)
-                time.sleep(2)
+                time.sleep(2)  # Consider replacing with explicit waits for better reliability
 
                 page_source = driver.page_source
                 soup = BeautifulSoup(page_source, "html.parser")
@@ -108,7 +128,7 @@ class Scraper:
                 return filtered_text if filtered_text else "No content found"
 
         except Exception as e:
-            logging.error(f"Error during scraping: {e}")
+            logging.error(f"Error during scraping: {e}", exc_info=True)
             return None
         finally:
             if driver:
