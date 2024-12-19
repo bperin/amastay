@@ -1,5 +1,5 @@
 # Use ARM64 architecture with Python 3.11 slim image
-FROM --platform=linux/arm64 python:3.11-slim
+FROM --platform=linux/x86_64 python:3.11-slim
 
 # Set environment variables
 ENV PYTHONUNBUFFERED=1
