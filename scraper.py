@@ -35,7 +35,7 @@ class Scraper:
             options.add_argument("--disable-blink-features=AutomationControlled")  # Bypass detection
 
             # Specify the path to the Chrome binary inside Docker
-            options.binary_location = "/usr/bin/google-chrome"
+            # options.binary_location = "/usr/bin/google-chrome"
 
             # Initialize the Chrome driver
             driver = uc.Chrome(options=options)
