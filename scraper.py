@@ -1,11 +1,10 @@
 import logging
-import time
 import re
-import os
 from bs4 import BeautifulSoup
-import undetected_chromedriver as uc  # Import undetected-chromedriver
-import asyncio
-from concurrent.futures import ThreadPoolExecutor
+import undetected_chromedriver as uc
+from selenium.webdriver.common.by import By
+from selenium.webdriver.support.ui import WebDriverWait
+from selenium.webdriver.support import expected_conditions as EC
 
 # Configure logging
 logging.basicConfig(
@@ -13,9 +12,6 @@ logging.basicConfig(
     format="%(asctime)s - %(levelname)s - %(message)s",
     handlers=[logging.FileHandler("scraper.log"), logging.StreamHandler()],
 )
-
-# Read the CHROME_DRIVER environment variable
-chrome_driver_path = os.getenv("CHROME_DRIVER")
 
 
 class Scraper:
@@ -25,9 +21,6 @@ class Scraper:
         try:
             options = uc.ChromeOptions()
             options.headless = True  # Enable headless mode
-
-            # Use the chrome_driver_path from the environment variable
-            options.binary_location = chrome_driver_path  # Set binary location from environment variable
 
             # Essential arguments for running Chrome in Docker
             options.add_argument("--no-sandbox")
@@ -40,7 +33,10 @@ class Scraper:
             options.add_argument("--remote-debugging-port=9222")  # Enable remote debugging
             options.add_argument("--disable-blink-features=AutomationControlled")  # Bypass detection
 
-            # Initialize the Chrome driver
+            # Specify the path to the Chrome binary inside Docker
+            options.binary_location = "/usr/bin/google-chrome"
+
+            # Initialize the Chrome driver without specifying driver path
             driver = uc.Chrome(options=options)
             logging.info("Selenium WebDriver initialized with undetected-chromedriver.")
             return driver
@@ -100,7 +96,12 @@ class Scraper:
                 for scrape_url in urls:
                     logging.info(f"Scraping URL: {scrape_url}")
                     driver.get(scrape_url)
-                    time.sleep(2)  # Consider replacing with explicit waits for better reliability
+
+                    # Replace time.sleep with explicit waits for better reliability
+                    try:
+                        WebDriverWait(driver, 10).until(EC.presence_of_element_located((By.TAG_NAME, "body")))
+                    except Exception as e:
+                        logging.warning(f"Timeout waiting for page to load: {e}")
 
                     page_source = driver.page_source
                     soup = BeautifulSoup(page_source, "html.parser")
@@ -121,7 +122,12 @@ class Scraper:
 
             else:
                 driver.get(url)
-                time.sleep(2)  # Consider replacing with explicit waits for better reliability
+
+                # Replace time.sleep with explicit waits for better reliability
+                try:
+                    WebDriverWait(driver, 10).until(EC.presence_of_element_located((By.TAG_NAME, "body")))
+                except Exception as e:
+                    logging.warning(f"Timeout waiting for page to load: {e}")
 
                 page_source = driver.page_source
                 soup = BeautifulSoup(page_source, "html.parser")
