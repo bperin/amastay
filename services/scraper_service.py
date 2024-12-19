@@ -29,8 +29,8 @@ class ScraperService:
         """
         try:
             if property.property_url:
-                scraper = Scraper(property.property_url)
-                scraped_data = await scraper.scrape()
+
+                scraped_data = await Scraper().scrape(property.property_url)
 
                 logging.info(f"Scraped data cleaned successfully for property {property.id}")
 

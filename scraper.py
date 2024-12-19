@@ -3,8 +3,7 @@ import time
 import re
 import os
 from bs4 import BeautifulSoup
-from selenium import webdriver
-from selenium.webdriver.chrome.options import Options
+import undetected_chromedriver as uc  # Import undetected-chromedriver
 import asyncio
 from concurrent.futures import ThreadPoolExecutor
 
@@ -17,25 +16,24 @@ logging.basicConfig(
 
 
 class Scraper:
-    def __init__(self, url):
-        self.url = url
-        self.driver = None
-        logging.info(f"Initialized Scraper with URL: {self.url}")
-
-    def init_selenium(self):
-        """Initialize the Selenium WebDriver with options."""
-        options = Options()
-        options.headless = True
+    @staticmethod
+    def init_selenium():
+        """Initialize and return the Selenium WebDriver with options."""
+        options = uc.ChromeOptions()
+        options.headless = False
         options.add_argument("--no-sandbox")
         options.add_argument("--disable-dev-shm-usage")
         options.add_argument("start-maximized")
         options.add_argument("disable-infobars")
         options.add_argument("--disable-extensions")
         options.add_argument("--enable-javascript")
-        self.driver = webdriver.Chrome(options=options)
-        logging.info("Selenium WebDriver initialized.")
 
-    def filter_content(self, soup):
+        driver = uc.Chrome(options=options)  # Use undetected-chromedriver
+        logging.info("Selenium WebDriver initialized with undetected-chromedriver.")
+        return driver  # Return the initialized driver
+
+    @staticmethod
+    def filter_content(soup):
         """Filter out unwanted content and clean the text."""
         logging.debug("Filtering content from the soup object.")
         # Remove non-content tags
@@ -68,37 +66,31 @@ class Scraper:
         logging.debug("Content filtering complete.")
         return clean_text
 
-    async def scrape(self):
+    @staticmethod
+    async def scrape(url):
         """Scrape content from the page using Selenium to render it."""
-        logging.info(f"Starting scrape for URL: {self.url}")
-        loop = asyncio.get_event_loop()
-        with ThreadPoolExecutor() as pool:
-            return await loop.run_in_executor(pool, self._scrape_sync)
-
-    def _scrape_sync(self):
-        """Synchronous scraping implementation to run in thread pool."""
-        self.init_selenium()
-        logging.info(f"Starting Selenium scrape for URL: {self.url}")
+        logging.info(f"Starting scrape for URL: {url}")
+        driver = Scraper.init_selenium()  # Initialize the driver
 
         try:
-            airbnb_match = re.search(r"https://www\.airbnb\.com/rooms/(\d+)", self.url)
+            airbnb_match = re.search(r"https://www\.airbnb\.com/rooms/(\d+)", url)
 
             if airbnb_match:
                 room_id = airbnb_match.group(1)
-                urls = [self.url, f"https://www.airbnb.com/rooms/{room_id}/reviews", f"https://www.airbnb.com/rooms/{room_id}/amenities"]
+                urls = [url, f"https://www.airbnb.com/rooms/{room_id}/reviews", f"https://www.airbnb.com/rooms/{room_id}/amenities"]
 
                 combined_text = []
                 for url in urls:
                     logging.info(f"Scraping URL: {url}")
-                    self.driver.get(url)
+                    driver.get(url)
                     time.sleep(2)
 
-                    page_source = self.driver.page_source
+                    page_source = driver.page_source
                     soup = BeautifulSoup(page_source, "html.parser")
-                    filtered_text = self.filter_content(soup)
+                    filtered_text = Scraper.filter_content(soup)
 
                     if filtered_text:
-                        section_name = "MAIN LISTING" if url == self.url else "REVIEWS" if "/reviews" in url else "AMENITIES"
+                        section_name = "MAIN LISTING" if url == url else "REVIEWS" if "/reviews" in url else "AMENITIES"
                         combined_text.append(f"\n=== {section_name} ===\n{filtered_text}")
 
                 final_text = "\n".join(combined_text)
@@ -106,12 +98,12 @@ class Scraper:
                 return final_text if final_text else "No content found"
 
             else:
-                self.driver.get(self.url)
+                driver.get(url)
                 time.sleep(2)
 
-                page_source = self.driver.page_source
+                page_source = driver.page_source
                 soup = BeautifulSoup(page_source, "html.parser")
-                filtered_text = self.filter_content(soup)
+                filtered_text = Scraper.filter_content(soup)
 
                 logging.info(f"Filtered document length: {len(filtered_text)} characters")
                 return filtered_text if filtered_text else "No content found"
@@ -120,6 +112,6 @@ class Scraper:
             logging.error(f"Error during scraping: {e}")
             return None
         finally:
-            if self.driver:
-                self.driver.quit()
+            if driver:
+                driver.quit()
                 logging.info("Selenium WebDriver closed.")

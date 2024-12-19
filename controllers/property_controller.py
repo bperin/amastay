@@ -25,13 +25,12 @@ router = APIRouter(tags=["properties"])
 async def create_property(create_property_input: CreateProperty, current_user: dict = Depends(get_current_user)):
     """Creates a new property (owners only)"""
     try:
-
         # Create property with named parameters
         new_property = await PropertyService.create_property(owner_id=current_user["id"], create_property_request=create_property_input)
         await ScraperService.scrape_property(new_property)
+
         return new_property
     except ValueError as ve:
-        breakpoint()
         logging.error(f"Validation error in create_property: {ve}")
         raise HTTPException(status_code=400, detail=str(ve))
     except Exception as e:

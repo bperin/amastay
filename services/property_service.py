@@ -39,7 +39,7 @@ class PropertyService:
 
             create_property_data = create_property_request.model_dump()
             create_property_data["owner_id"] = owner_id
-            breakpoint()
+
             # Geocode the address
             address = create_property_request.address
             if not address:
@@ -63,7 +63,7 @@ class PropertyService:
             if not response.data:
                 logging.error("failed to create property")
                 raise ("failed to create property")
-            breakpoint()
+
             return Property(**response.data[0])
 
         except Exception as e:
