@@ -14,11 +14,16 @@ phases:
       - apt-get update && apt-get install -y --no-install-recommends chromium
       - echo "Chrome installation completed."
       - echo "Verifying Chrome installation..."
-      - which google-chrome
-      - google-chrome --version
+      - which google-chrome # Output the path to the Chrome binary
+      - google-chrome --version # Output the version of Chrome
+      - echo "Checking Chrome binary location..."
+      - ls -l /usr/bin/google-chrome # List details of the Chrome binary
+      - ls -l /usr/bin/chromium # List details of the Chromium binary
   build:
     commands:
       - echo "Run your tests"
+      # - make test
+      - echo "Building the application..."
       - echo "Current directory: $(pwd)"
       - echo "Listing files:"
       - ls -la
