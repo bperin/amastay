@@ -8,7 +8,7 @@ from selenium.webdriver.chrome.options import Options
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
-import asyncio
+
 
 # Configure logging
 logging.basicConfig(
@@ -28,7 +28,7 @@ class Scraper:
         """Initialize and return the Selenium WebDriver with options."""
         try:
             options = Options()
-            options.headless = True  # Enable headless mode
+            options.headless = False  # Enable headless mode
 
             # Essential arguments for running Chrome in Docker
             options.add_argument("--no-sandbox")
