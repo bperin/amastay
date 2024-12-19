@@ -19,7 +19,7 @@ class Scraper:
     def __init__(self):
         # Set up Selenium WebDriver
         chrome_options = Options()
-        # chrome_options.add_argument("--headless")  # Run in headless mode
+        chrome_options.add_argument("--headless")  # Run in headless mode
         self.driver = webdriver.Chrome(service=Service(ChromeDriverManager().install()), options=chrome_options)
 
     def filter_content(self, soup):
