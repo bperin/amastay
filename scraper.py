@@ -20,6 +20,7 @@ class Scraper:
     def __init__(self, url):
         self.url = url
         self.driver = None
+        logging.info(f"Initialized Scraper with URL: {self.url}")
 
     def init_selenium(self):
         """Initialize the Selenium WebDriver with options."""
@@ -32,16 +33,16 @@ class Scraper:
         options.add_argument("--disable-extensions")
         options.add_argument("--enable-javascript")
         self.driver = webdriver.Chrome(options=options)
+        logging.info("Selenium WebDriver initialized.")
 
     def filter_content(self, soup):
         """Filter out unwanted content and clean the text."""
-
+        logging.debug("Filtering content from the soup object.")
         # Remove non-content tags
         for tag in soup(["script", "style", "header", "footer", "nav", "aside", "noscript", "meta", "link", "button", "svg", "iframe", "form"]):
             tag.decompose()
 
-        # Remove elements known to contain irrelevant content (adjust selectors as needed)
-        # For example, if calendars or similar elements have known classes:
+        # Remove elements known to contain irrelevant content
         for cal in soup.select(".calendar"):
             cal.decompose()
 
@@ -49,7 +50,7 @@ class Scraper:
         for hidden in soup.select("[aria-hidden='true'], [style*='display:none']"):
             hidden.decompose()
 
-        # Remove text related to calendar lines after extraction
+        # Extract and clean text
         text = soup.get_text(separator="\n", strip=True)
         lines = [line.strip() for line in text.splitlines() if line.strip()]
 
@@ -59,24 +60,17 @@ class Scraper:
 
         filtered_lines = []
         for line in lines:
-            # Skip day abbreviations
-            if line in day_abbrevs:
+            if line in day_abbrevs or line in months or line.isdigit():
                 continue
-            # Skip month names
-            if line in months:
-                continue
-            # Skip numeric-only lines if they likely represent calendar days
-            if line.isdigit():
-                continue
-
             filtered_lines.append(line)
 
         clean_text = "\n".join(filtered_lines)
+        logging.debug("Content filtering complete.")
         return clean_text
 
     async def scrape(self):
         """Scrape content from the page using Selenium to render it."""
-        # Run Selenium in a thread pool since it's not async-native
+        logging.info(f"Starting scrape for URL: {self.url}")
         loop = asyncio.get_event_loop()
         with ThreadPoolExecutor() as pool:
             return await loop.run_in_executor(pool, self._scrape_sync)
@@ -87,7 +81,6 @@ class Scraper:
         logging.info(f"Starting Selenium scrape for URL: {self.url}")
 
         try:
-            # Check if URL is an Airbnb listing
             airbnb_match = re.search(r"https://www\.airbnb\.com/rooms/(\d+)", self.url)
 
             if airbnb_match:
@@ -96,6 +89,7 @@ class Scraper:
 
                 combined_text = []
                 for url in urls:
+                    logging.info(f"Scraping URL: {url}")
                     self.driver.get(url)
                     time.sleep(2)
 
@@ -128,3 +122,4 @@ class Scraper:
         finally:
             if self.driver:
                 self.driver.quit()
+                logging.info("Selenium WebDriver closed.")

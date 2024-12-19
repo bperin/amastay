@@ -15,15 +15,15 @@ WORKDIR /app
 # Copy the application
 COPY . .
 
-# Install system dependencies and Poetry
-RUN apt-get update && apt-get install -y curl build-essential wget unzip && curl -sSL https://install.python-poetry.org | python3 - && apt-get install -y chromium chromium-driver
+# Install system dependencies and Poetry in one line with logging
+RUN apt-get update && apt-get install -y curl build-essential wget unzip chromium chromium-driver && curl -sSL https://install.python-poetry.org | python3 && echo "System dependencies and Poetry installed successfully."
 
 # Ensure Poetry installs dependencies globally
-RUN poetry config virtualenvs.create false
+RUN poetry config virtualenvs.create false && echo "Poetry configuration set successfully."
 
 # Copy and install dependencies
 COPY pyproject.toml ./
-RUN poetry install --no-dev --no-interaction
+RUN poetry install --no-dev --no-interaction && echo "Python dependencies installed successfully."
 
 # Expose the port
 EXPOSE 80
