@@ -56,8 +56,11 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     xdg-utils \
     chromium && rm -rf /var/lib/apt/lists/*
 
-# Create a symbolic link for Google Chrome (optional but recommended)
+# Create a symbolic link for Google Chrome
 RUN ln -s /usr/bin/chromium /usr/bin/google-chrome
+
+# Run a command to find and print the path to the Chrome binary
+RUN which google-chrome && echo "Chrome path printed successfully."
 
 # Verify Chromium installation
 RUN chromium --version
