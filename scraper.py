@@ -20,17 +20,16 @@ class Scraper:
     def init_selenium():
         """Initialize and return the Selenium WebDriver with options."""
         options = uc.ChromeOptions()
-        options.headless = False
+        options.headless = True  # Enable headless mode
         options.add_argument("--no-sandbox")
         options.add_argument("--disable-dev-shm-usage")
-        options.add_argument("start-maximized")
-        options.add_argument("disable-infobars")
+        options.add_argument("--disable-infobars")
         options.add_argument("--disable-extensions")
         options.add_argument("--enable-javascript")
+        options.add_argument("--window-size=1920x1080")  # Set window size for headless mode
 
         driver = uc.Chrome(options=options)  # Use undetected-chromedriver
-        logging.info("Selenium WebDriver initialized with undetected-chromedriver.")
-        return driver  # Return the initialized driver
+        return driver
 
     @staticmethod
     def filter_content(soup):
