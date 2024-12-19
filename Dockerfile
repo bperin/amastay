@@ -1,4 +1,4 @@
-# Use ARM64 architecture with Python 3.11 slim image
+# Use x86_64 architecture with Python 3.11 slim image
 FROM --platform=linux/x86_64 python:3.11-slim
 
 # Set environment variables
@@ -12,7 +12,7 @@ ENV PATH="$POETRY_HOME/bin:$PATH"
 # Set the working directory
 WORKDIR /app
 
-# Install system dependencies without chromium-driver
+# Install system dependencies including Chromium and ChromeDriver
 RUN apt-get update && apt-get install -y --no-install-recommends \
     curl \
     build-essential \
@@ -59,8 +59,15 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 # Create a symbolic link for Google Chrome
 RUN ln -s /usr/bin/chromium /usr/bin/google-chrome
 
-# Run a command to find and print the path to the Chrome binary
-RUN which google-chrome && echo "Chrome path printed successfully."
+# Install ChromeDriver
+RUN CHROMEDRIVER_VERSION=$(curl -sS chromedriver.storage.googleapis.com/LATEST_RELEASE) && \ 
+wget -N https://chromedriver.storage.googleapis.com/$CHROMEDRIVER_VERSION/chromedriver_linux64.zip && \ 
+unzip chromedriver_linux64.zip -d /usr/local/bin/ && \ 
+chmod +x /usr/local/bin/chromedriver && \ 
+rm chromedriver_linux64.zip
+
+# Run commands to find and print the paths to the Chrome and ChromeDriver binaries
+RUN which google-chrome && echo "Chrome path printed successfully." && which chromedriver && echo "ChromeDriver path printed successfully."
 
 # Verify Chromium installation
 RUN chromium --version
