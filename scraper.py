@@ -23,6 +23,9 @@ class Scraper:
             options = uc.ChromeOptions()
             options.headless = True  # Enable headless mode
 
+            # Ensure the binary location is correct
+            options.binary_location = "/usr/bin/google-chrome"  # Check if this path is correct
+
             # Essential arguments for running Chrome in Docker
             options.add_argument("--no-sandbox")
             options.add_argument("--disable-dev-shm-usage")
@@ -33,9 +36,6 @@ class Scraper:
             options.add_argument("--disable-gpu")  # Disable GPU acceleration
             options.add_argument("--remote-debugging-port=9222")  # Enable remote debugging
             options.add_argument("--disable-blink-features=AutomationControlled")  # Bypass detection
-
-            # Specify the path to the Chrome binary inside Docker
-            options.binary_location = "/usr/bin/google-chrome"
 
             # Initialize the Chrome driver
             driver = uc.Chrome(options=options)
