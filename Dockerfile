@@ -11,8 +11,8 @@ ENV PATH="$POETRY_HOME/bin:$PATH"
 
 # Set the working directory
 WORKDIR /app
-COPY . .
-# Install system dependencies
+
+# Install system dependencies without chromium-driver
 RUN apt-get update && apt-get install -y --no-install-recommends \
     curl \
     build-essential \
@@ -54,10 +54,9 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     ca-certificates \
     lsb-release \
     xdg-utils \
-    chromium \
-    chromium-driver && rm -rf /var/lib/apt/lists/*
+    chromium && rm -rf /var/lib/apt/lists/*
 
-# Create a symbolic link for Google Chrome
+# Create a symbolic link for Google Chrome (optional but recommended)
 RUN ln -s /usr/bin/chromium /usr/bin/google-chrome
 
 # Verify Chromium installation
@@ -77,6 +76,10 @@ RUN poetry install --no-dev --no-interaction && echo "Python dependencies instal
 
 # Copy the rest of the application
 COPY . .
+
+# (Optional) Create a non-root user for better security
+RUN useradd -m scraper
+USER scraper
 
 # Expose the port
 EXPOSE 80
