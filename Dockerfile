@@ -16,7 +16,7 @@ WORKDIR /app
 COPY . .
 
 # Install system dependencies and Poetry
-RUN apt-get update && apt-get install -y curl build-essential && curl -sSL https://install.python-poetry.org | python3 -
+RUN apt-get update && apt-get install -y curl build-essential wget unzip && curl -sSL https://install.python-poetry.org | python3 - && apt-get install -y chromium chromium-driver
 
 # Ensure Poetry installs dependencies globally
 RUN poetry config virtualenvs.create false
