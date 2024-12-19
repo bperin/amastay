@@ -9,24 +9,10 @@ phases:
       - wget -q https://ecs-cli-v2-release.s3.amazonaws.com/copilot-linux-v1.34.0
       - mv ./copilot-linux-v1.34.0 ./copilot-linux
       - chmod +x ./copilot-linux
-      - echo "Installed copilot-linux"
-      - echo "Installing Chrome dependencies..."
-      - apt-get update && apt-get install -y --no-install-recommends chromium
-      - echo "Chrome installation completed."
-      - echo "Verifying Chrome installation..."
-      - which google-chrome # Output the path to the Chrome binary
-      - google-chrome --version # Output the version of Chrome
-      - echo "Checking Chrome binary location..."
-      - ls -l /usr/bin/google-chrome # List details of the Chrome binary
-      - ls -l /usr/bin/chromium # List details of the Chromium binary
   build:
     commands:
       - echo "Run your tests"
       # - make test
-      - echo "Building the application..."
-      - echo "Current directory: $(pwd)"
-      - echo "Listing files:"
-      - ls -la
   post_build:
     commands:
       - ls -l
@@ -37,7 +23,6 @@ phases:
       # Generate the cloudformation templates.
       - >
         for env in $stages; do
-          echo "Packaging environment: $env"
           ./copilot-linux env package -n $env --output-dir './infrastructure' --upload-assets --force;
           if [ $? -ne 0 ]; then
             echo "Cloudformation stack and config files were not generated. Please check build logs to see if there was a manifest validation error." 1>&2;

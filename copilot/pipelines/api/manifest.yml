@@ -29,10 +29,15 @@ stages:
         template_path: infrastructure/develop.env.yml
         template_config: infrastructure/develop.env.params.json
         stack_name: backend-develop
-    # Optional: flag for manual approval action before deployment.
-    # requires_approval: true
-    # Optional: use test commands to validate this stage of your build.
-    # test_commands: [echo 'running tests', make test]
+    hooks:
+      pre_deploy:
+        commands:
+          - echo "Running pre-deployment commands for develop environment..."
+          - echo "Current directory: $(pwd)"
+          - ls -la
+          - echo "Verifying Chrome installation..."
+          - which google-chrome
+          - google-chrome --version
 
   - # The name of the environment.
     name: staging
@@ -41,10 +46,15 @@ stages:
         template_path: infrastructure/staging.env.yml
         template_config: infrastructure/staging.env.params.json
         stack_name: backend-staging
-    # Optional: flag for manual approval action before deployment.
-    # requires_approval: true
-    # Optional: use test commands to validate this stage of your build.
-    # test_commands: [echo 'running tests', make test]
+    hooks:
+      pre_deploy:
+        commands:
+          - echo "Running pre-deployment commands for staging environment..."
+          - echo "Current directory: $(pwd)"
+          - ls -la
+          - echo "Verifying Chrome installation..."
+          - which google-chrome
+          - google-chrome --version
 
   - # The name of the environment.
     name: production
@@ -53,7 +63,12 @@ stages:
         template_path: infrastructure/production.env.yml
         template_config: infrastructure/production.env.params.json
         stack_name: backend-production
-    # Optional: flag for manual approval action before deployment.
-    # requires_approval: true
-    # Optional: use test commands to validate this stage of your build.
-    # test_commands: [echo 'running tests', make test]
+    hooks:
+      pre_deploy:
+        commands:
+          - echo "Running pre-deployment commands for production environment..."
+          - echo "Current directory: $(pwd)"
+          - ls -la
+          - echo "Verifying Chrome installation..."
+          - which google-chrome
+          - google-chrome --version
