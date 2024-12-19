@@ -14,6 +14,9 @@ logging.basicConfig(
     handlers=[logging.FileHandler("scraper.log"), logging.StreamHandler()],
 )
 
+# Read the CHROME_DRIVER environment variable
+chrome_driver_path = os.getenv("CHROME_DRIVER")
+
 
 class Scraper:
     @staticmethod
@@ -23,8 +26,8 @@ class Scraper:
             options = uc.ChromeOptions()
             options.headless = True  # Enable headless mode
 
-            # Ensure the binary location is correct
-            options.binary_location = "/usr/bin/google-chrome"  # Check if this path is correct
+            # Use the chrome_driver_path from the environment variable
+            options.binary_location = chrome_driver_path  # Set binary location from environment variable
 
             # Essential arguments for running Chrome in Docker
             options.add_argument("--no-sandbox")

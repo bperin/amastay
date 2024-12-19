@@ -8,6 +8,7 @@ ENV PYTHONPATH="/app"
 ENV POETRY_VERSION=1.7.0
 ENV POETRY_HOME="/opt/poetry"
 ENV PATH="$POETRY_HOME/bin:$PATH"
+ENV CHROME_DRIVER="/usr/local/bin/chromedriver"
 
 # Set the working directory
 WORKDIR /app
