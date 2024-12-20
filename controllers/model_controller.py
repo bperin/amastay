@@ -35,7 +35,7 @@ async def query_model(data: SMSInput, current_user: dict = Depends(get_current_u
 
 
 @router.get("/current", operation_id="current")
-async def get_model_params(current_user: dict = Depends(get_current_user)):
+async def get_model_params():
     """Get current model parameters"""
     try:
         model_params = get_active_model_param()
