@@ -16,7 +16,7 @@ source:
   # Additional properties that further specify the location of the artifacts.
   properties:
     branch: master
-    repository: https://github.com/bperin/amastay
+    repository: git@github.com:bperin/amastay.git
     # Optional: specify the name of an existing CodeStar Connections connection.
     connection_name: bperin-github-connection
 
