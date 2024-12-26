@@ -16,9 +16,11 @@ source:
   # Additional properties that further specify the location of the artifacts.
   properties:
     branch: master
-    repository: git@github.com:bperin/amastay.git
-    # Optional: specify the name of an existing CodeStar Connections connection.
-    connection_name: bperin-github-connection
+    repository: https://github.com/bperin/amastay
+    connection_arn: arn:aws:codeconnections:us-east-2:422220778159:connection/08d374d7-a6c6-4be2-adf9-5d4ffa5e8ced
+
+build:
+  image: aws/codebuild/amazonlinux2-x64-standard:4.0
 
 # This section defines the order of the environments your pipeline will deploy to.
 stages:
