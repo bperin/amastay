@@ -21,9 +21,9 @@ RUN apt-get update && apt-get install -y curl build-essential && curl -sSL https
 # Ensure Poetry installs dependencies globally
 RUN poetry config virtualenvs.create false
 
-# Copy and install dependencies
+# Generate requirements.txt from poetry and install
 COPY pyproject.toml ./
-RUN poetry install --no-dev --no-interaction
+RUN pip install --upgrade pip && pip install poetry && poetry config repositories.pypi https://pypi.tuna.tsinghua.edu.cn/simple && poetry install --no-dev --no-interaction
 
 # Expose the port
 EXPOSE 80
