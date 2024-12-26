@@ -1,0 +1,38 @@
+name: scraper-pipeline
+version: 1
+
+source:
+  provider: GitHub
+  properties:
+    branch: main
+    repository: https://github.com/bperin/scraper
+    connection_name: bperin-github-connection
+
+build:
+  image: aws/codebuild/amazonlinux2-aarch64-standard:3.0
+
+stages:
+  - name: test
+    test_commands:
+      - cd scraper-app
+      - curl -sSL https://install.python-poetry.org | python3 -
+      - poetry install --no-root
+      - poetry run pytest
+
+  - name: develop
+    requires_approval: false
+    deploy:
+      - name: scraper-app
+        env: develop
+
+  - name: staging
+    requires_approval: true
+    deploy:
+      - name: scraper-app
+        env: staging
+
+  - name: production
+    requires_approval: true
+    deploy:
+      - name: scraper-app
+        env: production

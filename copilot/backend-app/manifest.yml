@@ -8,22 +8,27 @@ type: Load Balanced Web Service
 
 # Distribute traffic to your service.
 http:
-  # Forward all requests to your service.
+  # All backend routes already include /api prefix
   path: "/"
   # Custom health check path for service health monitoring.
   healthcheck:
     path: "/api/v1/health/check"
+    healthy_threshold: 3
+    unhealthy_threshold: 2
+    timeout: "5s"
+    interval: "30s"
   public:
     certificates:
-      - arn:aws:acm:us-east-1:422220778159:cer4tificate/d1259492-082d-4ad9-b641-b754caef46b5
+      - arn:aws:acm:us-east-1:422220778159:certificate/d1259492-082d-4ad9-b641-b754caef46b5
 
 # Configuration for your containers and service.
 image:
   # Docker build arguments. For additional overrides: https://aws.github.io/copilot-cli/docs/manifest/lb-web-service/#image-build
   build:
-    dockerfile: Dockerfile
+    dockerfile: ../../docker/DockerfileBackend
+    context: backend-app
   # Port exposed through your container to route traffic to it.
-  port: 80
+  port: 8000
 
 cpu: 256 # Number of CPU units for the task.
 memory: 512 # Amount of memory in MiB used by the task.
@@ -63,8 +68,13 @@ environments:
         - name: "api.amastay.ai"
           hosted_zone: Z09051732Y0SGEMJ22C94
     variables:
+      ENVIRONMENT: production
+      LOG_LEVEL: INFO
+      CORS_ORIGINS: "https://app.amastay.ai"
+      DATABASE_URL: /copilot/${COPILOT_APPLICATION_NAME}/${COPILOT_ENVIRONMENT_NAME}/secrets/DATABASE_URL
+      JWT_SECRET_KEY: /copilot/${COPILOT_APPLICATION_NAME}/${COPILOT_ENVIRONMENT_NAME}/secrets/JWT_SECRET_KEY
+      OPENAI_API_KEY: /copilot/${COPILOT_APPLICATION_NAME}/${COPILOT_ENVIRONMENT_NAME}/secrets/OPENAI_API_KEY
       SYSTEM_PHONE_NUMBER: "+18775217865"
-      FLASK_ENV: "production"
 
   staging:
     count: 1
@@ -73,9 +83,10 @@ environments:
         - name: "staging-api.amastay.ai"
           hosted_zone: Z09051732Y0SGEMJ22C94
     variables:
-      SYSTEM_PHONE_NUMBER: "+18556058275"
-      FLASK_ENV: "staging"
-      LOG_LEVEL: debug
+      ENVIRONMENT: staging
+      LOG_LEVEL: DEBUG
+      CORS_ORIGINS: "https://staging-app.amastay.ai"
+      SYSTEM_PHONE_NUMBER: "+18775217865"
 
   develop:
     count: 1
@@ -84,6 +95,7 @@ environments:
         - name: "develop-api.amastay.ai"
           hosted_zone: Z09051732Y0SGEMJ22C94
     variables:
-      SYSTEM_PHONE_NUMBER: "+18556124703"
-      FLASK_ENV: "development"
-      LOG_LEVEL: debug
+      ENVIRONMENT: development
+      LOG_LEVEL: DEBUG
+      CORS_ORIGINS: "https://develop-app.amastay.ai"
+      SYSTEM_PHONE_NUMBER: "+18775217865"

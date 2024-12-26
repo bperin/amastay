@@ -1,0 +1,41 @@
+# Pipeline for backend-app service
+name: backend-pipeline
+version: 1
+
+source:
+  provider: GitHub
+  properties:
+    branch: master
+    repository: https://github.com/bperin/amastay
+    connection_name: bperin-github-connection
+
+build:
+  image: aws/codebuild/amazonlinux2-aarch64-standard:3.0
+
+stages:
+  - name: test
+    test_commands:
+      - cd backend-app
+      - curl -sSL https://install.python-poetry.org | python3 -
+      - poetry install --no-root
+      - poetry run pytest
+
+  - name: develop
+    requires_approval: false
+    test_commands:
+      - echo "Running develop environment tests"
+    deploy:
+      - name: backend-app
+        env: develop
+
+  - name: staging
+    requires_approval: true
+    deploy:
+      - name: backend-app
+        env: staging
+
+  - name: production
+    requires_approval: true
+    deploy:
+      - name: backend-app
+        env: production
