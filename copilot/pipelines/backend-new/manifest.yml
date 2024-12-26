@@ -1,4 +1,4 @@
-# The manifest for the "amastay-master" pipeline.
+# The manifest for the "backend-new" pipeline.
 # This YAML file defines your pipeline: the source repository it tracks and the order of the environments to deploy to.
 # For more info: https://aws.github.io/copilot-cli/docs/manifest/pipeline/
 
@@ -6,7 +6,7 @@
 name: backend-new
 
 # The version of the schema used in this template.
-version: 3
+version: 1
 
 # This section defines your source, changes to which trigger your pipeline.
 source:
@@ -17,7 +17,8 @@ source:
   properties:
     branch: master
     repository: https://github.com/bperin/amastay
-    connection_arn: copilot-bperi-amastay
+    # Optional: specify the name of an existing CodeStar Connections connection.
+    # connection_name: a-connection
 
 # This section defines the order of the environments your pipeline will deploy to.
 stages:
@@ -27,7 +28,7 @@ stages:
       deploy-env:
         template_path: infrastructure/develop.env.yml
         template_config: infrastructure/develop.env.params.json
-        stack_name: amastay-backend-develop-new
+        stack_name: amastay-backend-develop
     # Optional: flag for manual approval action before deployment.
     # requires_approval: true
     # Optional: use test commands to validate this stage of your build.
@@ -39,7 +40,7 @@ stages:
       deploy-env:
         template_path: infrastructure/staging.env.yml
         template_config: infrastructure/staging.env.params.json
-        stack_name: amastay-backend-staging-new
+        stack_name: amastay-backend-staging
     # Optional: flag for manual approval action before deployment.
     # requires_approval: true
     # Optional: use test commands to validate this stage of your build.
@@ -51,8 +52,9 @@ stages:
       deploy-env:
         template_path: infrastructure/production.env.yml
         template_config: infrastructure/production.env.params.json
-        stack_name: amastay-backend-production-new
+        stack_name: amastay-backend-production
     # Optional: flag for manual approval action before deployment.
     # requires_approval: true
     # Optional: use test commands to validate this stage of your build.
     # test_commands: [echo 'running tests', make test]
+
