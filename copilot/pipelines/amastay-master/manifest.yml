@@ -19,9 +19,6 @@ source:
     repository: https://github.com/bperin/amastay
     connection_arn: bperin-github-connection
 
-build:
-  image: aws/codebuild/amazonlinux2-x64-standard:4.0
-
 # This section defines the order of the environments your pipeline will deploy to.
 stages:
   - # The name of the environment.
