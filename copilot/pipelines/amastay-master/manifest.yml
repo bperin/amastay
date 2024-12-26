@@ -17,7 +17,7 @@ source:
   properties:
     branch: master
     repository: https://github.com/bperin/amastay
-    connection_arn: bperin-github-connection
+    connection_arn: copilot-bperi-amastay-vue
 
 # This section defines the order of the environments your pipeline will deploy to.
 stages:
