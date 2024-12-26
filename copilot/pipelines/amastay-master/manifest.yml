@@ -17,7 +17,7 @@ source:
   properties:
     branch: master
     repository: https://github.com/bperin/amastay
-    connection_arn: arn:aws:codeconnections:us-east-2:422220778159:connection/08d374d7-a6c6-4be2-adf9-5d4ffa5e8ced
+    connection_arn: bperin-github-connection
 
 build:
   image: aws/codebuild/amazonlinux2-x64-standard:4.0
