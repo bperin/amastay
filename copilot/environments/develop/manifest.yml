@@ -24,3 +24,13 @@ variables:
   SYSTEM_PHONE_NUMBER: "+18556124703"
   FLASK_ENV: "development"
   LOG_LEVEL: debug
+
+environment:
+  SYSTEM_PHONE_NUMBER: "+18556124703"
+  FLASK_ENV: "staging"
+  LOG_LEVEL: debug
+
+environment:
+  SYSTEM_PHONE_NUMBER: "+18556124703"
+  FLASK_ENV: "production"
+  LOG_LEVEL: production

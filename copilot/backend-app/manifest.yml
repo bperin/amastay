@@ -3,20 +3,19 @@
 #  https://aws.github.io/copilot-cli/docs/manifest/lb-web-service/
 
 # Your service name will be used in naming your resources like log groups, ECS services, etc.
-name: backend
+name: backend-app
 type: Load Balanced Web Service
 
 # Distribute traffic to your service.
 http:
-  # Requests to this path will be forwarded to your service.
-  # To match all requests you can use the "/" path.
-  path: "/api"
-  # You can specify a custom health check path. The default is "/".
+  # Forward all requests to your service.
+  path: "/"
+  # Custom health check path for service health monitoring.
   healthcheck:
     path: "/api/v1/health/check"
   public:
     certificates:
-      - arn:aws:acm:us-east-1:422220778159:certificate/d1259492-082d-4ad9-b641-b754caef46b5
+      - arn:aws:acm:us-east-1:422220778159:cer4tificate/d1259492-082d-4ad9-b641-b754caef46b5
 
 # Configuration for your containers and service.
 image:

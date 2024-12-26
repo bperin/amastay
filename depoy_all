@@ -1,0 +1,61 @@
+#!/bin/bash
+
+# Colors for output
+GREEN='\033[0;32m'
+RED='\033[0;31m'
+BLUE='\033[0;34m'
+NC='\033[0m' # No Color
+
+# Function to deploy a service to all environments
+deploy_service() {
+    local service=$1
+    echo -e "${BLUE}Deploying ${service} to all environments...${NC}"
+
+    copilot svc deploy --name "$service" --env production --env staging --env develop &>"/tmp/${service}_deploy.log" &
+    echo $! >"/tmp/${service}_pid"
+}
+
+# Function to monitor deployment status
+monitor_deployment() {
+    local service=$1
+    local pid=$(cat "/tmp/${service}_pid")
+
+    while kill -0 $pid 2>/dev/null; do
+        echo -e "${BLUE}${service}:${NC} Deployment in progress..."
+        copilot svc status --name "$service" 2>/dev/null
+        sleep 10
+    done
+
+    wait $pid
+    if [ $? -eq 0 ]; then
+        echo -e "${GREEN}✓ ${service} deployment completed successfully${NC}"
+    else
+        echo -e "${RED}✗ ${service} deployment failed. Check logs in /tmp/${service}_deploy.log${NC}"
+        cat "/tmp/${service}_deploy.log"
+        exit 1
+    fi
+}
+
+# Main deployment script
+main() {
+    echo "Starting parallel deployment of all services..."
+
+    # Start deployments in parallel
+    deploy_service "backend-app"
+    deploy_service "frontend-app"
+    deploy_service "scraper-app"
+
+    # Monitor all deployments
+    echo "Monitoring deployments..."
+    monitor_deployment "backend-app"
+    monitor_deployment "frontend-app"
+    monitor_deployment "scraper-app"
+
+    # Cleanup
+    rm -f /tmp/*_pid /tmp/*_deploy.log
+
+    echo -e "${GREEN}All deployments completed successfully!${NC}"
+}
+
+# Run the script
+main
