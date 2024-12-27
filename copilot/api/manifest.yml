@@ -76,7 +76,7 @@ environments:
           hosted_zone: Z09051732Y0SGEMJ22C94
     variables:
       SYSTEM_PHONE_NUMBER: "+18556058275"
-      FLASK_ENV: "staging"
+      FLASK_ENV: "production"
       LOG_LEVEL: debug
 
   develop:
