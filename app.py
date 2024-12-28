@@ -86,16 +86,16 @@ async def startup_event():
     setup_logging()
     logging.info("Starting application...")
 
-    try:
-        # Initialize Bedrock service
-        if asyncio.iscoroutinefunction(BedrockService.initialize):
-            await BedrockService.initialize()
-        else:
-            BedrockService.initialize()
-        logging.info("Bedrock service initialized successfully")
-    except Exception as e:
-        # Log error but don't raise - allow app to start even if Bedrock fails
-        logging.error(f"Failed to initialize Bedrock service: {str(e)}")
+    # try:
+    #     # Initialize Bedrock service
+    #     if asyncio.iscoroutinefunction(BedrockService.initialize):
+    #         await BedrockService.initialize()
+    #     else:
+    #         BedrockService.initialize()
+    #     logging.info("Bedrock service initialized successfully")
+    # except Exception as e:
+    #     # Log error but don't raise - allow app to start even if Bedrock fails
+    #     logging.error(f"Failed to initialize Bedrock service: {str(e)}")
 
     # Include routers
     app.include_router(health_router, prefix="/api/v1/health")  # Move health router first
