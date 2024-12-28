@@ -58,7 +58,7 @@ variables:
 
 environments:
   production:
-    count: 2
+    count: 3
     cpu: 512
     memory: 1024
     http:
@@ -67,14 +67,18 @@ environments:
           hosted_zone: Z09051732Y0SGEMJ22C94
 
   staging:
-    count: 1
+    count: 3
+    cpu: 512
+    memory: 1024
     http:
       alias:
         - name: "staging-api.amastay.ai"
           hosted_zone: Z09051732Y0SGEMJ22C94
 
   develop:
-    count: 1
+    count: 3
+    cpu: 512
+    memory: 1024
     http:
       alias:
         - name: "develop-api.amastay.ai"
