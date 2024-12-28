@@ -24,6 +24,8 @@ from controllers.admin.admin_controller import router as admin_router
 from controllers.property_information_controller import router as property_information_router
 from controllers.property_controller import router as property_router
 
+from starlette.middleware.base import BaseHTTPMiddleware
+
 # Create FastAPI app
 app = FastAPI(title="Amastay API", description="Amastay API", version="0.3", docs_url="/swagger")
 
@@ -35,6 +37,17 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+
+class RequestDebugMiddleware(BaseHTTPMiddleware):
+    async def dispatch(self, request, call_next):
+        print(f"Incoming request: {request.method} {request.url}")
+        response = await call_next(request)
+        print(f"Response status: {response.status_code}")
+        return response
+
+
+app.add_middleware(RequestDebugMiddleware)
 
 
 def custom_openapi():
