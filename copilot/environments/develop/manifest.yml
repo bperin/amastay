@@ -23,13 +23,6 @@ http:
 observability:
   container_insights: false
 
-# Add service-specific configuration
-services:
-  api:
-    count: 2
-    cpu: 512
-    memory: 1024
-
 variables:
   SYSTEM_PHONE_NUMBER: "+18556124703"
   FLASK_ENV: "development"

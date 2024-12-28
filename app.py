@@ -86,30 +86,36 @@ async def startup_event():
     setup_logging()
     logging.info("Starting application...")
 
-    # try:
-    #     # Initialize Bedrock service
-    #     if asyncio.iscoroutinefunction(BedrockService.initialize):
-    #         await BedrockService.initialize()
-    #     else:
-    #         BedrockService.initialize()
-    #     logging.info("Bedrock service initialized successfully")
-    # except Exception as e:
-    #     # Log error but don't raise - allow app to start even if Bedrock fails
-    #     logging.error(f"Failed to initialize Bedrock service: {str(e)}")
+    try:
+        # Include routers first to ensure basic functionality
+        app.include_router(health_router, prefix="/api/v1/health")  # Health check first
+        app.include_router(auth_router, prefix="/api/v1/auth")
+        app.include_router(property_router, prefix="/api/v1/properties")
+        app.include_router(booking_router, prefix="/api/v1/bookings")
+        app.include_router(guest_router, prefix="/api/v1/guests")
+        app.include_router(webhook_router, prefix="/api/v1/webhooks")
+        app.include_router(model_router, prefix="/api/v1/model")
+        app.include_router(manager_router, prefix="/api/v1/managers")
+        app.include_router(user_router, prefix="/api/v1/users")
+        app.include_router(team_router, prefix="/api/v1/teams")
+        app.include_router(admin_router, prefix="/api/v1/admin")
+        app.include_router(property_information_router, prefix="/api/v1/property_information")
 
-    # Include routers
-    app.include_router(health_router, prefix="/api/v1/health")  # Move health router first
-    app.include_router(auth_router, prefix="/api/v1/auth")
-    app.include_router(property_router, prefix="/api/v1/properties")
-    app.include_router(booking_router, prefix="/api/v1/bookings")
-    app.include_router(guest_router, prefix="/api/v1/guests")
-    app.include_router(webhook_router, prefix="/api/v1/webhooks")
-    app.include_router(model_router, prefix="/api/v1/model")
-    app.include_router(manager_router, prefix="/api/v1/managers")
-    app.include_router(user_router, prefix="/api/v1/users")
-    app.include_router(team_router, prefix="/api/v1/teams")
-    app.include_router(admin_router, prefix="/api/v1/admin")
-    app.include_router(property_information_router, prefix="/api/v1/property_information")
+        try:
+            # Initialize optional services after basic routing is set up
+            if asyncio.iscoroutinefunction(BedrockService.initialize):
+                await BedrockService.initialize()
+            else:
+                BedrockService.initialize()
+            logging.info("Bedrock service initialized successfully")
+        except Exception as e:
+            logging.error(f"Error during Bedrock service initialization: {str(e)}")
+            logging.error("Continuing with partial initialization")
+
+    except Exception as e:
+        # Log error but continue startup
+        logging.error(f"Error during startup: {str(e)}")
+        logging.error("Continuing with partial initialization")
 
     logging.info("Application startup complete")
 
