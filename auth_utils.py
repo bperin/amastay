@@ -8,9 +8,9 @@ from jwt import PyJWTError
 
 app = FastAPI()
 
-JWT_SECRET = os.getenv("JWT_SECRET")
+JWT_SECRET = os.environ["JWT_SECRET"]
 JWT_ALGORITHM = "HS256"
-SUPABASE_URL = os.getenv("SUPABASE_URL")
+SUPABASE_URL = os.environ["SUPABASE_URL"]
 
 # We will use HTTPBearer for token extraction
 security = HTTPBearer()

@@ -34,6 +34,9 @@ exec: true # Enable running commands in your container.
 network:
   connect: true # Enable Service Connect for intra-environment traffic between services.
 
+secrets:
+  SCRAPER_API_KEY: SCRAPER_API_KEY
+
 # Add variables section at the root level for default values
 variables:
   SUPABASE_URL: "https://cjpqoecwszjepmrijxit.supabase.co"
@@ -55,12 +58,24 @@ environments:
     count: 2
     cpu: 512
     memory: 1024
+    http:
+      alias:
+        - name: "api.amastay.ai"
+          hosted_zone: Z09051732Y0SGEMJ22C94
 
   staging:
     count: 1
+    http:
+      alias:
+        - name: "staging-api.amastay.ai"
+          hosted_zone: Z09051732Y0SGEMJ22C94
 
   develop:
     count: 1
+    http:
+      alias:
+        - name: "develop-api.amastay.ai"
+          hosted_zone: Z09051732Y0SGEMJ22C94
 
 deployment:
   rolling: recreate

@@ -1,5 +1,6 @@
 # app.py
 import asyncio
+import os
 import uvicorn
 import logging
 from fastapi import FastAPI
@@ -70,24 +71,25 @@ def custom_openapi():
 @app.on_event("startup")
 async def startup_event():
     setup_logging()
+    logging.info("Starting application...")
 
     try:
-        # If BedrockService.initialize() is asynchronous, await it
+        # Initialize Bedrock service
         if asyncio.iscoroutinefunction(BedrockService.initialize):
             await BedrockService.initialize()
         else:
             BedrockService.initialize()
         logging.info("Bedrock service initialized successfully")
     except Exception as e:
+        # Log error but don't raise - allow app to start even if Bedrock fails
         logging.error(f"Failed to initialize Bedrock service: {str(e)}")
-        raise
 
     # Include routers
+    app.include_router(health_router, prefix="/api/v1/health")  # Move health router first
     app.include_router(auth_router, prefix="/api/v1/auth")
     app.include_router(property_router, prefix="/api/v1/properties")
     app.include_router(booking_router, prefix="/api/v1/bookings")
     app.include_router(guest_router, prefix="/api/v1/guests")
-    app.include_router(health_router, prefix="/api/v1/health")
     app.include_router(webhook_router, prefix="/api/v1/webhooks")
     app.include_router(model_router, prefix="/api/v1/model")
     app.include_router(manager_router, prefix="/api/v1/managers")
@@ -96,14 +98,17 @@ async def startup_event():
     app.include_router(admin_router, prefix="/api/v1/admin")
     app.include_router(property_information_router, prefix="/api/v1/property_information")
 
-    # Override the default OpenAPI schema
-    app.openapi = custom_openapi
+    logging.info("Application startup complete")
 
 
 @app.on_event("shutdown")
 async def shutdown_event():
     """Close database connection on shutdown"""
     print("Shutting down...")
+
+    # Pull the environment variable SCRAPER_API_KEY and assign it to a variable
+    scraper_api_key = os.getenv("SCRAPER_API_KEY")
+    breakpoint()
 
 
 def setup_logging():
