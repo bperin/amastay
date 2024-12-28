@@ -37,7 +37,7 @@ network:
 secrets:
   SCRAPER_API_KEY: SCRAPER_API_KEY
 
-# Add variables section at the root level for default values
+## Add variables section at the root level for default values
 variables:
   SUPABASE_URL: "https://cjpqoecwszjepmrijxit.supabase.co"
   SUPABASE_ANON_KEY: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNqcHFvZWN3c3pqZXBtcmlqeGl0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3MzIxNTE1NjEsImV4cCI6MjA0NzcyNzU2MX0.2B7_ONZBPkB9Hc4hTnjaCrLX1aWnVpFH6rKPYKz_OSI"
