@@ -30,3 +30,8 @@ EXPOSE 80
 
 # Run the application with Uvicorn
 CMD ["uvicorn", "app:app", "--host", "0.0.0.0", "--port", "80", "--workers", "2"]
+
+# Only keep necessary environment variables
+ENV PYTHONUNBUFFERED=1
+
+# Don't put sensitive values here - they'll come from the environment

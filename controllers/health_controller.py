@@ -22,4 +22,4 @@ async def health_check():
     except:
         git_hash = "unknown"
 
-    return {"status": "healthy", "message": "Service is running", "version": git_hash, "task_id": os.environ.get("ECS_TASK_ID", "unknown"), "container_id": os.environ.get("ECS_CONTAINER_ID", "unknown")}
+    return {"status": "healthy", "message": "Service is running", "version": git_hash}
