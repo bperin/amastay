@@ -8,9 +8,6 @@ router = APIRouter(tags=["health"])
 class HealthResponse(BaseModel):
     status: str
     message: str
-    version: str
-    dockerfile_hash: str
-    build_timestamp: str
 
 
 @router.get("/check", response_model=HealthResponse, operation_id="check", status_code=200)
