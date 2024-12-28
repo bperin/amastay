@@ -13,6 +13,7 @@ class HealthResponse(BaseModel):
     message: str
     version: str
     dockerfile_hash: str
+    build_timestamp: str
 
 
 @router.get("/check", response_model=HealthResponse, operation_id="check")
@@ -26,4 +27,4 @@ async def health_check():
     except Exception:
         git_hash = "unknown"
 
-    return {"status": "healthy", "message": "Service is running", "version": git_hash, "dockerfile_hash": os.environ.get("DOCKERFILE_HASH", "unknown")}
+    return {"status": "healthy", "message": "Service is running", "version": git_hash, "dockerfile_hash": os.environ.get("DOCKERFILE_HASH", "unknown"), "build_timestamp": os.environ.get("BUILD_TIMESTAMP", "unknown")}

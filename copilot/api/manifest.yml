@@ -52,6 +52,8 @@ variables:
   BEDROCK_INFERENCE_ARN: "arn:aws:bedrock:us-east-1:422220778159:inference-profile/us.meta.llama3-2-3b-instruct-v1:0"
   STRIPE_PUBLISHABLE_KEY: "pk_test_51Q8Tmq2NFjqQbZqFWruYcmJ6tpyG1tzeQS6IaHkppKCwyhsE75wUgjfQcoFJfRqmxJ2ML76XRe7MJuqjbOul5Ej400sKE0Np2z"
   STRIPE_SECRET_KEY: "sk_test_51Q8Tmq2NFjqQbZqFoBSnEckrYfUO2w1ytEnQPS8pXSlZ1xtog00l2YRvSEYVNqYGi1S4gRvPlFEypG7flJuqAiO300DhN2QO0x"
+  DOCKERFILE_HASH: ${COPILOT_DOCKERFILE_HASH}
+  BUILD_TIMESTAMP: ${COPILOT_BUILD_TIMESTAMP}
 
 environments:
   production:
@@ -81,3 +83,10 @@ deployment:
   rolling: recreate
   circuit_breaker:
     enabled: false
+
+build:
+  variables:
+    COPILOT_DOCKERFILE_HASH:
+      command: "sha256sum Dockerfile | cut -d' ' -f1"
+    COPILOT_BUILD_TIMESTAMP:
+      command: 'date -u +"%Y-%m-%dT%H:%M:%SZ"'
