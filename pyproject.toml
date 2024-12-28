@@ -1,9 +1,9 @@
 [tool.poetry]
 name = "amastay"
 version = "0.2.0"
-description = "Amastay AI"
+description = ""
 authors = ["Brian Perin <brian@amastay.ai>"]
-readme = "README.md"
+package-mode = false
 
 [tool.poetry.dependencies]
 python = "^3.11"
