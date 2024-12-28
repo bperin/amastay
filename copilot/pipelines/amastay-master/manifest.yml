@@ -29,6 +29,7 @@ stages:
         template_path: infrastructure/develop.env.yml
         template_config: infrastructure/develop.env.params.json
         stack_name: backend-develop
+        release: true
     # Optional: flag for manual approval action before deployment.
     # requires_approval: true
     # Optional: use test commands to validate this stage of your build.
@@ -41,6 +42,7 @@ stages:
         template_path: infrastructure/staging.env.yml
         template_config: infrastructure/staging.env.params.json
         stack_name: backend-staging
+        release: true
     # Optional: flag for manual approval action before deployment.
     # requires_approval: true
     # Optional: use test commands to validate this stage of your build.
@@ -53,6 +55,7 @@ stages:
         template_path: infrastructure/production.env.yml
         template_config: infrastructure/production.env.params.json
         stack_name: backend-production
+        release: true
     # Optional: flag for manual approval action before deployment.
     # requires_approval: true
     # Optional: use test commands to validate this stage of your build.
