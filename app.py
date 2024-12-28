@@ -106,10 +106,6 @@ async def shutdown_event():
     """Close database connection on shutdown"""
     print("Shutting down...")
 
-    # Pull the environment variable SCRAPER_API_KEY and assign it to a variable
-    scraper_api_key = os.getenv("SCRAPER_API_KEY")
-    breakpoint()
-
 
 def setup_logging():
     """Configure logging with file and console handlers"""
