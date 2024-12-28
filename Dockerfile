@@ -1,5 +1,5 @@
-# Use a specific platform to ensure compatibility
-FROM --platform=linux/amd64 python:3.11-slim
+# Change to ARM64 architecture
+FROM --platform=linux/arm64 python:3.11-slim
 
 # Set environment variables
 ENV PYTHONUNBUFFERED=1
@@ -29,14 +29,9 @@ RUN pip install --upgrade pip && pip install poetry && poetry config repositorie
 EXPOSE 80
 
 # Run the application with Uvicorn with proper settings
-CMD ["uvicorn", "app:app", "--host", "0.0.0.0", "--port", "5001"]
+CMD ["uvicorn", "app:app", "--host", "0.0.0.0", "--port", "80", "--workers", "2", "--timeout-keep-alive", "75"]
 
 # Only keep necessary environment variables
 ENV PYTHONUNBUFFERED=1
 
 # Don't put sensitive values here - they'll come from the environment
-
-# Calculate Dockerfile hash and set as ENV variable
-COPY Dockerfile .
-RUN sha256sum Dockerfile | cut -d' ' -f1 >dockerfile_hash.txt && export DOCKERFILE_HASH=$(cat dockerfile_hash.txt) && echo "DOCKERFILE_HASH=$DOCKERFILE_HASH" >>/etc/environment
-ENV DOCKERFILE_HASH=${DOCKERFILE_HASH}
