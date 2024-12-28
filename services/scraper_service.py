@@ -32,7 +32,6 @@ class ScraperService:
             if property.property_url:
 
                 scraped_data = await Scraper().scrape(property.property_url)
-                breakpoint()
 
                 logging.info(f"Scraped data cleaned successfully for property {property.id}")
 
