@@ -1,5 +1,5 @@
-# Change to ARM64 architecture
-FROM --platform=linux/arm64 python:3.11-slim
+# Use a specific platform to ensure compatibility
+FROM --platform=linux/amd64 python:3.11-slim
 
 # Set environment variables
 ENV PYTHONUNBUFFERED=1
@@ -29,7 +29,7 @@ RUN pip install --upgrade pip && pip install poetry && poetry config repositorie
 EXPOSE 80
 
 # Run the application with Uvicorn with proper settings
-CMD ["uvicorn", "app:app", "--host", "0.0.0.0", "--port", "80", "--workers", "2", "--timeout-keep-alive", "75"]
+CMD ["uvicorn", "app:app", "--host", "0.0.0.0", "--port", "5001"]
 
 # Only keep necessary environment variables
 ENV PYTHONUNBUFFERED=1
