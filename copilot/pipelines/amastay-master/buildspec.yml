@@ -6,6 +6,9 @@ phases:
       ruby: 3.2
     commands:
       - cd $CODEBUILD_SRC_DIR
+      # Install yq
+      - wget https://github.com/mikefarah/yq/releases/latest/download/yq_linux_amd64 -O /usr/local/bin/yq
+      - chmod +x /usr/local/bin/yq
       # Cache the copilot binary using CodeBuild local cache
       - |
         if [ ! -f ~/.local/bin/copilot-linux ]; then
@@ -20,8 +23,11 @@ phases:
   post_build:
     commands:
       - export COLOR="false" CI="true"
-      # Use jq directly to parse YAML and extract stages - faster than Ruby
-      - stages=$(yq e '.stages[].name' copilot/pipelines/amastay-master/manifest.yml)
+      # Parse YAML and extract stages using grep as fallback if yq fails
+      - |
+        if ! stages=$(yq e '.stages[].name' copilot/pipelines/amastay-master/manifest.yml 2>/dev/null); then
+          stages=$(grep "name:" copilot/pipelines/amastay-master/manifest.yml | awk '{print $3}')
+        fi
       # Parallel processing of environment packaging
       - |
         pids=()
@@ -39,3 +45,4 @@ cache:
 artifacts:
   files:
     - "infrastructure/*"
+  discard-paths: no
