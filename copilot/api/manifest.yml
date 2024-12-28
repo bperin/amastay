@@ -34,8 +34,8 @@ exec: true # Enable running commands in your container.
 network:
   connect: true # Enable Service Connect for intra-environment traffic between services.
 
-secrets:
-  SCRAPER_API_KEY: SCRAPER_API_KEY
+# secrets:
+#   SCRAPER_API_KEY: SCRAPER_API_KEY
 
 ## Add variables section at the root level for default values
 variables:
