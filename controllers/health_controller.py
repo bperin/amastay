@@ -12,6 +12,7 @@ class HealthResponse(BaseModel):
     status: str
     message: str
     version: str
+    dockerfile_hash: str
 
 
 @router.get("/check", response_model=HealthResponse, operation_id="check")
@@ -25,4 +26,4 @@ async def health_check():
     except Exception:
         git_hash = "unknown"
 
-    return {"status": "healthy", "message": "Service is running", "version": git_hash}
+    return {"status": "healthy", "message": "Service is running", "version": git_hash, "dockerfile_hash": os.environ.get("DOCKERFILE_HASH", "unknown")}

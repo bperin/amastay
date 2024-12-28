@@ -35,3 +35,8 @@ CMD ["uvicorn", "app:app", "--host", "0.0.0.0", "--port", "80", "--workers", "2"
 ENV PYTHONUNBUFFERED=1
 
 # Don't put sensitive values here - they'll come from the environment
+
+# Calculate Dockerfile hash and set as ENV variable
+COPY Dockerfile .
+RUN sha256sum Dockerfile | cut -d' ' -f1 >dockerfile_hash.txt && export DOCKERFILE_HASH=$(cat dockerfile_hash.txt) && echo "DOCKERFILE_HASH=$DOCKERFILE_HASH" >>/etc/environment
+ENV DOCKERFILE_HASH=${DOCKERFILE_HASH}
