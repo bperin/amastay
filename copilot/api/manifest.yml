@@ -26,13 +26,10 @@ image:
     context: .
   port: 80
 
-cpu: 256 # Number of CPU units for the task.
-memory: 512 # Amount of memory in MiB used by the task.
+cpu: 512 # Number of CPU units for the task.
+memory: 1024 # Amount of memory in MiB used by the task.
 platform: linux/x86_64 # See https://aws.github.io/copilot-cli/docs/manifest/lb-web-service/#platform
-count:
-  range: 1-2
-  cpu_percentage: 85
-  memory_percentage: 85
+
 exec: true # Enable running commands in your container.
 network:
   connect: true # Enable Service Connect for intra-environment traffic between services.
@@ -59,15 +56,15 @@ variables:
 environments:
   production:
     count: 3
-    cpu: 512
-    memory: 1024
+    cpu: 1024
+    memory: 2048
     http:
       alias:
         - name: "api.amastay.ai"
           hosted_zone: Z09051732Y0SGEMJ22C94
 
   staging:
-    count: 3
+    count: 2
     cpu: 512
     memory: 1024
     http:
@@ -76,7 +73,7 @@ environments:
           hosted_zone: Z09051732Y0SGEMJ22C94
 
   develop:
-    count: 3
+    count: 2
     cpu: 512
     memory: 1024
     http:
