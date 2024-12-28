@@ -22,41 +22,36 @@ source:
 
 # This section defines the order of the environments your pipeline will deploy to.
 stages:
-  - # The name of the environment.
-    name: develop
+  - name: develop
     deployments:
       deploy-env:
         template_path: infrastructure/develop.env.yml
         template_config: infrastructure/develop.env.params.json
         stack_name: backend-develop
         release: true
-    # Optional: flag for manual approval action before deployment.
-    # requires_approval: true
-    # Optional: use test commands to validate this stage of your build.
-    # test_commands: [echo 'running tests', make test]
+        post_deploy:
+          commands:
+            - copilot svc deploy --name api --env develop --force
 
-  - # The name of the environment.
-    name: staging
+  - name: staging
     deployments:
       deploy-env:
         template_path: infrastructure/staging.env.yml
         template_config: infrastructure/staging.env.params.json
         stack_name: backend-staging
         release: true
-    # Optional: flag for manual approval action before deployment.
-    # requires_approval: true
-    # Optional: use test commands to validate this stage of your build.
-    # test_commands: [echo 'running tests', make test]
+        post_deploy:
+          commands:
+            - copilot svc deploy --name api --env staging --force
 
-  - # The name of the environment.
-    name: production
+  - name: production
     deployments:
       deploy-env:
         template_path: infrastructure/production.env.yml
         template_config: infrastructure/production.env.params.json
         stack_name: backend-production
         release: true
-    # Optional: flag for manual approval action before deployment.
-    # requires_approval: true
-    # Optional: use test commands to validate this stage of your build.
-    # test_commands: [echo 'running tests', make test]
+        post_deploy:
+          commands:
+            - copilot svc deploy --name api --env production --force
+    requires_approval: true
