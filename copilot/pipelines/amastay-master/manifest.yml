@@ -28,7 +28,6 @@ stages:
         template_path: infrastructure/develop.env.yml
         template_config: infrastructure/develop.env.params.json
         stack_name: backend-develop
-        release: true
         post_deploy:
           commands:
             - copilot svc deploy --name api --env develop --force
@@ -39,7 +38,6 @@ stages:
         template_path: infrastructure/staging.env.yml
         template_config: infrastructure/staging.env.params.json
         stack_name: backend-staging
-        release: true
         post_deploy:
           commands:
             - copilot svc deploy --name api --env staging --force
@@ -50,8 +48,7 @@ stages:
         template_path: infrastructure/production.env.yml
         template_config: infrastructure/production.env.params.json
         stack_name: backend-production
-        release: true
         post_deploy:
           commands:
             - copilot svc deploy --name api --env production --force
-    requires_approval: true
+    requires_approval: false

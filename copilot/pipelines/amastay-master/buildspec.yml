@@ -2,34 +2,40 @@
 version: 0.2
 phases:
   install:
+    runtime-versions:
+      ruby: 3.2
     commands:
-      - echo "cd into $CODEBUILD_SRC_DIR"
       - cd $CODEBUILD_SRC_DIR
-      # Download the copilot linux binary. You can update this version.
-      - wget -q https://ecs-cli-v2-release.s3.amazonaws.com/copilot-linux-v1.34.0
-      - mv ./copilot-linux-v1.34.0 ./copilot-linux
-      - chmod +x ./copilot-linux
+      # Cache the copilot binary using CodeBuild local cache
+      - |
+        if [ ! -f ~/.local/bin/copilot-linux ]; then
+          mkdir -p ~/.local/bin
+          wget -q https://ecs-cli-v2-release.s3.amazonaws.com/copilot-linux-v1.34.0 -O ~/.local/bin/copilot-linux
+          chmod +x ~/.local/bin/copilot-linux
+        fi
+      - export PATH=$PATH:~/.local/bin
   build:
     commands:
       - echo "Run your tests"
-      # - make test
   post_build:
     commands:
-      - ls -l
-      - export COLOR="false"
-      - export CI="true"
-      - pipeline=$(cat $CODEBUILD_SRC_DIR/copilot/pipelines/amastay-master/manifest.yml | ruby -ryaml -rjson -e 'puts JSON.pretty_generate(YAML.load(ARGF))')
-      - stages=$(echo $pipeline | jq -r '.stages[].name')
-      # Generate the cloudformation templates.
-      - >
+      - export COLOR="false" CI="true"
+      # Use jq directly to parse YAML and extract stages - faster than Ruby
+      - stages=$(yq e '.stages[].name' copilot/pipelines/amastay-master/manifest.yml)
+      # Parallel processing of environment packaging
+      - |
+        pids=()
         for env in $stages; do
-          ./copilot-linux env package -n $env --output-dir './infrastructure' --upload-assets --force;
-          if [ $? -ne 0 ]; then
-            echo "Cloudformation stack and config files were not generated. Please check build logs to see if there was a manifest validation error." 1>&2;
-            exit 1;
-          fi
-        done;
-      - ls -lah ./infrastructure
+          copilot-linux env package -n $env --output-dir './infrastructure' --upload-assets --force &
+          pids+=($!)
+        done
+        # Wait for all parallel processes and check their exit status
+        for pid in "${pids[@]}"; do
+          wait $pid || exit 1
+        done
+cache:
+  paths:
+    - ~/.local/bin/**/*
 artifacts:
   files:
     - "infrastructure/*"
