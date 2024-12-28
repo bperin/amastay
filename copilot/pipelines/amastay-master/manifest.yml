@@ -18,7 +18,7 @@ source:
     branch: master
     repository: https://github.com/bperin/amastay
     # Optional: specify the name of an existing CodeStar Connections connection.
-    connection_name: amastay_github_connection
+    connection_name: copilot-bperi-amastay
 
 # This section defines the order of the environments your pipeline will deploy to.
 stages:
