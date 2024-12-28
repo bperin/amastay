@@ -17,3 +17,9 @@ class HealthResponse(BaseModel):
 async def health_check():
     """Health check endpoint that returns the status of the service and a message"""
     return {"status": "healthy", "message": "Service is running"}
+
+
+@router.get("/check2", response_model=HealthResponse, operation_id="check2", status_code=200)
+async def health_check2():
+    """Health check endpoint that returns the status of the service and a message"""
+    return {"status": "healthy", "message": "Service is running"}
