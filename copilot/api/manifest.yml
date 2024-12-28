@@ -13,13 +13,8 @@ http:
   path: "/"
   # You can specify a custom health check path. The default is "/".
   healthcheck:
-    path: "/"
-    success_codes: "200-499"
-    healthy_threshold: 1
-    unhealthy_threshold: 100
-    interval: 300s
-    timeout: 60s
-    grace_period: 600s
+    path: "/api/v1/health/check"
+
   public:
     certificates:
       - arn:aws:acm:us-east-1:422220778159:certificate/d1259492-082d-4ad9-b641-b754caef46b5
@@ -61,16 +56,16 @@ variables:
 
 environments:
   production:
-    count: 2 # Using 2 tasks for high availability in production
-    cpu: 512 # Double CPU for production workloads
-    memory: 1024 # Double memory for production workloads
+    count: 2
+    cpu: 512
+    memory: 1024
     http:
       alias:
-        - name: "production-api.amastay.ai"
+        - name: "api.amastay.ai"
           hosted_zone: Z09051732Y0SGEMJ22C94
-    variables:
-      SYSTEM_PHONE_NUMBER: "+18775217865"
-      FLASK_ENV: "production"
+      public:
+        certificates:
+          - arn:aws:acm:us-east-1:422220778159:certificate/d1259492-082d-4ad9-b641-b754caef46b5
 
   staging:
     count: 1
@@ -78,10 +73,9 @@ environments:
       alias:
         - name: "staging-api.amastay.ai"
           hosted_zone: Z09051732Y0SGEMJ22C94
-    variables:
-      SYSTEM_PHONE_NUMBER: "+18556058275"
-      FLASK_ENV: "production"
-      LOG_LEVEL: debug
+      public:
+        certificates:
+          - arn:aws:acm:us-east-1:422220778159:certificate/d1259492-082d-4ad9-b641-b754caef46b5
 
   develop:
     count: 1
@@ -89,10 +83,9 @@ environments:
       alias:
         - name: "develop-api.amastay.ai"
           hosted_zone: Z09051732Y0SGEMJ22C94
-    variables:
-      SYSTEM_PHONE_NUMBER: "+18556124703"
-      FLASK_ENV: "development"
-      LOG_LEVEL: debug
+      public:
+        certificates:
+          - arn:aws:acm:us-east-1:422220778159:certificate/d1259492-082d-4ad9-b641-b754caef46b5
 
 deployment:
   rolling: recreate
