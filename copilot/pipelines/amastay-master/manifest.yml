@@ -22,33 +22,38 @@ source:
 
 # This section defines the order of the environments your pipeline will deploy to.
 stages:
-  - name: develop
+  - # The name of the environment.
+    name: develop
     deployments:
       deploy-env:
         template_path: infrastructure/develop.env.yml
         template_config: infrastructure/develop.env.params.json
         stack_name: backend-develop
-        post_deploy:
-          commands:
-            - copilot svc deploy --name api --env develop --force
+    # Optional: flag for manual approval action before deployment.
+    # requires_approval: true
+    # Optional: use test commands to validate this stage of your build.
+    # test_commands: [echo 'running tests', make test]
 
-  - name: staging
+  - # The name of the environment.
+    name: staging
     deployments:
       deploy-env:
         template_path: infrastructure/staging.env.yml
         template_config: infrastructure/staging.env.params.json
         stack_name: backend-staging
-        post_deploy:
-          commands:
-            - copilot svc deploy --name api --env staging --force
+    # Optional: flag for manual approval action before deployment.
+    # requires_approval: true
+    # Optional: use test commands to validate this stage of your build.
+    # test_commands: [echo 'running tests', make test]
 
-  - name: production
+  - # The name of the environment.
+    name: production
     deployments:
       deploy-env:
         template_path: infrastructure/production.env.yml
         template_config: infrastructure/production.env.params.json
         stack_name: backend-production
-        post_deploy:
-          commands:
-            - copilot svc deploy --name api --env production --force
-    requires_approval: false
+    # Optional: flag for manual approval action before deployment.
+    # requires_approval: true
+    # Optional: use test commands to validate this stage of your build.
+    # test_commands: [echo 'running tests', make test]

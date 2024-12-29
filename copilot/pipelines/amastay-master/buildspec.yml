@@ -2,47 +2,34 @@
 version: 0.2
 phases:
   install:
-    runtime-versions:
-      ruby: 3.2
     commands:
+      - echo "cd into $CODEBUILD_SRC_DIR"
       - cd $CODEBUILD_SRC_DIR
-      # Install yq
-      - wget https://github.com/mikefarah/yq/releases/latest/download/yq_linux_amd64 -O /usr/local/bin/yq
-      - chmod +x /usr/local/bin/yq
-      # Cache the copilot binary using CodeBuild local cache
-      - |
-        if [ ! -f ~/.local/bin/copilot-linux ]; then
-          mkdir -p ~/.local/bin
-          wget -q https://ecs-cli-v2-release.s3.amazonaws.com/copilot-linux-v1.34.0 -O ~/.local/bin/copilot-linux
-          chmod +x ~/.local/bin/copilot-linux
-        fi
-      - export PATH=$PATH:~/.local/bin
+      # Download the copilot linux binary. You can update this version.
+      - wget -q https://ecs-cli-v2-release.s3.amazonaws.com/copilot-linux-v1.34.0
+      - mv ./copilot-linux-v1.34.0 ./copilot-linux
+      - chmod +x ./copilot-linux
   build:
     commands:
       - echo "Run your tests"
+      # - make test
   post_build:
     commands:
-      - export COLOR="false" CI="true"
-      # Parse YAML and extract stages using grep as fallback if yq fails
-      - |
-        if ! stages=$(yq e '.stages[].name' copilot/pipelines/amastay-master/manifest.yml 2>/dev/null); then
-          stages=$(grep "name:" copilot/pipelines/amastay-master/manifest.yml | awk '{print $3}')
-        fi
-      # Parallel processing of environment packaging
-      - |
-        pids=()
+      - ls -l
+      - export COLOR="false"
+      - export CI="true"
+      - pipeline=$(cat $CODEBUILD_SRC_DIR/copilot/pipelines/amastay-master/manifest.yml | ruby -ryaml -rjson -e 'puts JSON.pretty_generate(YAML.load(ARGF))')
+      - stages=$(echo $pipeline | jq -r '.stages[].name')
+      # Generate the cloudformation templates.
+      - >
         for env in $stages; do
-          copilot-linux env package -n $env --output-dir './infrastructure' --upload-assets --force &
-          pids+=($!)
-        done
-        # Wait for all parallel processes and check their exit status
-        for pid in "${pids[@]}"; do
-          wait $pid || exit 1
-        done
-cache:
-  paths:
-    - ~/.local/bin/**/*
+          ./copilot-linux env package -n $env --output-dir './infrastructure' --upload-assets --force;
+          if [ $? -ne 0 ]; then
+            echo "Cloudformation stack and config files were not generated. Please check build logs to see if there was a manifest validation error." 1>&2;
+            exit 1;
+          fi
+        done;
+      - ls -lah ./infrastructure
 artifacts:
   files:
     - "infrastructure/*"
-  discard-paths: no
