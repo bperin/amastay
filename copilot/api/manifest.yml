@@ -29,11 +29,11 @@ image:
   build:
     dockerfile: Dockerfile
     context: .
-  port: 80
+  port: 5001
 
 cpu: 512 # Number of CPU units for the task.
 memory: 1024 # Amount of memory in MiB used by the task.
-platform: linux/amd64 # See https://aws.github.io/copilot-cli/docs/manifest/lb-web-service/#platform
+platform: linux/arm64 # See https://aws.github.io/copilot-cli/docs/manifest/lb-web-service/#platform
 count:
   range: 1-3
   cpu_percentage: 85
@@ -60,30 +60,31 @@ variables:
   BEDROCK_INFERENCE_ARN: "arn:aws:bedrock:us-east-1:422220778159:inference-profile/us.meta.llama3-2-3b-instruct-v1:0"
   STRIPE_PUBLISHABLE_KEY: "pk_test_51Q8Tmq2NFjqQbZqFWruYcmJ6tpyG1tzeQS6IaHkppKCwyhsE75wUgjfQcoFJfRqmxJ2ML76XRe7MJuqjbOul5Ej400sKE0Np2z"
   STRIPE_SECRET_KEY: "sk_test_51Q8Tmq2NFjqQbZqFoBSnEckrYfUO2w1ytEnQPS8pXSlZ1xtog00l2YRvSEYVNqYGi1S4gRvPlFEypG7flJuqAiO300DhN2QO0x"
+  PORT: 5001
 
 environments:
   production:
     count: 3
-    cpu: 1024
-    memory: 2048
+    cpu: 512
+    memory: 1024
     http:
       alias:
         - name: "api.amastay.ai"
           hosted_zone: Z09051732Y0SGEMJ22C94
 
   staging:
-    count: 3
-    cpu: 1024
-    memory: 2048
+    count: 1
+    cpu: 512
+    memory: 1024
     http:
       alias:
         - name: "staging-api.amastay.ai"
           hosted_zone: Z09051732Y0SGEMJ22C94
 
   develop:
-    count: 3
-    cpu: 1024
-    memory: 2048
+    count: 1
+    cpu: 512
+    memory: 1024
     http:
       alias:
         - name: "develop-api.amastay.ai"
@@ -106,7 +107,10 @@ deployment:
 observability:
   container_health_check:
     command:
-      ["CMD-SHELL", "curl -f http://localhost:80/api/v1/health/check || exit 1"]
+      [
+        "CMD-SHELL",
+        "curl -f http://localhost:5001/api/v1/health/check || exit 1",
+      ]
     interval: 30s
     timeout: 10s
     start_period: 60s

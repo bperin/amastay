@@ -7,6 +7,15 @@
     "tabWidth": 4,
     "overrides": [
         {
+            "files": ["*.Dockerfile", "Dockerfile"],
+            "options": {
+                "tabWidth": 4,
+                "printWidth": 1200,
+                "parser": "docker",
+                "preserveOperatorLineBreak": true
+            }
+        },
+        {
             "files": "*.sol",
             "options": {
                 "tabWidth": 4,
@@ -14,20 +23,14 @@
             }
         },
         {
-            "files": "*.yaml",
-            "options": {
-                "tabWidth": 2,
-                "printWidth": 80,
-                "singleQuote": false
-            }
-        },
-        {
-            "files": "*.yml",
+            "files": ["*.yaml", "*.yml"],
             "options": {
                 "tabWidth": 2,
                 "printWidth": 80,
                 "singleQuote": false
             }
         }
-    ]
+    ],
+    "preserveOperatorLineBreak": true,
+    "operatorLineBreak": "before"
 }

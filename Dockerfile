@@ -12,24 +12,33 @@ ENV PATH="$POETRY_HOME/bin:$PATH"
 # Set the working directory
 WORKDIR /app
 
-# Copy the application
-COPY . .
-
 # Install system dependencies and Poetry
-RUN apt-get update && apt-get install -y curl build-essential && curl -sSL https://install.python-poetry.org | python3 -
+RUN apt-get update && apt-get install -y curl build-essential && \
+    curl -sSL https://install.python-poetry.org | python3 - && \
+    # Create a non-root user
+    groupadd -r appuser && \
+    useradd -r -g appuser appuser && \
+    mkdir -p /app && \
+    chown appuser:appuser /app
 
-# Ensure Poetry installs dependencies globally
-RUN poetry config virtualenvs.create false
+# Copy and install dependencies first (for better caching)
+COPY pyproject.toml poetry.lock ./
+RUN pip install --upgrade pip && \
+    pip install poetry && \
+    poetry config virtualenvs.create false && \
+    poetry install --no-dev --no-interaction
 
-# Generate requirements.txt from poetry and install
-COPY pyproject.toml ./
-RUN pip install --upgrade pip && pip install poetry && poetry config repositories.pypi https://pypi.tuna.tsinghua.edu.cn/simple && poetry install --no-dev --no-interaction
+# Copy the application
+COPY --chown=appuser:appuser . .
 
-# Expose the port
-EXPOSE 80
+# Switch to non-root user
+USER appuser
 
-# Run the application with Uvicorn with proper settings
-CMD ["uvicorn", "app:app", "--host", "0.0.0.0", "--port", "80", "--workers", "2", "--timeout-keep-alive", "75"]
+# Change port to non-privileged
+EXPOSE 5001
+
+# Update command to use the new port
+CMD ["uvicorn", "app:app", "--host", "0.0.0.0", "--port", "5001", "--workers", "2", "--timeout-keep-alive", "75"]
 
 # Only keep necessary environment variables
 ENV PYTHONUNBUFFERED=1

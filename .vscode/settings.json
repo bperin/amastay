@@ -9,7 +9,8 @@
     "400"
   ],
   "[dockerfile]": {
-    "editor.formatOnSave": false
+    "editor.formatOnSave": false,
+    "editor.defaultFormatter": "ms-azuretools.vscode-docker"
   },
   "[dockercompose]": {
     "editor.formatOnSave": false
@@ -23,5 +24,8 @@
   "[yml]": {
     "editor.defaultFormatter": "esbenp.prettier-vscode",
     "editor.formatOnSave": true
-  }
+  },
+  "prettier.documentSelectors": [
+    "**/*.{js,jsx,ts,tsx,vue,html,css,scss,json,md,yaml,yml,Dockerfile}"
+  ]
 }
