@@ -25,4 +25,4 @@ async def health_check2():
 @router.get("/check3", response_model=HealthResponse, operation_id="check3", status_code=200)
 async def health_check3():
     """Third health check endpoint to verify deployment process"""
-    return {"status": "healthy", "message": "Deployment verification endpoint"}
+    return {"status": "healthy", "message": "Deployment verification endpoint!"}
