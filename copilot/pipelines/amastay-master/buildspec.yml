@@ -3,7 +3,7 @@ version: 0.2
 phases:
   install:
     runtime-versions:
-      ruby: 3.2
+      ruby: 3.2.0
       docker: 20
     commands:
       - echo "cd into $CODEBUILD_SRC_DIR"
@@ -21,19 +21,22 @@ phases:
       # Get environment name from pipeline stage
       - env_name=$(echo $CODEBUILD_WEBHOOK_TRIGGER | cut -d '/' -f 2)
       - echo "Deploying to environment $env_name"
+      # Setup multi-architecture builds
+      - docker run --privileged --rm tonistiigi/binfmt --install all
+      - docker buildx create --use --name multiarch-builder
 
   build:
     commands:
       - echo "Building Docker image..."
-      - docker build -t ${APP_NAME}:${env_name} .
-      - docker tag ${APP_NAME}:${env_name} ${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_DEFAULT_REGION}.amazonaws.com/${APP_NAME}:${env_name}
+      # Build and push directly to ECR with platform specification
+      - >
+        docker buildx build --push
+        --platform linux/amd64
+        --tag ${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_DEFAULT_REGION}.amazonaws.com/${APP_NAME}:${env_name}
+        .
 
   post_build:
     commands:
-      # Push Docker image
-      - echo "Pushing Docker image..."
-      - docker push ${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_DEFAULT_REGION}.amazonaws.com/${APP_NAME}:${env_name}
-
       # Generate CloudFormation templates
       - export COLOR="false"
       - export CI="true"
