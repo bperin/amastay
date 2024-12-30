@@ -24,13 +24,13 @@ phases:
       # Setup multi-architecture builds without daemon restart
       - DOCKER_CLI_EXPERIMENTAL=enabled
       - docker run --rm --privileged multiarch/qemu-user-static --reset -p yes
-      - DOCKER_BUILDKIT=1 docker build --platform=linux/amd64 .
+      - DOCKER_BUILDKIT=1 docker build --platform=linux/arm64 .
 
   build:
     commands:
       - echo "Building Docker image..."
       # Build and push using standard Docker commands
-      - docker build --platform=linux/amd64 -t ${APP_NAME}:${env_name} .
+      - docker build --platform=linux/arm64 -t ${APP_NAME}:${env_name} .
       - docker tag ${APP_NAME}:${env_name} ${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_DEFAULT_REGION}.amazonaws.com/${APP_NAME}:${env_name}
       - docker push ${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_DEFAULT_REGION}.amazonaws.com/${APP_NAME}:${env_name}
 
