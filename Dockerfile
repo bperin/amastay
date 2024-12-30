@@ -1,5 +1,7 @@
-# Change to ARM64 architecture
-FROM --platform=linux/arm64 python:3.11-slim
+# syntax=docker/dockerfile:1
+
+# Build stage
+FROM --platform=$BUILDPLATFORM python:3.11-slim
 
 # Set environment variables
 ENV PYTHONUNBUFFERED=1
