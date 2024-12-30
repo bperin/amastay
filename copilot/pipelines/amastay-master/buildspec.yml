@@ -2,34 +2,59 @@
 version: 0.2
 phases:
   install:
+    runtime-versions:
+      ruby: 3.2
+      docker: 20
     commands:
       - echo "cd into $CODEBUILD_SRC_DIR"
       - cd $CODEBUILD_SRC_DIR
-      # Download the copilot linux binary. You can update this version.
+      # Download the copilot linux binary
       - wget -q https://ecs-cli-v2-release.s3.amazonaws.com/copilot-linux-v1.34.0
       - mv ./copilot-linux-v1.34.0 ./copilot-linux
       - chmod +x ./copilot-linux
+
+  pre_build:
+    commands:
+      # Login to ECR
+      - echo Logging in to Amazon ECR...
+      - aws ecr get-login-password --region ${AWS_DEFAULT_REGION} | docker login --username AWS --password-stdin ${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_DEFAULT_REGION}.amazonaws.com
+      # Get environment name from pipeline stage
+      - env_name=$(echo $CODEBUILD_WEBHOOK_TRIGGER | cut -d '/' -f 2)
+      - echo "Deploying to environment $env_name"
+
   build:
     commands:
-      - echo "Run your tests"
-      # - make test
+      - echo "Building Docker image..."
+      - docker build -t ${APP_NAME}:${env_name} .
+      - docker tag ${APP_NAME}:${env_name} ${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_DEFAULT_REGION}.amazonaws.com/${APP_NAME}:${env_name}
+
   post_build:
     commands:
-      - ls -l
+      # Push Docker image
+      - echo "Pushing Docker image..."
+      - docker push ${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_DEFAULT_REGION}.amazonaws.com/${APP_NAME}:${env_name}
+
+      # Generate CloudFormation templates
       - export COLOR="false"
       - export CI="true"
       - pipeline=$(cat $CODEBUILD_SRC_DIR/copilot/pipelines/amastay-master/manifest.yml | ruby -ryaml -rjson -e 'puts JSON.pretty_generate(YAML.load(ARGF))')
       - stages=$(echo $pipeline | jq -r '.stages[].name')
-      # Generate the cloudformation templates.
       - >
         for env in $stages; do
           ./copilot-linux env package -n $env --output-dir './infrastructure' --upload-assets --force;
           if [ $? -ne 0 ]; then
-            echo "Cloudformation stack and config files were not generated. Please check build logs to see if there was a manifest validation error." 1>&2;
+            echo "Cloudformation stack and config files were not generated." 1>&2;
             exit 1;
           fi
         done;
-      - ls -lah ./infrastructure
+
+      # Deploy the service
+      - echo "Deploying service..."
+      - ./copilot-linux svc deploy --name api --env ${env_name}
+
+cache:
+  paths:
+    - /root/.docker
 artifacts:
   files:
     - "infrastructure/*"
