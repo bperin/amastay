@@ -33,7 +33,7 @@ image:
 
 cpu: 512 # Number of CPU units for the task.
 memory: 1024 # Amount of memory in MiB used by the task.
-platform: linux/arm64 # See https://aws.github.io/copilot-cli/docs/manifest/lb-web-service/#platform
+platform: linux/x86_64 # See https://aws.github.io/copilot-cli/docs/manifest/lb-web-service/#platform
 count:
   range: 1-3
   cpu_percentage: 85
