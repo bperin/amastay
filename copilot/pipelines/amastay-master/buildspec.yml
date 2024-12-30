@@ -21,9 +21,13 @@ phases:
       # Get environment name from pipeline stage
       - env_name=$(echo $CODEBUILD_WEBHOOK_TRIGGER | cut -d '/' -f 2)
       - echo "Deploying to environment $env_name"
+      # Setup Docker BuildKit
+      - echo '{"experimental":true, "builder":{"gc":{"enabled":true,"defaultKeepStorage":"20GB"}}}' > /etc/docker/daemon.json
+      - systemctl restart docker || service docker restart
       # Setup multi-architecture builds
-      - docker run --privileged --rm tonistiigi/binfmt --install all
-      - docker buildx create --use --name multiarch-builder
+      - docker run --rm --privileged multiarch/qemu-user-static --reset -p yes
+      - docker buildx rm multiarch-builder || true
+      - docker buildx create --name multiarch-builder --driver docker-container --use
 
   build:
     commands:
