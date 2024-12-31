@@ -62,7 +62,7 @@ class LlamaService:
 # Example usage
 if __name__ == "__main__":
     image_path = "gs://amastay/test.png"
-    user_prompt = "What's in this image?"
+    user_prompt = "What's in this image? Be desriptive for guests who dont know the property"
 
     result = LlamaService.analyze_image(image_path, user_prompt)
     print("Model response:", result)
