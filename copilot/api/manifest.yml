@@ -33,7 +33,7 @@ image:
 
 cpu: 512 # Number of CPU units for the task.
 memory: 1024 # Amount of memory in MiB used by the task.
-platform: linux/x86_64 # See https://aws.github.io/copilot-cli/docs/manifest/lb-web-service/#platform
+platform: linux/arm64 # See https://aws.github.io/copilot-cli/docs/manifest/lb-web-service/#platform
 count:
   range: 1-3
   cpu_percentage: 85
@@ -61,6 +61,9 @@ variables:
   STRIPE_PUBLISHABLE_KEY: "pk_test_51Q8Tmq2NFjqQbZqFWruYcmJ6tpyG1tzeQS6IaHkppKCwyhsE75wUgjfQcoFJfRqmxJ2ML76XRe7MJuqjbOul5Ej400sKE0Np2z"
   STRIPE_SECRET_KEY: "sk_test_51Q8Tmq2NFjqQbZqFoBSnEckrYfUO2w1ytEnQPS8pXSlZ1xtog00l2YRvSEYVNqYGi1S4gRvPlFEypG7flJuqAiO300DhN2QO0x"
   PORT: 5001
+  GOOGLE_ENDPOINT: "us-central1-aiplatform.googleapis.com"
+  GOOGLE_REGION: "us-central1"
+  GOOGLE_PROJECT_ID: 659030398360
 
 environments:
   production:

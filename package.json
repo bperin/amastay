@@ -1,0 +1,8 @@
+{
+    "scripts": {
+        "deploy:dev": "copilot svc deploy --name api --env develop --force",
+        "deploy:staging": "copilot svc deploy --name api --env staging --force",
+        "deploy:prod": "copilot svc deploy --name api --env production --force",
+        "deploy:all": "npm run deploy:dev && npm run deploy:staging && npm run deploy:prod"
+    }
+}

@@ -1,7 +1,5 @@
-# syntax=docker/dockerfile:1
-
 # Build stage
-FROM --platform=$BUILDPLATFORM python:3.11-slim
+FROM --platform=linux/arm64 python:3.11-slim as builder
 
 # Set environment variables
 ENV PYTHONUNBUFFERED=1
