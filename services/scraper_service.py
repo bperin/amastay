@@ -13,6 +13,8 @@ from services.llama_image_service import LlamaImageService
 from services.storage_service import StorageService
 from supabase_utils import supabase_client, supabase_admin_client
 from typing import Optional
+from services.photo_service import PhotoService
+from services.document_service import DocumentService
 
 
 class ScraperService:
@@ -120,6 +122,10 @@ class ScraperService:
         Background task for property scraping.
         """
         try:
+            # Initialize services
+            photo_service = PhotoService()
+            document_service = DocumentService()
+
             llama_image_service = LlamaImageService()
             property_document = PropertyDocument()
             property_document.set_id(property.id)
@@ -162,17 +168,13 @@ class ScraperService:
                             logging.error(f"Failed to insert metadata: {response.error}")
                             return
                         # Upload photos
-                        storage_service = StorageService()
                         for photo_url in data["photos"]:
-                            # Extract unique identifier from URL to use as filename
                             photo_id = uuid.uuid4()
                             destination_path = f"properties/{property.id}/{photo_id}"
 
-                            # save photo to gc
-                            uploaded_url = await storage_service.upload_photo_from_url(bucket_name="amastay_property_photos", photo_url=photo_url, destination_path=destination_path)
+                            uploaded_url = await photo_service.upload_from_url(bucket_name="amastay_property_photos", photo_url=photo_url, destination_path=destination_path)
 
                             if uploaded_url:
-
                                 logging.info(f"Photo uploaded successfully: {uploaded_url}")
 
                                 description = llama_image_service.analyze_image(gcs_uri=f"gs://amastay_property_photos/{destination_path}")
@@ -194,9 +196,9 @@ class ScraperService:
                         # Update property with metadata_id and completed progress
                         supabase_client.table("properties").update({"metadata_id": metadata_id, "metadata_progress": 2}).eq("id", property.id).execute()
 
+                        # Upload property document
                         doc_dict = property_document.to_dict()
-                        # Pass the dictionary in a list since JSONL expects multiple lines
-                        await storage_service.upload_jsonl(bucket_name="amastay_property_data", data_list=[doc_dict], destination_path=f"{property.id}.jsonl")  # Wrap single dict in list
+                        await document_service.upload_jsonl(bucket_name="amastay_property_data", data_list=[doc_dict], destination_path=f"{property.id}.jsonl")
 
                     except Exception as e:
                         logging.error(f"Failed to process metadata: {e}")
