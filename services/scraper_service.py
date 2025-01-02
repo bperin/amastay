@@ -195,8 +195,8 @@ class ScraperService:
                         supabase_client.table("properties").update({"metadata_id": metadata_id, "metadata_progress": 2}).eq("id", property.id).execute()
 
                         doc_dict = property_document.to_dict()
-
-                        storage_service.upload_jsonl(bucket_name="amastay_property_documents", json_data=json.dumps(doc_dict, indent=2), destination_path=f"/{property.id}.jsonl")
+                        # Pass the dictionary in a list since JSONL expects multiple lines
+                        await storage_service.upload_jsonl(bucket_name="amastay_property_data", data_list=[doc_dict], destination_path=f"{property.id}.jsonl")  # Wrap single dict in list
 
                     except Exception as e:
                         logging.error(f"Failed to process metadata: {e}")

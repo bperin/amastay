@@ -150,3 +150,26 @@ class StorageService:
         except Exception as e:
             logging.error(f"Error uploading photo from URL {photo_url}: {e}")
             raise
+
+    async def upload_single_jsonl(self, bucket_name: str, data: Dict[str, Any], destination_path: str) -> Optional[str]:
+        """
+        Upload a single dictionary as JSONL to Google Cloud Storage.
+
+        Args:
+            bucket_name: Name of the GCS bucket
+            data: Dictionary to be stored as JSONL
+            destination_path: Path where file will be stored in bucket
+
+        Returns:
+            str: Public URL of uploaded file if successful, None if failed
+        """
+        try:
+            with tempfile.NamedTemporaryFile(mode="w", delete=False) as temp_file:
+                temp_file.write(json.dumps(data) + "\n")
+                temp_path = temp_file.name
+
+            return await self.upload_file(bucket_name=bucket_name, file_path=temp_path, destination_path=destination_path, content_type="application/x-jsonlines")
+
+        finally:
+            if "temp_path" in locals() and os.path.exists(temp_path):
+                os.remove(temp_path)
