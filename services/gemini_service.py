@@ -43,28 +43,29 @@ class GeminiService:
                 return None
 
             vertexai.init(project=cls.PROJECT_ID, location=cls.LOCATION, credentials=credentials)
-            return GenerativeModel("gemini-2.0-flash-exp")
+            return GenerativeModel("gemini-1.5-flash-001")
         except Exception as e:
             print(f"Error creating model: {str(e)}")
             return None
 
     @classmethod
     def get_vector_tool(cls, vector_store_id: str) -> Tool:
-        """
-        Get a vector store tool for the Vertex AI Vector Store API
-        """
-        datastore_path = f"projects/{cls.PROJECT_ID}/locations/us/collections/default_collection/dataStores/{vector_store_id}"
+        datastore_path = f"projects/{cls.PROJECT_ID}/locations/{cls.LOCATION}/collections/default_collection/dataStores/{vector_store_id}"
         print(f"Using datastore path: {datastore_path}")  # Debug print
 
-        return Tool.from_retrieval(
-            grounding.Retrieval(
-                grounding.VertexAISearch(
-                    datastore=vector_store_id,
-                    project=cls.PROJECT_ID,
-                    location="us",
+        try:
+            return Tool.from_retrieval(
+                grounding.Retrieval(
+                    grounding.VertexAISearch(
+                        datastore=vector_store_id,
+                        project=cls.PROJECT_ID,
+                        location="us",
+                    )
                 )
             )
-        )
+        except Exception as e:
+            print(f"Error creating vector tool: {str(e)}")
+            return None
 
     @classmethod
     def prompt(cls, vector_store_id: str, prompt: str) -> str:
@@ -74,6 +75,9 @@ class GeminiService:
         Args:
             vector_store_id: ID of the vector store to use
             prompt: The text prompt/question for the model
+
+        Returns:
+            str: Model response or error message
         """
         try:
             model = cls.get_model()
@@ -82,7 +86,19 @@ class GeminiService:
 
             tool = cls.get_vector_tool(vector_store_id)
 
-            response = model.generate_content([prompt], tools=[tool])
+            # Add safety parameters and temperature
+            response = model.generate_content(
+                prompt,
+                tools=[tool],
+                generation_config={
+                    "temperature": 0.7,
+                    "top_p": 0.8,
+                    "top_k": 40,
+                },
+            )
+
+            if response.candidates[0].finish_reason == "SAFETY":
+                return "Response was filtered due to safety concerns"
 
             return response.text
 
@@ -93,8 +109,8 @@ class GeminiService:
 
 # Example usage
 if __name__ == "__main__":
-    user_prompt = "does this place have a pool?"
-    vector_store_id = "property-test_1735687819569"
+    user_prompt = "does this place have a pool, use the vector store to answer the question"
+    vector_store_id = "amastay-ds_1735822045878"
 
     result = GeminiService.prompt(vector_store_id, user_prompt)
     print("Model response:", result)

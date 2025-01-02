@@ -98,8 +98,8 @@ class LlamaService:
 # Example usage
 if __name__ == "__main__":
 
-    prompt = "Does this place have a pool"
-    vector_store_id = "property-test_1735687819569"
+    prompt = "Does this place have a pool, use the vector store to answer the question"
+    vector_store_id = "amastay-ds_1735822045878"
 
     result = LlamaService.prompt(vector_store_id, prompt)
     print("Model response:", result)
