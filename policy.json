@@ -1,0 +1,81 @@
+{
+  "bindings": [
+    {
+      "members": [
+        "serviceAccount:vertexserviceaccount@amastay.iam.gserviceaccount.com"
+      ],
+      "role": "roles/aiplatform.admin"
+    },
+    {
+      "members": [
+        "serviceAccount:service-1081970236291@gcp-sa-vertex-rag.iam.gserviceaccount.com"
+      ],
+      "role": "roles/aiplatform.ragServiceAgent"
+    },
+    {
+      "members": [
+        "serviceAccount:service-1081970236291@gcp-sa-aiplatform.iam.gserviceaccount.com",
+        "serviceAccount:vertexserviceaccount@amastay.iam.gserviceaccount.com"
+      ],
+      "role": "roles/aiplatform.serviceAgent"
+    },
+    {
+      "members": [
+        "serviceAccount:vertexserviceaccount@amastay.iam.gserviceaccount.com"
+      ],
+      "role": "roles/aiplatform.user"
+    },
+    {
+      "members": [
+        "serviceAccount:service-1081970236291@compute-system.iam.gserviceaccount.com"
+      ],
+      "role": "roles/compute.serviceAgent"
+    },
+    {
+      "members": [
+        "serviceAccount:service-1081970236291@dataflow-service-producer-prod.iam.gserviceaccount.com"
+      ],
+      "role": "roles/dataflow.serviceAgent"
+    },
+    {
+      "members": [
+        "serviceAccount:service-1081970236291@gcp-sa-dataform.iam.gserviceaccount.com"
+      ],
+      "role": "roles/dataform.serviceAgent"
+    },
+    {
+      "members": [
+        "serviceAccount:service-1081970236291@gcp-sa-discoveryengine.iam.gserviceaccount.com"
+      ],
+      "role": "roles/discoveryengine.serviceAgent"
+    },
+    {
+      "members": [
+        "serviceAccount:vertexserviceaccount@amastay.iam.gserviceaccount.com"
+      ],
+      "role": "roles/discoveryengine.viewer"
+    },
+    {
+      "members": [
+        "serviceAccount:1081970236291@cloudservices.gserviceaccount.com"
+      ],
+      "role": "roles/editor"
+    },
+    {
+      "members": [
+        "serviceAccount:service-1081970236291@gcp-sa-notebooks.iam.gserviceaccount.com"
+      ],
+      "role": "roles/notebooks.serviceAgent"
+    },
+    {
+      "members": [
+        "user:brian@amastay.ai",
+        "user:chad@amastay.ai",
+        "user:zach@amastay.ai"
+      ],
+      "role": "roles/owner"
+    }
+  ],
+  "etag": "BwYqmqxg9rQ=",
+  "version": 1
+}

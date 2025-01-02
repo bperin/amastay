@@ -14,10 +14,12 @@ class Property(BaseModel):
     property_url: str = ""
     created_at: str = ""
     updated_at: str = ""
+    metadata_progress: int = 0
 
     # Foreign key references
     owner_id: str = ""
     manager_id: Optional[str] = ""
+    metadata_id: Optional[str] = ""
 
     # Relationships (using forward refs)
     owner: Optional["Owner"] = None

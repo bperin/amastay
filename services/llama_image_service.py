@@ -1,11 +1,11 @@
 import os
-import json
+from typing import Optional
 from openai import OpenAI
 from google.oauth2 import service_account
 from google.auth.transport.requests import Request
 
 
-class LlamaService:
+class LlamaImageService:
     """
     A service for invoking the Llama 3.2 90B Vision Instruct model
     on Vertex AI using the OpenAI-style client.
@@ -34,7 +34,7 @@ class LlamaService:
             return None
 
     @classmethod
-    def analyze_image(cls, image_gcs_path: str, prompt: str) -> str:
+    def analyze_image(cls, gcs_uri: str, prompt: Optional[str] = None) -> str:
         """
         Analyze an image using the Llama Vision model.
 
@@ -50,7 +50,7 @@ class LlamaService:
             if not client:
                 return "Failed to initialize client"
 
-            response = client.chat.completions.create(model="meta/llama-3.2-90b-vision-instruct-maas", messages=[{"role": "user", "content": [{"type": "image_url", "image_url": {"url": image_gcs_path}}, {"type": "text", "text": prompt}]}], max_tokens=4000, temperature=0.4, top_p=0.95)
+            response = client.chat.completions.create(model="meta/llama-3.2-90b-vision-instruct-maas", messages=[{"role": "user", "content": [{"image_url": {"url": gcs_uri}, "type": "image_url"}, {"text": "What s in this image? Be very specific as to what you see", "type": "text"}]}], max_tokens=4000, temperature=0.2, top_p=0.95)
 
             return response.choices[0].message.content
 
@@ -62,7 +62,7 @@ class LlamaService:
 # Example usage
 if __name__ == "__main__":
     image_path = "gs://amastay/test.png"
-    user_prompt = "What's in this image? Be desriptive for guests who dont know the property"
+    user_prompt = "Tell me what you know about this property"
 
     result = LlamaService.analyze_image(image_path, user_prompt)
     print("Model response:", result)

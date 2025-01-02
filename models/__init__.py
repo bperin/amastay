@@ -8,6 +8,9 @@ from .booking_guest_model import BookingGuest, CreateBookingGuest, UpdateBooking
 from .message_model import Message, CreateMessage, UpdateMessage
 from .document_model import Document, CreateDocument, UpdateDocument
 from .property_information_model import PropertyInformation, CreatePropertyInformation, UpdatePropertyInformation
+from .property_metadata_model import PropertyMetadata, ScrapeAsyncResponse
+from .scraped_response import ScrapedResponse
+from .property_document import PropertyDocument
 
 # Export all models
 __all__ = [
@@ -38,4 +41,8 @@ __all__ = [
     "PropertyInformation",
     "CreatePropertyInformation",
     "UpdatePropertyInformation",
+    "PropertyMetadata",
+    "ScrapedResponse",
+    "ScrapeAsyncResponse",
+    "PropertyDocument",
 ]

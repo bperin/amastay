@@ -6,8 +6,7 @@ import logging
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.openapi.utils import get_openapi
-from services.bedrock_service import BedrockService
-from models.property_model import Property
+from services.storage_service import StorageService
 
 from controllers.auth_controller import router as auth_router
 
@@ -102,14 +101,14 @@ async def startup_event():
         app.include_router(property_information_router, prefix="/api/v1/property_information")
 
         try:
-            # Initialize optional services after basic routing is set up
-            if asyncio.iscoroutinefunction(BedrockService.initialize):
-                await BedrockService.initialize()
+            # Initialize storage service after basic routing is set up
+            if asyncio.iscoroutinefunction(StorageService.initialize):
+                await StorageService.initialize()
             else:
-                BedrockService.initialize()
-            logging.info("Bedrock service initialized successfully")
+                StorageService.initialize()
+            logging.info("Storage service initialized successfully")
         except Exception as e:
-            logging.error(f"Error during Bedrock service initialization: {str(e)}")
+            logging.error(f"Error during Storage service initialization: {str(e)}")
             logging.error("Continuing with partial initialization")
 
     except Exception as e:

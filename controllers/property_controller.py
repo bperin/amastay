@@ -1,6 +1,6 @@
 from typing import List, Optional
 from uuid import UUID
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, BackgroundTasks
 from pydantic import BaseModel, HttpUrl
 
 # Group model imports together
@@ -8,6 +8,7 @@ from models.booking_model import Booking
 from models.property_model import CreateProperty, Property, UpdateProperty
 from models.document_model import Document
 from models.property_information_model import PropertyInformation
+from models.property_metadata_model import ScrapeAsyncResponse
 
 # Group service imports together
 from services.property_service import PropertyService
@@ -27,8 +28,6 @@ async def create_property(create_property_input: CreateProperty, current_user: d
     try:
         # Create property with named parameters
         new_property = await PropertyService.create_property(owner_id=current_user["id"], create_property_request=create_property_input)
-        await ScraperService.scrape_property(new_property)  # Scrape reviews after property creation
-
         return new_property
     except ValueError as ve:
         logging.error(f"Validation error in create_property: {ve}")
@@ -36,6 +35,23 @@ async def create_property(create_property_input: CreateProperty, current_user: d
     except Exception as e:
         logging.error(f"Error in create_property: {e}")
         raise HTTPException(status_code=500, detail="An unexpected error occurred")
+
+
+@router.post("/{property_id}/scrape", status_code=202, response_model=ScrapeAsyncResponse, operation_id="scrape_property")
+async def scrape_property(property_id: str, background_tasks: BackgroundTasks, current_user: dict = Depends(get_current_user)):
+    """Initiates property scraping in the background"""
+    try:
+        property = PropertyService.get_property(property_id)
+        if not property:
+            raise HTTPException(status_code=404, detail="Property not found")
+
+        # Add scraping task to background tasks
+        background_tasks.add_task(ScraperService.scrape_property_background, property)
+
+        return ScrapeAsyncResponse(message="Property scraping initiated this may take a few minutes", property_id=property_id, status="processing")
+    except Exception as e:
+        logging.error(f"Error in scrape_property: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
 
 
 @router.patch("/update", response_model=Property, operation_id="update_property")
