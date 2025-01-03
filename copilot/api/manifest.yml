@@ -65,7 +65,7 @@ variables:
   GOOGLE_REGION: "us-central1"
   GOOGLE_PROJECT_ID: 659030398360
 
-  SCAPER_BASE_URL: "http://localhost:5002"
+  SCAPER_BASE_URL: "https://scraper.amastay.ai"
   SCAPER_AUTH_HEADER: "WKkXEvIK2qyFMT0yAA9kqoStleFBEWvK"
 
 environments:
