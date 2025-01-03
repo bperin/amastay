@@ -15,7 +15,6 @@ class PropertyDocument:
         self._reviews = []
         self._photos = []
         self._amenities = []
-        self._content = None  # Added to match set_content method
 
     def set_id(self, doc_id):
         """Set the unique ID for this document."""
@@ -77,6 +76,59 @@ class PropertyDocument:
     def to_dict(self):
         """
         Convert the final document into a dictionary,
-        suitable for JSON serialization (e.g., for JSONL).
+        maintaining the order of fields as they are added in the scraper.
         """
-        return {"id": self._id, "name": self._name, "latitude": self._latitude, "longitude": self._longitude, "address": self._address, "content": self._content, "property_information": self._property_information, "reviews": self._reviews, "photos": self._photos, "amenities": self._amenities}
+        # Order matches the sequence of operations in scraper_service.py
+        return {
+            "id": self._id,
+            "name": self._name,
+            "latitude": self._latitude,
+            "longitude": self._longitude,
+            "address": self._address,
+            "property_information": self._property_information,
+            "reviews": self._reviews,
+            "amenities": self._amenities,
+            "photos": self._photos,
+        }
+
+    def to_text(self) -> str:
+        """
+        Convert the document into a human-readable text format.
+        """
+        sections = []
+
+        # Property Header
+        sections.append(f"{self._name}")
+        sections.append("=" * len(self._name))
+        sections.append(f"\nLocation: {self._address}")
+        sections.append(f"Coordinates: {self._latitude}, {self._longitude}")
+
+        # Property Information
+        if self._property_information:
+            sections.append("\nProperty Description")
+            sections.append("-" * 19)
+            sections.append(f"{self._property_information}\n")
+
+        # Amenities
+        if self._amenities:
+            sections.append("Amenities")
+            sections.append("-" * 9)
+            sections.append("\n".join(f"• {amenity}" for amenity in self._amenities))
+            sections.append("")
+
+        # Reviews
+        if self._reviews:
+            sections.append("Guest Reviews")
+            sections.append("-" * 12)
+            sections.append("\n\n".join(f'"{review}"' for review in self._reviews))
+            sections.append("")
+
+        # Photos
+        if self._photos:
+            sections.append("Photos")
+            sections.append("-" * 6)
+            for photo in self._photos:
+                if "description" in photo:
+                    sections.append(f"• {photo['description']}")
+
+        return "\n".join(sections)

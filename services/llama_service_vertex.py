@@ -85,8 +85,8 @@ class LlamaService:
                 prompt,
                 tools=[tool],
                 generation_config={
-                    "temperature": 0.4,
-                    "top_p": 0.95,
+                    "temperature": 0.2,
+                    "top_p": 0.2,
                 },
             )
 
@@ -220,8 +220,8 @@ class LlamaService:
 # Example usage
 if __name__ == "__main__":
 
-    prompt = "nwhere is the stove can you tell me what model it is"
-    vector_store_id = "amastay-ds_1735822045878"
+    user_prompt = "tell me about the property"
+    vector_store_id = "amastay-ds-property-text_1735943367196"
 
-    result = LlamaService.prompt_with_booking("36210feb-6a59-46d3-9d5a-c545855e5427", prompt)
+    result = LlamaService.prompt_with_booking("36210feb-6a59-46d3-9d5a-c545855e5427", user_prompt)
     print("Model response:", result)

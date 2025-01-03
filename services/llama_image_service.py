@@ -50,7 +50,7 @@ class LlamaImageService:
             if not client:
                 return "Failed to initialize client"
 
-            response = client.chat.completions.create(model="meta/llama-3.2-90b-vision-instruct-maas", messages=[{"role": "user", "content": [{"image_url": {"url": gcs_uri}, "type": "image_url"}, {"text": "What s in this image? Be very specific as to what you see", "type": "text"}]}], max_tokens=4000, temperature=0.2, top_p=0.95)
+            response = client.chat.completions.create(model="meta/llama-3.2-90b-vision-instruct-maas", messages=[{"role": "user", "content": [{"image_url": {"url": gcs_uri}, "type": "image_url"}, {"text": "What s in this image? Be very specific as to what you see for property description", "type": "text"}]}], max_tokens=4000, temperature=0.2, top_p=0.95)
 
             return response.choices[0].message.content
 
