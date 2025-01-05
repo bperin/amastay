@@ -90,7 +90,7 @@ class GeminiService:
             response = model.generate_content(
                 prompt,
                 tools=[tool],
-                generation_config={"temperature": 0.2, "top_p": 0.2},
+                generation_config={"max_output_tokens": 400, "temperature": 0.2, "top_p": 0.2},
             )
 
             if response.candidates[0].finish_reason == "SAFETY":
@@ -105,7 +105,7 @@ class GeminiService:
 
 # Example usage
 if __name__ == "__main__":
-    user_prompt = "tell me about the property"
+    user_prompt = "where can i park my car"
     vector_store_id = "amastay-ds-property-text_1735943367196"
 
     result = GeminiService.prompt(vector_store_id, user_prompt)

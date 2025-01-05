@@ -74,7 +74,7 @@ class ScraperService:
                         # Upload photos
                         for photo_url in data["photos"]:
                             photo_id = uuid.uuid4()
-                            destination_path = f"properties/{property.id}/{photo_id}"
+                            destination_path = f"properties/{property.id}/{photo_id}.jpg"
 
                             uploaded_url = await photo_service.upload_from_url(bucket_name="amastay_property_photos", photo_url=photo_url, destination_path=destination_path)
 

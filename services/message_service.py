@@ -1,8 +1,10 @@
 from uuid import UUID
+from models.hf_message_model import HfMessage
 from supabase_utils import supabase_client
 from models.message_model import Message
 from typing import Optional
 from datetime import datetime
+import json
 
 
 class MessageService:
@@ -37,12 +39,14 @@ class MessageService:
         return None
 
     @staticmethod
-    def get_messages_by_booking(booking_id: str, limit: int = 30) -> Optional[list[Message]]:
-        response = supabase_client.from_("messages").select("*").eq("booking_id", booking_id).order("created_at", desc=False).limit(limit).execute()
+    def get_messages_by_booking(booking_id: str, limit: int = 30) -> Optional[list[Message]] | None:
+        try:
+            response = supabase_client.from_("messages").select("*").eq("booking_id", booking_id).order("created_at", desc=False).limit(limit).execute()
+        except Exception as e:
+            print(f"Error getting messages by booking: {e}")
+            return []
 
-        if response.data:
-            return [Message(**msg) for msg in response.data]
-        return None
+        return [Message(**msg) for msg in response.data] if response.data else []
 
     @staticmethod
     def get_message_by_sms_id(sms_id: str) -> Optional[Message]:
@@ -67,3 +71,20 @@ class MessageService:
         )
 
         return response.status_code == 200
+
+    @staticmethod
+    def get_messages_vertex_format(booking_id: str, limit: int = 100) -> str:
+        """
+        Get messages for a booking and format them for Vertex AI LLM input.
+        Returns JSON string in format required by Vertex AI
+        """
+        messages = MessageService.get_messages_by_booking(booking_id, limit)
+
+        # Convert messages to Vertex AI format
+        formatted_messages = []
+        for msg in messages:
+            hf_message = HfMessage.from_message(msg)
+            formatted_messages.append({"role": hf_message.role, "content": [{"text": content.text, "type": content.type} for content in hf_message.content]})
+
+        content = [{"messages": formatted_messages}]
+        return json.dumps(content)

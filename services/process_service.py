@@ -6,15 +6,15 @@ import requests
 
 from models.document_model import Document
 from phone_utils import PhoneUtils
+from services import message_service
 from services.booking_service import BookingService
+from services.llama_service_vertex import LlamaService
 from services.message_service import MessageService
 from services.pinpoint_service import PinpointService
 from services.documents_service import DocumentsService
 from services.property_information_service import PropertyInformationService
 from services.property_service import PropertyService
-from services.bedrock_service import BedrockService
 from services.guest_service import GuestService
-from services.model_params_service import get_active_model_param
 
 logger = logging.getLogger(__name__)
 
@@ -92,20 +92,27 @@ def handle_incoming_sms(message_id: str, origination_number: str, message_body: 
         property_information = PropertyInformationService.get_property_information_by_property_id(property.id)
         property_documents = DocumentsService.get_documents_by_property_id(property.id)
         document_text = process_property_documents(property_documents, property.id)
-        # Query AI model
-        logger.info("Querying bedrock model...")
-        ai_response = BedrockService.query_model(booking=booking, property=property, guest=guest, prompt=message_body, message_id=message_id, document_text=document_text)
 
-        logger.info(f"AI Response received: {ai_response[:100]}...")
+        # add user message to DB
+        message = MessageService.add_message(booking_id=booking.id, sender_id=guest.id, sender_type=0, content=message_body)  # user type
+
+        # Query AI model
+        logger.info("Prompting Llama model...")
+        vector_store_id = "amastay-ds-property-text_1735943367196"
+        result = LlamaService.prompt(vector_store_id, booking.id, prompt=message_body)
+
+        logger.info(f"AI Response received: {result[:100]}...")
+
+        MessageService.add_message(booking_id=booking.id, sender_id=None, sender_type=1, content=result)
 
         # Send response in chunks if needed
         if send_message:
             logger.info("Sending SMS response...")
-            chunks = split_message_into_chunks(ai_response)
+            chunks = split_message_into_chunks(result)
             for chunk in chunks:
                 send_sms_message(phone, chunk, send_message)
 
-        return ai_response
+        return result
 
     except Exception as e:
         handle_error(e, message_id, phone, message_body, send_message)

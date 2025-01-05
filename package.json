@@ -1,8 +1,12 @@
 {
     "scripts": {
+        "run":"uvicorn app:app --reload --host 0.0.0.0 --port 5001",
         "deploy:dev": "copilot svc deploy --name api --env develop --force",
         "deploy:staging": "copilot svc deploy --name api --env staging --force",
         "deploy:prod": "copilot svc deploy --name api --env production --force",
-        "deploy:all": "npm run deploy:dev && npm run deploy:staging && npm run deploy:prod"
+        "deploy:all": "npm run deploy:dev && npm run deploy:staging && npm run deploy:prod",
+        "clean:python": "find . -type d -name \"__pycache__\" -exec rm -r {} + && find . -type f -name \"*.pyc\" -delete",
+        "clean:pip": "pip cache purge",
+        "clean": "npm run clean:python && npm run clean:pip"
     }
 }

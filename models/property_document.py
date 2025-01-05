@@ -98,10 +98,12 @@ class PropertyDocument:
         sections = []
 
         # Property Header
-        sections.append(f"{self._name}")
-        sections.append("=" * len(self._name))
-        sections.append(f"\nLocation: {self._address}")
-        sections.append(f"Coordinates: {self._latitude}, {self._longitude}")
+        sections.append(f"Property ID: {self._id}")
+        sections.append(f"\nProperty Name: {self._name}")
+        sections.append(f"\nFull Address: {self._address}")
+        sections.append(f"\nCoordinates: {self._latitude}, {self._longitude}")
+        sections.append(f"\nLatitude: {self._latitude}")
+        sections.append(f"\nLongitude: {self._longitude}")
 
         # Property Information
         if self._property_information:
@@ -113,7 +115,7 @@ class PropertyDocument:
         if self._amenities:
             sections.append("Amenities")
             sections.append("-" * 9)
-            sections.append("\n".join(f"• {amenity}" for amenity in self._amenities))
+            sections.append("\n".join(f"{amenity}" for amenity in self._amenities))
             sections.append("")
 
         # Reviews
@@ -128,7 +130,7 @@ class PropertyDocument:
             sections.append("Photos")
             sections.append("-" * 6)
             for photo in self._photos:
-                if "description" in photo:
-                    sections.append(f"• {photo['description']}")
+                if "description" in photo and "gs_uri" in photo:
+                    sections.append(f"• {photo['description']}\nGS URI: {photo['gs_uri']}")
 
         return "\n".join(sections)

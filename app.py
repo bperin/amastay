@@ -100,17 +100,6 @@ async def startup_event():
         app.include_router(admin_router, prefix="/api/v1/admin")
         app.include_router(property_information_router, prefix="/api/v1/property_information")
 
-        try:
-            # Initialize storage service after basic routing is set up
-            if asyncio.iscoroutinefunction(StorageService.initialize):
-                await StorageService.initialize()
-            else:
-                StorageService.initialize()
-            logging.info("Storage service initialized successfully")
-        except Exception as e:
-            logging.error(f"Error during Storage service initialization: {str(e)}")
-            logging.error("Continuing with partial initialization")
-
     except Exception as e:
         # Log error but continue startup
         logging.error(f"Error during startup: {str(e)}")
