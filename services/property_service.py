@@ -2,6 +2,9 @@ import logging
 from uuid import UUID
 from geopy.geocoders import Nominatim
 from geopy.exc import GeocoderTimedOut, GeocoderServiceError
+from models.manager_model import Manager
+from models.owner_model import Owner
+from models.property_photo_model import PropertyPhoto
 from supabase_utils import supabase_client
 from models.property_model import CreateProperty, Property
 from typing import List, Optional, Tuple
@@ -157,7 +160,7 @@ class PropertyService:
             if existing_property.owner_id != user_id:
                 raise Exception("Unauthorized: You do not own this property")
 
-            response = supabase_client.table("properties").delete().eq("id", str(property_id)).execute()
+            response = supabase_client.table("properties").delete().eq("id", property_id).execute()
             if not response.data:
                 logging.error(f"Failed to delete property {property_id}")
                 raise Exception(f"Failed to delete property {property_id}")
@@ -170,7 +173,7 @@ class PropertyService:
     @staticmethod
     def list_properties(owner_id: str) -> List[Property]:
         try:
-            query = supabase_client.from_("properties").select("*")
+            query = supabase_client.from_("properties").select("*").order("created_at", desc=True)
             if owner_id:
                 query = query.eq("owner_id", owner_id)
 
@@ -213,3 +216,75 @@ class PropertyService:
         except Exception as e:
             logging.error(f"Error assigning manager {manager_id} to property {property_id}: {e}")
             raise
+
+    @staticmethod
+    def get_property_details(property_id: str) -> Optional[Property]:
+        """
+        Get property details including owner and manager relationships.
+
+        Args:
+            property_id: UUID of the property
+
+        Returns:
+            Property object with owner and manager relationships populated
+        """
+        try:
+            response = (
+                supabase_client.from_("properties")
+                .select(
+                    """
+                    *,
+                    owner:owners(*),
+                    manager:managers(*)
+                """
+                )
+                .eq("id", property_id)
+                .single()
+                .execute()
+            )
+
+            if not response.data:
+                logging.error(f"No property found with id: {property_id}")
+                return None
+
+            # Convert to Property model and include relationships
+            property_data = response.data
+
+            # Create base property object
+            property = Property(**{k: v for k, v in property_data.items() if k not in ["owner", "manager"]})
+
+            # Add relationships if they exist
+            if "owner" in property_data and property_data["owner"]:
+                property.owner = Owner(**property_data["owner"])
+
+            if "manager" in property_data and property_data["manager"]:
+                property.manager = Manager(**property_data["manager"])
+
+            return property
+
+        except Exception as e:
+            logging.error(f"Exception in get_property_details: {e}")
+            raise e
+
+    @staticmethod
+    def get_property_photos(property_id: str) -> list[PropertyPhoto]:
+        """
+        Get all photos for a property.
+
+        Args:
+            property_id: UUID of the property
+
+        Returns:
+            List of PropertyPhoto objects
+        """
+        try:
+            response = supabase_client.from_("property_photos").select("*").eq("property_id", property_id).order("created_at", desc=True).execute()
+
+            if not response.data:
+                return []
+
+            return [PropertyPhoto(**photo) for photo in response.data]
+
+        except Exception as e:
+            logging.error(f"Exception in get_property_photos: {property_id}: {e}")
+            raise e

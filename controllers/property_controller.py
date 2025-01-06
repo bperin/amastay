@@ -11,6 +11,7 @@ from models.property_information_model import PropertyInformation
 from models.property_metadata_model import ScrapeAsyncResponse
 
 # Group service imports together
+from models.property_photo_model import PropertyPhoto
 from services.property_service import PropertyService
 from services.booking_service import BookingService
 from services.scraper_service import ScraperService
@@ -80,7 +81,7 @@ async def admin_update_property(data: UpdateProperty, current_user: dict = Depen
 async def delete_property(property_id: str, current_user: dict = Depends(get_current_user)):
     """Deletes a property"""
     try:
-        success = await PropertyService.delete_property(property_id, current_user["id"])
+        success = PropertyService.delete_property(property_id, current_user["id"])
         if success:
             return {"message": "Property deleted successfully"}
         raise HTTPException(status_code=400, detail="Failed to delete property")
@@ -120,7 +121,39 @@ async def get_property_bookings(property_id: str, current_user: dict = Depends(g
     """Retrieves all bookings for a specific property"""
     try:
         bookings = BookingService.get_bookings_by_property_id(property_id)
-        return bookings
+        if len(bookings) == 0:
+            return []
+        return [booking.model_dump() for booking in bookings]
     except Exception as e:
         logging.error(f"Error in get_property_bookings: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.get("/details/{property_id}", response_model=Property, operation_id="get_property_details")
+async def get_property_details(property_id: str, current_user: dict = Depends(get_current_user)):
+    """
+    Gets property details including owner and manager information
+    """
+    try:
+        property = PropertyService.get_property_details(property_id)
+        if not property:
+            raise HTTPException(status_code=404, detail="Property not found")
+        return property.model_dump()
+    except Exception as e:
+        logging.error(f"Error in get_property_details: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.get("/photos/{property_id}", response_model=list[PropertyPhoto], operation_id="get_property_photos")
+async def get_property_photos(property_id: str, current_user: dict = Depends(get_current_user)):
+    """
+    Gets all photos for a property
+    """
+    try:
+        photos = PropertyService.get_property_photos(property_id)
+        if len(photos) == 0:
+            return []
+        return [photo.model_dump() for photo in photos]
+    except Exception as e:
+        logging.error(f"Error in get_property_photos: {e}")
         raise HTTPException(status_code=500, detail=str(e))
