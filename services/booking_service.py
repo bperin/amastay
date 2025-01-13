@@ -5,7 +5,7 @@ from typing import List, Optional, Dict, Any
 from datetime import datetime
 
 # Models
-from models.booking_model import Booking, CreateBooking, UpdateBooking
+from models.booking_model import Booking, CreateBooking, UpdateBooking, Guest
 from models.guest_model import Guest
 from models.booking_guest_model import BookingGuest
 from models.property_model import Property
@@ -49,54 +49,33 @@ class BookingService:
         return Booking(**booking_response.data["bookings"])
 
     @staticmethod
-    def create_booking(property_id: str, check_in: str, check_out: str, notes: Optional[str] = None, guests: Optional[List[Dict[str, str]]] = None) -> Booking:
-        """
-        Creates a new booking in the Supabase 'bookings' table.
-
-        Args:
-            property_id: ID of the property being booked
-            check_in: Check-in timestamp in Unix epoch format
-            check_out: Check-out timestamp in Unix epoch format
-            notes: Optional booking notes
-
-        Returns:
-            Booking: The created booking data returned by Supabase, cast to a Booking object.
-        """
+    def create_booking(booking_data: CreateBooking) -> Optional[Booking]:
         try:
-            property_obj = PropertyService.get_property(property_id)
-            check_in_dt = datetime.fromisoformat(check_in)
-            check_out_dt = datetime.fromisoformat(check_out)
-            booking_data = {"property_id": property_id, "check_in": check_in_dt.isoformat(), "check_out": check_out_dt.isoformat()}
+            # First create the booking
+            booking_dict = booking_data.model_dump(exclude={"guests"})
+            booking_response = supabase_client.table("bookings").insert(booking_dict).execute()
 
-            if notes:
-                booking_data["notes"] = notes
+            if not booking_response.data:
+                raise Exception("Failed to create booking")
 
-            response = supabase_client.table("bookings").insert(booking_data).execute()
+            booking_id = booking_response.data[0]["id"]
 
-            if not response.data:
-                raise ValueError("Failed to create booking")
+            # Then create the guests
+            guests_data = [{"booking_id": booking_id, **guest.model_dump()} for guest in booking_data.guests]
 
-            booking = Booking(**response.data[0])
+            guests_response = supabase_client.table("booking_guests").insert(guests_data).execute()
 
-            if guests:
+            if not guests_response.data:
+                # Rollback booking creation if guest creation fails
+                supabase_client.table("bookings").delete().eq("id", booking_id).execute()
+                raise Exception("Failed to create guests")
 
-                for item in guests:
-                    phone = PhoneUtils.normalize_phone(item.get("phone"))
-                    guest_obj = GuestService.get_or_create_guest(phone, item.get("first_name", None), item.get("last_name", None))
-                    booking_guest = BookingService.add_guest(guest_obj.id, booking.id)
+            # Get the complete booking with guests
+            return BookingService.get_booking_by_id(booking_id)
 
-                    if booking_guest:
-                        # Send welcome message
-                        try:
-                            content = f"AmastayAI: You've been added to a reservation at {property_obj.name}. " f"Reply YES to opt-in for updates about your stay. " f"Msg frequency varies. Msg & data rates may apply. " f"Text HELP for support, STOP to opt-out. " f"Booking ID: {booking.id}, " f"Guest: {item.get('first_name', '')} {item.get('last_name', '')}"
-                            PinpointService.send_sms(phone, os.getenv("SYSTEM_PHONE_NUMBER"), content)
-                        except Exception as sms_error:
-                            logging.error(f"Error sending welcome SMS: {sms_error}")
-
-            return booking
         except Exception as e:
-            print(f"Error creating booking: {e}")
-            raise
+            logging.error(f"Error in create_booking: {e}")
+            raise e
 
     @staticmethod
     def get_all_bookings() -> List[Booking]:
@@ -285,8 +264,32 @@ class BookingService:
 
     @staticmethod
     def get_booking_by_id(booking_id: str) -> Optional[Booking]:
-        response = supabase_client.table("bookings").select("*, properties(*)").eq("id", booking_id).single().execute()
-        return Booking(**response.data) if response.data else None
+        try:
+            response = (
+                supabase_client.from_("bookings")
+                .select(
+                    """
+                    *,
+                    guests:booking_guests(*)
+                """
+                )
+                .eq("id", booking_id)
+                .single()
+                .execute()
+            )
+
+            if not response.data:
+                return None
+
+            booking_data = response.data
+            guests = [Guest(**guest) for guest in booking_data.pop("guests", [])]
+            booking = Booking(**booking_data, guests=guests)
+
+            return booking
+
+        except Exception as e:
+            logging.error(f"Error in get_booking_by_id: {e}")
+            raise e
 
     # @staticmethod
     # def _build_booking_details(booking_data: Dict[str, Any]) -> BookingWithDetails:

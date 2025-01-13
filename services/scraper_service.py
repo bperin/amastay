@@ -15,10 +15,60 @@ from supabase_utils import supabase_client, supabase_admin_client
 from typing import Optional
 from services.photo_service import PhotoService
 from services.document_service import DocumentService
+from google.cloud import discoveryengine_v1beta
+from google.cloud import storage
+from services.vertex_search_service import VertexSearchService
+import asyncio
 
 
 class ScraperService:
     STORAGE_BUCKET = "properties"
+    PROJECT_ID = "amastay"  # From service account
+    LOCATION = "us-central1"  
+    SEARCH_ENGINE_ID = "your-search-engine-id"  # You'll need to get this from your Vertex AI Search setup
+    SERVICE_ACCOUNT_EMAIL = "vertexserviceaccount@amastay.iam.gserviceaccount.com"
+
+    @staticmethod
+    async def _update_vertex_search_index(property_id: str) -> None:
+        """Updates Vertex AI search index with new property document"""
+        try:
+            # Initialize Vertex Search client with credentials
+            client = discoveryengine_v1beta.DocumentServiceClient.from_service_account_json(
+                'amastay/amastay_service_account.json'
+            )
+            
+            # Format the parent resource name
+            parent = client.branch_path(
+                project=ScraperService.PROJECT_ID,
+                location=ScraperService.LOCATION,
+                data_store=ScraperService.SEARCH_ENGINE_ID,
+                branch="default_branch"
+            )
+
+            # Create document
+            document = discoveryengine_v1beta.Document(
+                id=f"property_{property_id}",
+                content={
+                    "uri": f"gs://amastay_property_data_text/{property_id}.txt",
+                    "mime_type": "text/plain"
+                }
+            )
+
+            request = discoveryengine_v1beta.ImportDocumentsRequest(
+                parent=parent,
+                documents=[document],
+                reconciliation_mode=discoveryengine_v1beta.ImportDocumentsRequest.ReconciliationMode.INCREMENTAL
+            )
+
+            operation = client.import_documents(request=request)
+            result = operation.result()  # Waits for operation to complete
+            
+            logging.info(f"Successfully updated search index for property {property_id}")
+            return result
+
+        except Exception as e:
+            logging.error(f"Failed to update Vertex search index: {e}")
+            raise
 
     @staticmethod
     async def scrape_property_background(property: Property) -> None:
@@ -104,18 +154,29 @@ class ScraperService:
                         doc_dict = property_document.to_dict()
                         doc_text = property_document.to_text()
 
-                        # Save JSON version
-                        await document_service.upload_json(bucket_name="amastay_property_data_json", data_list=[doc_dict], destination_path=f"{property.id}.json")
+                        # First, upload files to GCS
+                        await document_service.upload_json(
+                            bucket_name="amastay_property_data_json", 
+                            data_list=[doc_dict], 
+                            destination_path=f"{property.id}.json"
+                        )
 
-                        # Save text version
-                        await document_service.upload_text(bucket_name="amastay_property_data_text", text_content=doc_text, destination_path=f"{property.id}.txt")
+                        await document_service.upload_text(
+                            bucket_name="amastay_property_data_text", 
+                            text_content=doc_text, 
+                            destination_path=f"{property.id}.txt"
+                        )
+
+                        # Wait a moment to ensure GCS consistency
+                        await asyncio.sleep(2)
+
+                        # Then update Vertex Search index
+                        await VertexSearchService.update_property_index(property.id)
+
+                        logging.info(f"Scraping and search index update completed for property {property.id}")
 
                     except Exception as e:
                         logging.error(f"Failed to process metadata: {e}")
                         raise
 
-                    logging.info(f"Scraping completed for property {property.id}")
-
-        except Exception as e:
-            logging.error(f"Exception in scrape_property_background: {e}")
-            raise
+                   
