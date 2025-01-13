@@ -1,5 +1,7 @@
 import logging
 from google.cloud import discoveryengine_v1beta
+from google.cloud import storage
+import asyncio
 
 
 class VertexSearchService:
@@ -11,9 +13,34 @@ class VertexSearchService:
     SERVICE_ACCOUNT_PATH = "amastay/amastay_service_account.json"
 
     @staticmethod
+    async def _check_file_exists(bucket_name: str, file_path: str) -> bool:
+        """Check if file exists in GCS bucket"""
+        try:
+            storage_client = storage.Client.from_service_account_json(VertexSearchService.SERVICE_ACCOUNT_PATH)
+            bucket = storage_client.bucket(bucket_name)
+            blob = bucket.blob(file_path)
+            return blob.exists()
+        except Exception as e:
+            logging.error(f"Error checking file existence: {e}")
+            return False
+
+    @staticmethod
     async def update_property_index(property_id: str) -> None:
         """Updates Vertex AI search index with property document"""
         try:
+            # Check if file exists in GCS
+            file_path = f"{property_id}.txt"
+            bucket_name = "amastay_property_data_text"
+
+            # Retry up to 3 times with 2 second delays
+            for attempt in range(3):
+                if await VertexSearchService._check_file_exists(bucket_name, file_path):
+                    break
+                if attempt < 2:  # Don't sleep on last attempt
+                    await asyncio.sleep(2)
+            else:
+                raise FileNotFoundError(f"File {file_path} not found in bucket {bucket_name}")
+
             # Initialize Vertex Search client with credentials
             client = discoveryengine_v1beta.DocumentServiceClient.from_service_account_json(VertexSearchService.SERVICE_ACCOUNT_PATH)
 

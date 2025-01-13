@@ -153,7 +153,6 @@ class ScraperService:
                         # Upload property document
                         doc_dict = property_document.to_dict()
                         doc_text = property_document.to_text()
-
                         # First, upload files to GCS
                         await document_service.upload_json(
                             bucket_name="amastay_property_data_json", 
