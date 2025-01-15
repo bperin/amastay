@@ -9,7 +9,7 @@ class VertexSearchService:
 
     PROJECT_ID = "amastay"
     LOCATION = "us-central1"
-    SEARCH_ENGINE_ID = "your-search-engine-id"  # You'll need to set this
+    SEARCH_ENGINE_ID = "amastay-ds-property-text_1735943367196"  # This matches the vector_store_id in LlamaService
     SERVICE_ACCOUNT_PATH = "amastay/amastay_service_account.json"
 
     @staticmethod
@@ -60,4 +60,44 @@ class VertexSearchService:
 
         except Exception as e:
             logging.error(f"Failed to update Vertex search index: {e}")
+            raise
+
+    @staticmethod
+    async def search_properties(query: str, property_ids: list[str] = None) -> dict:
+        """
+        Search for properties with optional filtering by property IDs
+        """
+        try:
+            client = discoveryengine_v1beta.SearchServiceClient.from_service_account_json(
+                VertexSearchService.SERVICE_ACCOUNT_PATH
+            )
+            
+            # Format the parent resource name
+            parent = client.branch_path(
+                project=VertexSearchService.PROJECT_ID,
+                location=VertexSearchService.LOCATION,
+                data_store=VertexSearchService.SEARCH_ENGINE_ID,
+                branch="default_branch"
+            )
+
+            # Build filter if property_ids provided
+            filter_str = ""
+            if property_ids:
+                # Create OR condition for multiple property IDs
+                id_conditions = [f"id = 'property_{pid}'" for pid in property_ids]
+                filter_str = " OR ".join(id_conditions)
+
+            # Create search request
+            request = discoveryengine_v1beta.SearchRequest(
+                parent=parent,
+                query=query,
+                filter=filter_str if filter_str else None,
+                page_size=10
+            )
+
+            response = client.search(request)
+            return response
+
+        except Exception as e:
+            logging.error(f"Failed to search properties: {e}")
             raise

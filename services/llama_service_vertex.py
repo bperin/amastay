@@ -107,6 +107,43 @@ class LlamaService:
             print(f"Error in prompt: {str(e)}")
             return f"Error: {str(e)}"
 
+    @classmethod
+    def prompt_for_properties(cls, query: str, property_ids: list[str] = None) -> str:
+        """
+        Query the model with context from specific properties
+        """
+        try:
+            model = cls.get_model()
+            if not model:
+                return "Failed to initialize model"
+
+            vector_store_id = "amastay-ds-property-text_1735943367196"
+            tool = cls.get_vector_tool(vector_store_id)
+
+            # Build the prompt with property context
+            full_prompt = f"""
+            Only consider information about the specified properties when answering.
+            Property IDs: {', '.join(property_ids) if property_ids else 'all'}
+            
+            Question: {query}
+            """
+
+            response = model.generate_content(
+                full_prompt,
+                tools=[tool],
+                generation_config={
+                    "max_output_tokens": 4000,
+                    "temperature": 0.5,
+                    "top_p": 0.5,
+                },
+            )
+
+            return response.text
+
+        except Exception as e:
+            logging.error(f"Error in property-specific prompt: {e}")
+            return f"Error: {str(e)}"
+
 
 # Example usage
 if __name__ == "__main__":
