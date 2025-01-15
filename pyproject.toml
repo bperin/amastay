@@ -34,6 +34,8 @@ requests-html = "^0.10.0"
 webdriver-manager = "^4.0.2"
 google-cloud-aiplatform = "^1.75.0"
 openai = "^1.58.1"
+google-cloud-storage = "^2.19.0"
+google-cloud-discoveryengine = "^0.13.5"
 [tool.poetry.group.dev.dependencies]
 pyright = "^1.1.382.post1"
 
