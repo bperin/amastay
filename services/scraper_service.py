@@ -18,32 +18,52 @@ class ScraperService:
     @staticmethod
     async def _scrape_property_data(property_url: str) -> dict:
         """Fetch property data from scraper service"""
-        scraper_url = f"{os.getenv('SCAPER_BASE_URL')}/scrape"
-        headers = {"Authorization": f"Bearer {os.getenv('SCRAPER_AUTH_HEADER')}"}
+        MAX_RETRIES = 3
+        RETRY_DELAY = 5  # seconds
+
+        # Check environment variables
+        scraper_base_url = os.getenv("SCRAPER_BASE_URL") or os.getenv("SCAPER_BASE_URL")
+        scraper_auth = os.getenv("SCRAPER_AUTH_HEADER")
+
+        if not scraper_base_url or not scraper_auth:
+            logging.error(f"Missing environment variables. SCRAPER_BASE_URL: {scraper_base_url}, SCRAPER_AUTH_HEADER: {'present' if scraper_auth else 'missing'}")
+            raise ValueError("Scraper configuration is missing. Check environment variables.")
+
+        scraper_url = f"{scraper_base_url}/scrape"
+        headers = {"Authorization": f"Bearer {scraper_auth}"}
         params = {"url": property_url}
 
-        logging.info(f"Attempting to scrape data from {scraper_url} for property URL: {property_url}")
-        logging.debug(f"Scraper headers: {headers}")
+        for attempt in range(MAX_RETRIES):
+            try:
+                async with aiohttp.ClientSession() as session:
+                    async with session.get(scraper_url, headers=headers, params=params, timeout=30) as response:
+                        if response.status == 503:
+                            if attempt < MAX_RETRIES - 1:
+                                wait_time = RETRY_DELAY * (2**attempt)
+                                logging.warning(f"Scraper service busy (503), retrying in {wait_time}s (attempt {attempt + 1}/{MAX_RETRIES})")
+                                await asyncio.sleep(wait_time)
+                                continue
+                            logging.error("Scraper service is unavailable after all retries")
+                            raise ValueError("Scraper service is temporarily unavailable. Please try again later.")
 
-        try:
-            async with aiohttp.ClientSession() as session:
-                async with session.get(scraper_url, headers=headers, params=params) as response:
-                    if response.status == 503:
-                        logging.error("Scraper service is unavailable (503)")
-                        raise ValueError("Scraper service is temporarily unavailable. Please try again later.")
+                        if response.status != 200:
+                            error_text = await response.text()
+                            logging.error(f"Scraper service error: Status {response.status}, Response: {error_text}")
+                            raise ValueError(f"Scraper service error: {response.status} - {error_text}")
 
-                    if response.status != 200:
-                        error_text = await response.text()
-                        logging.error(f"Scraper service error: Status {response.status}, Response: {error_text}")
-                        raise ValueError(f"Scraper service error: {response.status} - {error_text}")
+                        return await response.json()
 
-                    return await response.json()
-        except aiohttp.ClientError as e:
-            logging.error(f"Network error while connecting to scraper: {e}")
-            raise ValueError(f"Failed to connect to scraper service: {e}")
-        except Exception as e:
-            logging.error(f"Unexpected error in scraper: {e}")
-            raise
+            except aiohttp.ClientError as e:
+                if attempt < MAX_RETRIES - 1:
+                    wait_time = RETRY_DELAY * (2**attempt)
+                    logging.warning(f"Network error, retrying in {wait_time}s (attempt {attempt + 1}/{MAX_RETRIES}): {e}")
+                    await asyncio.sleep(wait_time)
+                    continue
+                logging.error(f"Network error after all retries: {e}")
+                raise ValueError(f"Failed to connect to scraper service: {e}")
+            except Exception as e:
+                logging.error(f"Unexpected error in scraper: {e}")
+                raise
 
     @staticmethod
     async def _process_photos(property_id: str, photos: list[str], property_document: PropertyDocument) -> None:

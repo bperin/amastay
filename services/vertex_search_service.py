@@ -36,14 +36,20 @@ class VertexSearchService:
         Wait for file to appear in GCS with exponential backoff
         Returns True if file found within retry limit, False otherwise
         """
-        for attempt in range(VertexSearchService.MAX_RETRIES):
+        MAX_RETRIES = 5
+        INITIAL_DELAY = 2
+
+        for attempt in range(MAX_RETRIES):
             if await VertexSearchService._check_file_exists(bucket_name, file_path):
+                logging.info(f"File {file_path} found in bucket {bucket_name} on attempt {attempt + 1}")
                 return True
 
-            if attempt < VertexSearchService.MAX_RETRIES - 1:
-                wait_time = VertexSearchService.RETRY_DELAY * (2**attempt)
+            if attempt < MAX_RETRIES - 1:
+                wait_time = INITIAL_DELAY * (2**attempt)
+                logging.info(f"File not found, waiting {wait_time}s before retry {attempt + 2}/{MAX_RETRIES}")
                 await asyncio.sleep(wait_time)
 
+        logging.error(f"File {file_path} not found in bucket {bucket_name} after {MAX_RETRIES} attempts")
         return False
 
     @staticmethod
@@ -56,9 +62,23 @@ class VertexSearchService:
             file_path = f"{property_id}.txt"
             bucket_name = "amastay_property_data_text"
 
+            # Initial delay to allow for GCS consistency
+            await asyncio.sleep(3)  # Add initial delay
+
             # Wait for file to be available in GCS
             if not await VertexSearchService._wait_for_file(bucket_name, file_path):
-                raise FileNotFoundError(f"File {file_path} not found in bucket {bucket_name} after " f"{VertexSearchService.MAX_RETRIES} attempts")
+                logging.error(f"File {file_path} not found in bucket {bucket_name} - checking bucket contents")
+
+                # List bucket contents for debugging
+                storage_client = storage.Client.from_service_account_json(VertexSearchService.SERVICE_ACCOUNT_PATH)
+                bucket = storage_client.bucket(bucket_name)
+                blobs = list(bucket.list_blobs(prefix=file_path))
+                if blobs:
+                    logging.info(f"Found matching files: {[b.name for b in blobs]}")
+                else:
+                    logging.info("No matching files found in bucket")
+
+                raise FileNotFoundError(f"File {file_path} not found in bucket {bucket_name}")
 
             # Initialize Vertex Search client
             client = discoveryengine_v1beta.DocumentServiceClient.from_service_account_json(VertexSearchService.SERVICE_ACCOUNT_PATH)
