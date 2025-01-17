@@ -7,7 +7,7 @@ from models.property_model import Property
 from services.photo_service import PhotoService
 from services.document_service import DocumentService
 from services.llama_image_service import LlamaImageService
-from services.vertex_search_service import VertexSearchService
+from services.vertex_service import VertexService
 from supabase_utils import supabase_client
 import asyncio
 from dotenv import load_dotenv
@@ -120,7 +120,7 @@ class ScraperService:
             await asyncio.sleep(2)
 
             # Update search index
-            await VertexSearchService.update_property_index(property_id)
+            await VertexService.update_property_index(property_id)
             logging.info(f"Documents uploaded and search index updated for property {property_id}")
 
         except Exception as e:
@@ -147,7 +147,7 @@ class ScraperService:
 
             # Fetch property data
             data = await ScraperService._scrape_property_data(property.property_url)
-            breakpoint()
+
             logging.info(f"Received scraper response for property {property.id}")
 
             # Update property document

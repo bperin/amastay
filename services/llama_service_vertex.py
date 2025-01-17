@@ -88,7 +88,7 @@ class LlamaService:
             logging.info(f"Querying model for booking: {booking_id} with prompt: {prompt}")
             # Pass prompt to get_messages_vertex_format
             content = MessageService.get_messages_vertex_format(booking_id=booking_id)
-            print(content)
+
             response = model.generate_content(
                 content,
                 tools=[tool],

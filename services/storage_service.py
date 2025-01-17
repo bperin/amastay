@@ -4,7 +4,7 @@ import logging
 import os
 from typing import Optional, BinaryIO, Union
 from pathlib import Path
-from services.vertex_search_service import VertexSearchService
+from services.vertex_service import VertexService
 
 
 class StorageService:
@@ -39,7 +39,7 @@ class StorageService:
                 try:
                     # Extract property_id from the filename (assuming format: property_id.txt)
                     property_id = os.path.splitext(os.path.basename(destination_path))[0]
-                    await VertexSearchService.update_property_index(property_id)
+                    await VertexService.update_property_index(property_id)
                     logging.info(f"Search index updated for property {property_id}")
                 except Exception as e:
                     logging.error(f"Failed to update search index: {e}")

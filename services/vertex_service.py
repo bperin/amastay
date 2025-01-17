@@ -8,7 +8,7 @@ from typing import Optional
 from google.oauth2 import service_account
 
 
-class VertexSearchService:
+class VertexService:
     """Service for managing Vertex AI Search operations"""
 
     PROJECT_ID = "amastay"
@@ -26,7 +26,7 @@ class VertexSearchService:
         Returns True if file exists, False otherwise
         """
         try:
-            storage_client = storage.Client.from_service_account_json(VertexSearchService.SERVICE_ACCOUNT_PATH)
+            storage_client = storage.Client.from_service_account_json(VertexService.SERVICE_ACCOUNT_PATH)
             bucket = storage_client.bucket(bucket_name)
             blob = bucket.blob(file_path)
             return blob.exists()
@@ -44,7 +44,7 @@ class VertexSearchService:
         INITIAL_DELAY = 2
 
         for attempt in range(MAX_RETRIES):
-            if await VertexSearchService._check_file_exists(bucket_name, file_path):
+            if await VertexService._check_file_exists(bucket_name, file_path):
                 logging.info(f"File {file_path} found in bucket {bucket_name} on attempt {attempt + 1}")
                 return True
 
@@ -70,11 +70,11 @@ class VertexSearchService:
             await asyncio.sleep(3)
 
             # Wait for file to be available in GCS
-            if not await VertexSearchService._wait_for_file(bucket_name, file_path):
+            if not await VertexService._wait_for_file(bucket_name, file_path):
                 logging.error(f"File {file_path} not found in bucket {bucket_name} - checking bucket contents")
 
                 # List bucket contents for debugging
-                storage_client = storage.Client.from_service_account_json(VertexSearchService.SERVICE_ACCOUNT_PATH)
+                storage_client = storage.Client.from_service_account_json(VertexService.SERVICE_ACCOUNT_PATH)
                 bucket = storage_client.bucket(bucket_name)
                 blobs = list(bucket.list_blobs(prefix=file_path))
                 if blobs:
@@ -84,13 +84,13 @@ class VertexSearchService:
                 raise FileNotFoundError(f"File {file_path} not found in bucket {bucket_name}")
 
             # Set client options for global endpoint
-            client_options = ClientOptions(api_endpoint=f"{VertexSearchService.LOCATION}-discoveryengine.googleapis.com") if VertexSearchService.LOCATION != "global" else None
+            client_options = ClientOptions(api_endpoint=f"{VertexService.LOCATION}-discoveryengine.googleapis.com") if VertexService.LOCATION != "global" else None
 
             # Create a client
-            client = discoveryengine_v1beta.DocumentServiceClient(client_options=client_options, credentials=service_account.Credentials.from_service_account_file(VertexSearchService.SERVICE_ACCOUNT_PATH))
+            client = discoveryengine_v1beta.DocumentServiceClient(client_options=client_options, credentials=service_account.Credentials.from_service_account_file(VertexService.SERVICE_ACCOUNT_PATH))
 
             # Get the full resource name of the branch
-            parent = client.branch_path(project=VertexSearchService.PROJECT_ID, location=VertexSearchService.LOCATION, data_store=VertexSearchService.SEARCH_ENGINE_ID, branch="default_branch")
+            parent = client.branch_path(project=VertexService.PROJECT_ID, location=VertexService.LOCATION, data_store=VertexService.SEARCH_ENGINE_ID, branch="default_branch")
 
             # Create import request
             request = discoveryengine_v1beta.ImportDocumentsRequest(parent=parent, gcs_source=discoveryengine_v1beta.GcsSource(input_uris=[f"gs://{bucket_name}/{file_path}"], data_schema="content"), reconciliation_mode=discoveryengine_v1beta.ImportDocumentsRequest.ReconciliationMode.INCREMENTAL)  # For unstructured documents (TXT files)
@@ -116,10 +116,10 @@ class VertexSearchService:
         Search for properties with optional filtering by property IDs
         """
         try:
-            client = discoveryengine_v1beta.SearchServiceClient.from_service_account_json(VertexSearchService.SERVICE_ACCOUNT_PATH)
+            client = discoveryengine_v1beta.SearchServiceClient.from_service_account_json(VertexService.SERVICE_ACCOUNT_PATH)
 
             # Format the parent resource name
-            parent = client.branch_path(project=VertexSearchService.PROJECT_ID, location=VertexSearchService.LOCATION, data_store=VertexSearchService.SEARCH_ENGINE_ID, branch="default_branch")
+            parent = client.branch_path(project=VertexService.PROJECT_ID, location=VertexService.LOCATION, data_store=VertexService.SEARCH_ENGINE_ID, branch="default_branch")
 
             # Build filter if property_ids provided
             filter_str = ""
