@@ -1,6 +1,7 @@
 import os
 import sys
 import logging
+import dotenv
 
 # Add project root to Python path
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
@@ -20,6 +21,8 @@ from models.hf_message_model import HfMessage
 from models.message_model import Message
 from services.message_service import MessageService
 
+dotenv.load_dotenv()
+
 
 class LlamaService:
     """
@@ -30,6 +33,7 @@ class LlamaService:
     # Environment variables
     PROJECT_ID = os.getenv("GOOGLE_PROJECT_ID", "amastay")
     LOCATION = os.getenv("GOOGLE_REGION", "us-central1")
+    VECTOR_STORE_ID = os.getenv("VECTOR_STORE_ID", "amastay-ds_1737105320488")
 
     # Service account path
     BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -65,15 +69,14 @@ class LlamaService:
         """
         Get a vector store tool for the Vertex AI Vector Store API
         """
-        return Tool.from_retrieval(grounding.Retrieval(grounding.VertexAISearch(datastore=vector_store_id, project=cls.PROJECT_ID, location="us")))
+        return Tool.from_retrieval(grounding.Retrieval(grounding.VertexAISearch(datastore=vector_store_id, project=cls.PROJECT_ID, location="global")))
 
     @classmethod
-    def prompt(cls, vector_store_id: str, booking_id: str, prompt: str) -> str:
+    def prompt(cls, booking_id: str, prompt: str) -> str:
         """
         Query the model with vector store context
 
         Args:
-            vector_store_id: ID of the vector store to use
             prompt: The text prompt/question for the model
         """
         try:
@@ -81,7 +84,7 @@ class LlamaService:
             if not model:
                 return "Failed to initialize model"
 
-            tool = cls.get_vector_tool(vector_store_id)
+            tool = cls.get_vector_tool(LlamaService.VECTOR_STORE_ID)
             logging.info(f"Querying model for booking: {booking_id} with prompt: {prompt}")
             # Pass prompt to get_messages_vertex_format
             content = MessageService.get_messages_vertex_format(booking_id=booking_id)
@@ -89,15 +92,10 @@ class LlamaService:
             response = model.generate_content(
                 content,
                 tools=[tool],
-                generation_config={
-                    "max_output_tokens": 4000,
-                    "temperature": 0.5,
-                    "top_p": 0.5,
-                },
+                generation_config={"max_output_tokens": 4000, "temperature": 0.2, "top_p": 0.2},
             )
             if response.text:
                 # adding assistant message to DB
-                MessageService.add_message(booking_id=booking_id, sender_id=None, sender_type=0, content=response.text)
                 return response.text
             else:
                 logging.error(f"No response from model: {response}")

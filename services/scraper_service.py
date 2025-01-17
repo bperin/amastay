@@ -10,6 +10,9 @@ from services.llama_image_service import LlamaImageService
 from services.vertex_search_service import VertexSearchService
 from supabase_utils import supabase_client
 import asyncio
+from dotenv import load_dotenv
+
+load_dotenv()
 
 
 class ScraperService:
@@ -22,7 +25,8 @@ class ScraperService:
         RETRY_DELAY = 5  # seconds
 
         # Check environment variables
-        scraper_base_url = os.getenv("SCRAPER_BASE_URL") or os.getenv("SCAPER_BASE_URL")
+        scraper_base_url = os.getenv("SCRAPER_BASE_URL")
+        print(scraper_base_url)
         scraper_auth = os.getenv("SCRAPER_AUTH_HEADER")
 
         if not scraper_base_url or not scraper_auth:
@@ -68,6 +72,7 @@ class ScraperService:
     @staticmethod
     async def _process_photos(property_id: str, photos: list[str], property_document: PropertyDocument) -> None:
         """Process and upload property photos"""
+
         photo_service = PhotoService()
         llama_image_service = LlamaImageService()
 
@@ -142,6 +147,7 @@ class ScraperService:
 
             # Fetch property data
             data = await ScraperService._scrape_property_data(property.property_url)
+            breakpoint()
             logging.info(f"Received scraper response for property {property.id}")
 
             # Update property document

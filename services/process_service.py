@@ -98,12 +98,12 @@ def handle_incoming_sms(message_id: str, origination_number: str, message_body: 
 
         # Query AI model
         logger.info("Prompting Llama model...")
-        vector_store_id = "amastay-ds-property-text_1735943367196"
-        result = LlamaService.prompt(vector_store_id, booking.id, prompt=message_body)
+
+        result = LlamaService.prompt(booking_id=booking.id, prompt=message_body)
 
         logger.info(f"AI Response received: {result[:100]}...")
 
-        MessageService.add_message(booking_id=booking.id, sender_id=None, sender_type=1, content=result)
+        MessageService.add_message(booking_id=booking.id, sender_id=None, sender_type=1, content=result, question_id=message.id)
 
         # Send response in chunks if needed
         if send_message:

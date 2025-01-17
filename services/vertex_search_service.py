@@ -2,8 +2,10 @@ import logging
 import os
 from google.cloud import discoveryengine_v1beta
 from google.cloud import storage
+from google.api_core.client_options import ClientOptions
 import asyncio
 from typing import Optional
+from google.oauth2 import service_account
 
 
 class VertexSearchService:
@@ -11,7 +13,7 @@ class VertexSearchService:
 
     PROJECT_ID = "amastay"
     LOCATION = "global"
-    SEARCH_ENGINE_ID = "amastay-ds-property-text_1735943367196"
+    SEARCH_ENGINE_ID = "amastay-ds_1737105320488"
     BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
     SERVICE_ACCOUNT_PATH = os.path.join(BASE_DIR, "amastay_service_account.json")
     MAX_RETRIES = 3
@@ -60,13 +62,12 @@ class VertexSearchService:
         Updates Vertex AI search index with property document
         Waits for file to be available in GCS before updating
         """
-
         try:
             file_path = f"{property_id}.txt"
             bucket_name = "amastay_property_data_text"
 
             # Initial delay to allow for GCS consistency
-            await asyncio.sleep(3)  # Add initial delay
+            await asyncio.sleep(3)
 
             # Wait for file to be available in GCS
             if not await VertexSearchService._wait_for_file(bucket_name, file_path):
@@ -82,21 +83,27 @@ class VertexSearchService:
                     logging.info("No matching files found in bucket")
                 raise FileNotFoundError(f"File {file_path} not found in bucket {bucket_name}")
 
-            # Initialize Vertex Search client
-            client = discoveryengine_v1beta.DocumentServiceClient.from_service_account_json(VertexSearchService.SERVICE_ACCOUNT_PATH)
+            # Set client options for global endpoint
+            client_options = ClientOptions(api_endpoint=f"{VertexSearchService.LOCATION}-discoveryengine.googleapis.com") if VertexSearchService.LOCATION != "global" else None
 
+            # Create a client
+            client = discoveryengine_v1beta.DocumentServiceClient(client_options=client_options, credentials=service_account.Credentials.from_service_account_file(VertexSearchService.SERVICE_ACCOUNT_PATH))
+
+            # Get the full resource name of the branch
             parent = client.branch_path(project=VertexSearchService.PROJECT_ID, location=VertexSearchService.LOCATION, data_store=VertexSearchService.SEARCH_ENGINE_ID, branch="default_branch")
 
-            # Create GCS source
-            gcs_source = discoveryengine_v1beta.GcsSource(input_uris=[f"gs://{bucket_name}/{file_path}"])
+            # Create import request
+            request = discoveryengine_v1beta.ImportDocumentsRequest(parent=parent, gcs_source=discoveryengine_v1beta.GcsSource(input_uris=[f"gs://{bucket_name}/{file_path}"], data_schema="content"), reconciliation_mode=discoveryengine_v1beta.ImportDocumentsRequest.ReconciliationMode.INCREMENTAL)  # For unstructured documents (TXT files)
 
-            # Create import request with GCS source
-            request = discoveryengine_v1beta.ImportDocumentsRequest(parent=parent, gcs_source=gcs_source, reconciliation_mode=discoveryengine_v1beta.ImportDocumentsRequest.ReconciliationMode.INCREMENTAL)
-
+            # Make the request and wait for completion
             operation = client.import_documents(request=request)
+            print(f"Waiting for operation to complete: {operation.operation.name}")
             result = operation.result()
 
-            logging.info(f"Successfully updated search index for property {property_id}")
+            # Get metadata after operation is complete
+            metadata = discoveryengine_v1beta.ImportDocumentsMetadata(operation.metadata)
+            logging.info(f"Successfully updated search index for property {property_id}. Metadata: {metadata}")
+
             return result
 
         except Exception as e:
