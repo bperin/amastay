@@ -90,6 +90,7 @@ class ScraperService:
                 photo_response = supabase_client.table("property_photos").insert(photo_data).execute()
                 if photo_response.data:
                     property_document.push_photo(photo_data)
+
                     logging.info(f"Property photo record created successfully: {photo_response.data}")
                 else:
                     logging.error(f"Failed to create property photo record: {photo_response.error}")

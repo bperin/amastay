@@ -66,7 +66,7 @@ class PropertyDocument:
         if "url" in photo_data:
             photo_dict["url"] = photo_data["url"]
         if "gs_uri" in photo_data:
-            photo_dict["gc_uri"] = photo_data["gs_uri"]  # Note: using gc_uri to match existing format
+            photo_dict["gs_uri"] = photo_data["gs_uri"]  # Fixed: use gs_uri consistently
         if "description" in photo_data:
             photo_dict["description"] = photo_data["description"]
 
@@ -91,46 +91,39 @@ class PropertyDocument:
             "photos": self._photos,
         }
 
-    def to_text(self) -> str:
+    def to_text(self):
         """
-        Convert the document into a human-readable text format.
+        Convert the document into a searchable text format,
+        including all relevant information including photos.
         """
         sections = []
 
-        # Property Header
-        sections.append(f"Property ID: {self._id}")
-        sections.append(f"\nProperty Name: {self._name}")
-        sections.append(f"\nFull Address: {self._address}")
-        sections.append(f"\nCoordinates: {self._latitude}, {self._longitude}")
-        sections.append(f"\nLatitude: {self._latitude}")
-        sections.append(f"\nLongitude: {self._longitude}")
+        # Add property name and basic info
+        sections.append(f"Property: {self._name}")
+        sections.append(f"Location: {self._address}")
+        sections.append(f"Coordinates: {self._latitude}, {self._longitude}")
 
-        # Property Information
+        # Add main property information
         if self._property_information:
-            sections.append("\nProperty Description")
-            sections.append("-" * 19)
-            sections.append(f"{self._property_information}\n")
+            sections.append("\nProperty Information:")
+            sections.append(self._property_information)
 
-        # Amenities
+        # Add amenities
         if self._amenities:
-            sections.append("Amenities")
-            sections.append("-" * 9)
-            sections.append("\n".join(f"{amenity}" for amenity in self._amenities))
-            sections.append("")
+            sections.append("\nAmenities:")
+            sections.extend(self._amenities)
 
-        # Reviews
+        # Add reviews
         if self._reviews:
-            sections.append("Guest Reviews")
-            sections.append("-" * 12)
-            sections.append("\n\n".join(f'"{review}"' for review in self._reviews))
-            sections.append("")
+            sections.append("\nReviews:")
+            sections.extend(self._reviews)
 
-        # Photos
+        # Add photo descriptions
         if self._photos:
-            sections.append("Photos")
-            sections.append("-" * 6)
+            sections.append("\nPhoto Descriptions:")
             for photo in self._photos:
-                if "description" in photo and "gs_uri" in photo:
-                    sections.append(f"• {photo['description']}\nGS URI: {photo['gs_uri']}")
+                if "description" in photo:
+                    sections.append(photo["description"])
 
-        return "\n".join(sections)
+        # Join all sections with newlines
+        return "\n".join(filter(None, sections))

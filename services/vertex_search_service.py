@@ -1,4 +1,5 @@
 import logging
+import os
 from google.cloud import discoveryengine_v1beta
 from google.cloud import storage
 import asyncio
@@ -9,9 +10,10 @@ class VertexSearchService:
     """Service for managing Vertex AI Search operations"""
 
     PROJECT_ID = "amastay"
-    LOCATION = "us-central1"
+    LOCATION = "global"
     SEARCH_ENGINE_ID = "amastay-ds-property-text_1735943367196"
-    SERVICE_ACCOUNT_PATH = "amastay/amastay_service_account.json"
+    BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    SERVICE_ACCOUNT_PATH = os.path.join(BASE_DIR, "amastay_service_account.json")
     MAX_RETRIES = 3
     RETRY_DELAY = 2
 
@@ -58,6 +60,7 @@ class VertexSearchService:
         Updates Vertex AI search index with property document
         Waits for file to be available in GCS before updating
         """
+
         try:
             file_path = f"{property_id}.txt"
             bucket_name = "amastay_property_data_text"
@@ -77,7 +80,6 @@ class VertexSearchService:
                     logging.info(f"Found matching files: {[b.name for b in blobs]}")
                 else:
                     logging.info("No matching files found in bucket")
-
                 raise FileNotFoundError(f"File {file_path} not found in bucket {bucket_name}")
 
             # Initialize Vertex Search client
@@ -85,9 +87,11 @@ class VertexSearchService:
 
             parent = client.branch_path(project=VertexSearchService.PROJECT_ID, location=VertexSearchService.LOCATION, data_store=VertexSearchService.SEARCH_ENGINE_ID, branch="default_branch")
 
-            document = discoveryengine_v1beta.Document(id=f"property_{property_id}", content={"uri": f"gs://{bucket_name}/{file_path}", "mime_type": "text/plain"})
+            # Create GCS source
+            gcs_source = discoveryengine_v1beta.GcsSource(input_uris=[f"gs://{bucket_name}/{file_path}"])
 
-            request = discoveryengine_v1beta.ImportDocumentsRequest(parent=parent, documents=[document], reconciliation_mode=discoveryengine_v1beta.ImportDocumentsRequest.ReconciliationMode.INCREMENTAL)
+            # Create import request with GCS source
+            request = discoveryengine_v1beta.ImportDocumentsRequest(parent=parent, gcs_source=gcs_source, reconciliation_mode=discoveryengine_v1beta.ImportDocumentsRequest.ReconciliationMode.INCREMENTAL)
 
             operation = client.import_documents(request=request)
             result = operation.result()
