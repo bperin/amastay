@@ -2,6 +2,7 @@ from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 from services.process_service import handle_incoming_sms
 import logging
+from fastapi.middleware.cors import CORSMiddleware
 
 router = APIRouter(tags=["webhooks"])
 

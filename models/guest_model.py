@@ -12,12 +12,9 @@ class Guest(BaseModel):
     created_at: str = ""
     updated_at: str = ""
 
-    # Relationships with Field alias
-    bookings: List["BookingGuest"] = Field(default_factory=list)
-
 
 class CreateGuest(BaseModel):
-    phone: str
+    phone: str = ""
     first_name: Optional[str] = None
     last_name: Optional[str] = None
 
