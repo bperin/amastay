@@ -6,6 +6,7 @@ from google.api_core.client_options import ClientOptions
 import asyncio
 from typing import Optional
 from google.oauth2 import service_account
+import json
 
 
 class VertexService:
@@ -13,7 +14,6 @@ class VertexService:
 
     PROJECT_ID = "amastay"
     LOCATION = "global"
-    SEARCH_ENGINE_ID = "amastay-ds_1737105320488"
     BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
     SERVICE_ACCOUNT_PATH = os.path.join(BASE_DIR, "amastay_service_account.json")
     MAX_RETRIES = 3
@@ -111,29 +111,149 @@ class VertexService:
             raise
 
     @staticmethod
-    async def search_properties(query: str, property_ids: list[str] = None) -> dict:
-        """
-        Search for properties with optional filtering by property IDs
-        """
+    async def create_data_store(data_store_id: str) -> str:
+        """Create a new data store for property search"""
         try:
-            client = discoveryengine_v1beta.SearchServiceClient.from_service_account_json(VertexService.SERVICE_ACCOUNT_PATH)
+            # Create a client
+            client = discoveryengine_v1beta.DataStoreServiceClient(credentials=service_account.Credentials.from_service_account_file(VertexService.SERVICE_ACCOUNT_PATH))
 
-            # Format the parent resource name
-            parent = client.branch_path(project=VertexService.PROJECT_ID, location=VertexService.LOCATION, data_store=VertexService.SEARCH_ENGINE_ID, branch="default_branch")
+            # The full resource name of the collection
+            parent = client.collection_path(
+                project=VertexService.PROJECT_ID,
+                location=VertexService.LOCATION,
+                collection="default_collection",
+            )
 
-            # Build filter if property_ids provided
-            filter_str = ""
-            if property_ids:
-                # Create OR condition for multiple property IDs
-                id_conditions = [f"id = 'property_{pid}'" for pid in property_ids]
-                filter_str = " OR ".join(id_conditions)
+            # Create chunking config
+            chunking_config = discoveryengine_v1beta.DocumentProcessingConfig.ChunkingConfig(layout_based_chunking_config=discoveryengine_v1beta.DocumentProcessingConfig.ChunkingConfig.LayoutBasedChunkingConfig(chunk_size=500, include_ancestor_headings=True))
 
-            # Create search request
-            request = discoveryengine_v1beta.SearchRequest(parent=parent, query=query, filter=filter_str if filter_str else None, page_size=10)
+            # Create document processing config
+            doc_processing_config = discoveryengine_v1beta.DocumentProcessingConfig(chunking_config=chunking_config)
 
-            response = client.search(request)
-            return response
+            data_store = discoveryengine_v1beta.DataStore(display_name=f"property_information_{data_store_id}", industry_vertical=discoveryengine_v1beta.IndustryVertical.GENERIC, solution_types=[discoveryengine_v1beta.SolutionType.SOLUTION_TYPE_SEARCH], content_config=discoveryengine_v1beta.DataStore.ContentConfig.CONTENT_REQUIRED, document_processing_config=doc_processing_config)
+
+            request = discoveryengine_v1beta.CreateDataStoreRequest(
+                parent=parent,
+                data_store_id=data_store_id,
+                data_store=data_store,
+            )
+
+            # Make the request
+            operation = client.create_data_store(request=request)
+            print(f"Waiting for operation to complete: {operation.operation.name}")
+            result = operation.result()
+
+            # Get metadata after operation is complete
+            metadata = discoveryengine_v1beta.CreateDataStoreMetadata(operation.metadata)
+            print(f"Created data store: {result.name}")
+            print(f"Metadata: {metadata}")
+
+            return result.name
 
         except Exception as e:
-            logging.error(f"Failed to search properties: {e}")
+            print(f"Error creating data store: {e}")
             raise
+
+    @staticmethod
+    def test_create_data_store():
+        """Test creating a new data store"""
+        try:
+            # Create a client
+            client = discoveryengine_v1beta.DataStoreServiceClient(credentials=service_account.Credentials.from_service_account_file(VertexService.SERVICE_ACCOUNT_PATH))
+
+            # The full resource name of the collection
+            parent = client.collection_path(
+                project=VertexService.PROJECT_ID,
+                location=VertexService.LOCATION,
+                collection="default_collection",
+            )
+
+            # Create chunking config
+            chunking_config = discoveryengine_v1beta.DocumentProcessingConfig.ChunkingConfig(layout_based_chunking_config=discoveryengine_v1beta.DocumentProcessingConfig.ChunkingConfig.LayoutBasedChunkingConfig(chunk_size=500, include_ancestor_headings=True))
+
+            # Create document processing config
+            doc_processing_config = discoveryengine_v1beta.DocumentProcessingConfig(chunking_config=chunking_config)
+
+            data_store = discoveryengine_v1beta.DataStore(display_name="My Test Data Store2", industry_vertical=discoveryengine_v1beta.IndustryVertical.GENERIC, solution_types=[discoveryengine_v1beta.SolutionType.SOLUTION_TYPE_SEARCH], content_config=discoveryengine_v1beta.DataStore.ContentConfig.CONTENT_REQUIRED, document_processing_config=doc_processing_config)
+
+            request = discoveryengine_v1beta.CreateDataStoreRequest(
+                parent=parent,
+                data_store_id="amastay-ds-test2",
+                data_store=data_store,
+            )
+
+            # Make the request
+            operation = client.create_data_store(request=request)
+            print(f"Waiting for operation to complete: {operation.operation.name}")
+            result = operation.result()
+
+            # Get metadata after operation is complete
+            metadata = discoveryengine_v1beta.CreateDataStoreMetadata(operation.metadata)
+            print(f"Created data store: {result.name}")
+            print(f"Metadata: {metadata}")
+
+            return result
+
+        except Exception as e:
+            print(f"Error creating data store: {e}")
+            raise
+
+    @staticmethod
+    async def import_documents(Property: property) -> bool:
+        """Import documents from GCS into a data store"""
+        try:
+            client = discoveryengine_v1beta.DocumentServiceClient(credentials=service_account.Credentials.from_service_account_file(VertexService.SERVICE_ACCOUNT_PATH))
+
+            # Get the full resource name of the data store
+            parent = client.data_store_path(
+                project=VertexService.PROJECT_ID,
+                location=VertexService.LOCATION,
+                data_store=data_store_id,
+            )
+
+            # Create import request
+            request = discoveryengine_v1beta.ImportDocumentsRequest(parent=parent, gcs_source=discoveryengine_v1beta.GcsSource(input_uris=[gcs_uri], data_schema="content"), reconciliation_mode=discoveryengine_v1beta.ImportDocumentsRequest.ReconciliationMode.INCREMENTAL)
+
+            # Start the import operation
+            operation = client.import_documents(request=request)
+            print(f"Waiting for import operation to complete: {operation.operation.name}")
+
+            # Wait for operation to complete
+            result = operation.result()
+
+            print(f"Import completed: {result}")
+            return True
+
+        except Exception as e:
+            print(f"Error importing documents: {e}")
+            raise
+
+    @staticmethod
+    async def create_document(data_store_id: str, document_id: str, content: str) -> bool:
+        """Create a single document in the data store"""
+        try:
+            client = discoveryengine_v1beta.DocumentServiceClient(credentials=service_account.Credentials.from_service_account_file(VertexService.SERVICE_ACCOUNT_PATH))
+
+            parent = client.data_store_path(
+                project=VertexService.PROJECT_ID,
+                location=VertexService.LOCATION,
+                data_store=data_store_id,
+            )
+
+            # Create document
+            document = discoveryengine_v1beta.Document(id=document_id, content=content, content_type="text/plain")
+
+            request = discoveryengine_v1beta.CreateDocumentRequest(parent=parent, document=document, document_id=document_id)
+
+            response = client.create_document(request=request)
+            print(f"Created document: {response.name}")
+            return True
+
+        except Exception as e:
+            print(f"Error creating document: {e}")
+            raise
+
+
+if __name__ == "__main__":
+    # Test creating a data store
+    VertexService.test_create_data_store()

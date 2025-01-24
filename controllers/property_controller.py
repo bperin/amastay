@@ -19,6 +19,8 @@ from services.scraper_service import ScraperService
 from auth_utils import get_current_user
 import logging
 
+from services.vertex_service import VertexService
+
 # Create router
 router = APIRouter(tags=["properties"])
 
@@ -29,6 +31,7 @@ async def create_property(create_property_input: CreateProperty, current_user: d
     try:
         # Create property with named parameters
         new_property = await PropertyService.create_property(owner_id=current_user["id"], create_property_request=create_property_input)
+        data_store = await VertexService.create_data_store(new_property.id)
         return new_property
     except ValueError as ve:
         logging.error(f"Validation error in create_property: {ve}")

@@ -33,7 +33,6 @@ class LlamaService:
     # Environment variables
     PROJECT_ID = os.getenv("GOOGLE_PROJECT_ID", "amastay")
     LOCATION = os.getenv("GOOGLE_REGION", "us-central1")
-    VECTOR_STORE_ID = os.getenv("VECTOR_STORE_ID", "amastay-ds_1737105320488")
 
     # Service account path
     BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -72,7 +71,7 @@ class LlamaService:
         return Tool.from_retrieval(grounding.Retrieval(grounding.VertexAISearch(datastore=vector_store_id, project=cls.PROJECT_ID, location="global")))
 
     @classmethod
-    def prompt(cls, booking_id: str, prompt: str) -> str:
+    def prompt(cls, booking_id: str, prompt: str, property_id: str) -> str:
         """
         Query the model with vector store context
 
@@ -84,7 +83,7 @@ class LlamaService:
             if not model:
                 return "Failed to initialize model"
 
-            tool = cls.get_vector_tool(LlamaService.VECTOR_STORE_ID)
+            tool = cls.get_vector_tool(f"property_information_{property_id}")
             logging.info(f"Querying model for booking: {booking_id} with prompt: {prompt}")
             # Pass prompt to get_messages_vertex_format
             content = MessageService.get_messages_vertex_format(booking_id=booking_id)

@@ -8,6 +8,7 @@ from models.property_photo_model import PropertyPhoto
 from supabase_utils import supabase_client
 from models.property_model import CreateProperty, Property
 from typing import List, Optional, Tuple
+from urllib.parse import urlparse, urlunparse
 
 
 class PropertyService:
@@ -37,8 +38,18 @@ class PropertyService:
             return None, None, None
 
     @staticmethod
+    def clean_url(url: str) -> str:
+        """Clean URL by removing query parameters"""
+        if not url:
+            return url
+        return url.split("?")[0].rstrip("/")
+
+    @staticmethod
     async def create_property(create_property_request: CreateProperty, owner_id: str) -> Property:
         try:
+            # Clean the property URL before saving
+            if create_property_request.property_url:
+                create_property_request.property_url = PropertyService.clean_url(create_property_request.property_url)
 
             create_property_data = create_property_request.model_dump()
             create_property_data["owner_id"] = owner_id

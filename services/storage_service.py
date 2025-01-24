@@ -12,7 +12,7 @@ class StorageService:
 
     BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
     SERVICE_ACCOUNT_PATH = os.path.join(BASE_DIR, "amastay_service_account.json")
-    PROPERTY_TEXT_BUCKET = "amastay_property_data_text"
+    BASE_BUCKET = "amastay_property_data_text"
 
     def __init__(self):
         credentials = service_account.Credentials.from_service_account_file(self.SERVICE_ACCOUNT_PATH)

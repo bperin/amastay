@@ -111,20 +111,28 @@ class ScraperService:
         doc_text = property_document.to_text()
 
         try:
-            # Upload JSON and text versions
-            await document_service.upload_json(bucket_name="amastay_property_data_json", data_list=[doc_dict], destination_path=f"{property_id}.json")
-
-            await document_service.upload_text(bucket_name="amastay_property_data_text", text_content=doc_text, destination_path=f"{property_id}.txt")
+            # Upload text version to GCS
+            text_bucket = "amastay_property_data_text"
+            text_path = f"{property_id}.txt"
+            await document_service.upload_text(bucket_name=text_bucket, text_content=doc_text, destination_path=text_path)
 
             # Wait for GCS consistency
             await asyncio.sleep(2)
 
-            # Update search index
-            await VertexService.update_property_index(property_id)
-            logging.info(f"Documents uploaded and search index updated for property {property_id}")
+            # Import document into Vertex AI Search
+            data_store_id = f"property_information_{property_id}"
+            gcs_uri = f"gs://{text_bucket}/{text_path}"
+
+            # Create data store for this property if it doesn't exist
+            # await VertexService.create_data_store(property_id)
+
+            # Import the document into the data store
+            await VertexService.import_documents(data_store_id=data_store_id, gcs_uri=gcs_uri)
+
+            logging.info(f"Documents uploaded and imported for property {property_id}")
 
         except Exception as e:
-            logging.error(f"Failed to upload documents: {e}")
+            logging.error(f"Failed to upload/import documents: {e}")
             raise
 
     @staticmethod

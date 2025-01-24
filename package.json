@@ -1,6 +1,6 @@
 {
     "scripts": {
-        "run": "uvicorn app:app --reload --host 0.0.0.0 --port 5001",
+        "run": "poetry run uvicorn app:app --reload --host 0.0.0.0 --port 5001",
         "deploy:dev": "copilot svc deploy --name api --env develop --force",
         "deploy:staging": "copilot svc deploy --name api --env staging --force",
         "deploy:prod": "copilot svc deploy --name api --env production --force",
