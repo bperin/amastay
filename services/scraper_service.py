@@ -94,124 +94,158 @@ class ScraperService:
     @staticmethod
     async def _process_photos(property_id: str, photos: list[str], property_document: PropertyDocument) -> None:
         """Process and upload property photos"""
-        photo_service = PhotoService()
-        llama_service = LlamaService()
+        try:
+            logging.info(f"[DEBUG] Starting _process_photos with {len(photos)} photos for property {property_id}")
+            logging.info(f"[DEBUG] Photo URLs: {photos[:3]}...")  # Log first 3 photos
 
-        for photo_url in photos:
-            photo_id = uuid.uuid4()
-            destination_path = f"properties/{property_id}/{photo_id}.jpg"
+            photo_service = PhotoService()
+            llama_service = LlamaService()
+            storage_service = StorageService()
 
-            try:
-                # Upload photo to GCS
-                uploaded_url = await photo_service.upload_from_url(bucket_name="amastay_property_photos", photo_url=photo_url, destination_path=destination_path)
+            for index, photo_url in enumerate(photos):
+                try:
+                    logging.info(f"[DEBUG] Processing photo {index + 1}/{len(photos)}")
+                    logging.info(f"[DEBUG] Photo URL: {photo_url}")
 
-                if not uploaded_url:
-                    logging.error(f"Failed to upload photo {photo_url}")
+                    # Generate unique filename
+                    photo_uuid = str(uuid.uuid4())
+                    filename = f"{photo_uuid}.jpg"
+                    logging.info(f"[DEBUG] Generated filename: {filename}")
+
+                    # Download photo
+                    logging.info(f"[DEBUG] Downloading photo...")
+                    downloaded_photo = await photo_service.download_photo(photo_url)
+                    if not downloaded_photo:
+                        logging.error(f"[DEBUG] Failed to download photo {photo_url}")
+                        continue
+                    logging.info(f"[DEBUG] Photo downloaded successfully")
+
+                    # Upload to GCS
+                    logging.info(f"[DEBUG] Uploading to GCS...")
+                    uploaded_url = await storage_service.upload_photo(property_id=property_id, photo_url=photo_url, filename=filename)
+
+                    if not uploaded_url:
+                        logging.error(f"[DEBUG] Failed to upload photo to GCS")
+                        continue
+                    logging.info(f"[DEBUG] Photo uploaded successfully: {uploaded_url}")
+
+                    # Get image analysis
+                    gcs_uri = f"gs://{storage_service.PHOTOS_BUCKET}/properties/{property_id}/{filename}"
+                    logging.info(f"[DEBUG] Getting image analysis for {gcs_uri}")
+                    description = await llama_service.analyze_image(gcs_uri=gcs_uri)
+                    logging.info(f"[DEBUG] Generated description: {description[:100]}...")
+
+                    # Store in Supabase
+                    photo_data = {"property_id": property_id, "url": photo_url, "gs_uri": gcs_uri, "description": description, "filename": filename}
+                    logging.info(f"[DEBUG] Storing photo data in Supabase...")
+
+                    photo_response = supabase_client.table("property_photos").insert(photo_data).execute()
+                    if photo_response.data:
+                        property_document.push_photo(photo_data)
+                        logging.info(f"[DEBUG] Photo record created successfully")
+                    else:
+                        logging.error(f"[DEBUG] Failed to create photo record: {photo_response.error}")
+
+                except Exception as e:
+                    logging.error(f"[DEBUG] Error processing individual photo {photo_url}: {str(e)}")
+                    logging.exception("[DEBUG] Photo processing error traceback:")
                     continue
 
-                logging.info(f"Photo uploaded successfully: {uploaded_url}")
+            logging.info(f"[DEBUG] Completed processing all photos for property {property_id}")
 
-                # Get image analysis from Llama Vision
-                gcs_uri = f"gs://amastay_property_photos/{destination_path}"
-                description = await llama_service.analyze_image(gcs_uri=gcs_uri)
-                logging.info(f"Generated description for photo: {description[:100]}...")
-
-                # Store photo data in Supabase
-                photo_data = {"property_id": property_id, "url": photo_url, "gs_uri": gcs_uri, "description": description}
-
-                photo_response = supabase_client.table("property_photos").insert(photo_data).execute()
-                if photo_response.data:
-                    property_document.push_photo(photo_data)
-                    logging.info(f"Property photo record created successfully")
-                else:
-                    logging.error(f"Failed to create property photo record: {photo_response.error}")
-
-            except Exception as e:
-                logging.error(f"Error processing photo {photo_url}: {e}")
-                continue
+        except Exception as e:
+            logging.error(f"[DEBUG] Error in _process_photos: {str(e)}")
+            logging.exception("[DEBUG] Full traceback:")
+            raise
 
     @staticmethod
     async def _upload_property_documents(property_id: str, property_document: PropertyDocument) -> None:
         """Upload property documents to appropriate Google Cloud Storage buckets"""
-        storage_service = StorageService()
-        doc_dict = property_document.to_dict()
-        doc_text = property_document.to_text()
-
         try:
-            logging.info(f"Starting document upload for property {property_id}")
+            logging.info(f"[DEBUG] Starting _upload_property_documents for property {property_id}")
+            storage_service = StorageService()
 
-            # Store text document
-            logging.info("Uploading text document...")
+            doc_dict = property_document.to_dict()
+            doc_text = property_document.to_text()
+
+            logging.info(f"[DEBUG] Document text length: {len(doc_text)}")
+            logging.info(f"[DEBUG] Document JSON keys: {doc_dict.keys()}")
+
+            # Store text document in BASE_BUCKET
+            logging.info("[DEBUG] Uploading text document...")
             await storage_service.upload_document(property_id=property_id, file_content=doc_text, filename="data", content_type="text/plain")
-            logging.info("Text document uploaded successfully")
+            logging.info("[DEBUG] Text document uploaded successfully")
 
-            # Store JSON document
-            logging.info("Uploading JSON document...")
+            # Store JSON document in JSON_BUCKET
+            logging.info("[DEBUG] Uploading JSON document...")
             await storage_service.upload_document(property_id=property_id, file_content=json.dumps(doc_dict), filename="data", content_type="application/json")
-            logging.info("JSON document uploaded successfully")
-
-            logging.info(f"All documents uploaded for property {property_id}")
+            logging.info("[DEBUG] JSON document uploaded successfully")
+            logging.info(f"[DEBUG] _upload_property_documents completed for property {property_id}")
 
         except Exception as e:
-            logging.error(f"Failed to upload documents for property {property_id}: {str(e)}")
+            logging.error(f"[DEBUG] Failed in _upload_property_documents: {str(e)}")
+            logging.exception("Full traceback:")
             raise
 
     @staticmethod
     async def scrape_property_background(property: Property) -> None:
         """Background task for property scraping"""
         try:
+            logging.info(f"[DEBUG] Starting scrape_property_background for property {property.id}")
+
             if not property.property_url:
-                logging.info(f"No 'property_url' provided for property {property.id}")
+                logging.info(f"[DEBUG] No 'property_url' provided for property {property.id}")
                 return
 
-            # Initialize document and set progress
+            # Initialize document
             property_document = PropertyDocument()
             property_document.set_id(property.id)
             property_document.set_name(property.name)
             property_document.set_location(property.lat, property.lng)
             property_document.set_address(property.address)
 
+            logging.info(f"[DEBUG] Property document initialized for {property.id}")
+
             # Set initial progress
             supabase_client.table("properties").update({"metadata_progress": 1}).eq("id", property.id).execute()
+            logging.info("[DEBUG] Initial progress set")
 
-            # Fetch property data
+            # Fetch and process data
             data = await ScraperService._scrape_property_data(property.property_url)
-            logging.info(f"Received scraper response for property {property.id}")
+            logging.info(f"[DEBUG] Property data fetched for {property.id}")
 
-            # Update property document
+            # After fetching data
+            logging.info(f"[DEBUG] Raw photos data: {data.get('photos', [])}")
+            logging.info(f"[DEBUG] Scraped data photos array length: {len(data.get('photos', []))}")
+            if data.get("photos"):
+                logging.info(f"[DEBUG] First few photo URLs: {data['photos'][:3]}")
+                logging.info("[DEBUG] Starting photo processing")
+                try:
+                    await ScraperService._process_photos(property.id, data["photos"], property_document)
+                    logging.info("[DEBUG] Photo processing completed")
+                except Exception as e:
+                    logging.error(f"[DEBUG] Error during photo processing: {str(e)}")
+                    logging.exception("[DEBUG] Photo processing error traceback:")
+                    raise
+            else:
+                logging.warning("[DEBUG] No photos found in scraped data")
+
+            # Update document
             property_document.set_property_information(data["main_text"])
             for review in data["reviews"]:
                 property_document.push_review(review)
             for amenity in data["amenities"]:
                 property_document.push_amenity(amenity)
+            logging.info("[DEBUG] Property document updated with scraped data")
 
-            # Create metadata entry
-            metadata = {"property_id": property.id, "data": data, "scraped": True}
-            response = supabase_client.table("property_metadata").insert(metadata).execute()
-            if not response.data:
-                raise ValueError(f"Failed to insert metadata: {response.error}")
-
-            # Process photos
-            await ScraperService._process_photos(property.id, data["photos"], property_document)
-
-            # Create or get data store ID
-            data_store_id = property.data_store_id or f"property_information_{property.id}"
-            if not property.data_store_id:
-                await VertexService.create_data_store(property.id)
-                # Update property with data store ID
-                supabase_client.table("properties").update({"data_store_id": data_store_id}).eq("id", property.id).execute()
-
-            # Update property metadata and progress
-            metadata_id = response.data[0]["id"]
-            supabase_client.table("properties").update({"metadata_id": metadata_id, "metadata_progress": 2, "data_store_id": data_store_id}).eq("id", property.id).execute()
-
-            # Upload documents and update search index
+            # Upload documents
+            logging.info("[DEBUG] Starting document upload")
             await ScraperService._upload_property_documents(property.id, property_document)
+            logging.info("[DEBUG] Document upload completed")
 
-            logging.info(f"Scraping completed for property {property.id}")
+            logging.info(f"[DEBUG] Scraping completed for property {property.id}")
 
         except Exception as e:
-            logging.error(f"Failed to scrape property {property.id}: {e}")
-            # Update property to show error state
-            supabase_client.table("properties").update({"metadata_progress": -1}).eq("id", property.id).execute()
+            logging.error(f"[DEBUG] Error in scrape_property_background: {str(e)}")
+            logging.exception("Full traceback:")
             raise

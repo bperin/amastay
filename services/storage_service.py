@@ -10,6 +10,7 @@ from pathlib import Path
 from models.document_model import Document
 from supabase_utils import supabase_client
 from services.download_service import DownloadService
+import uuid
 
 
 class StorageService:
@@ -53,8 +54,12 @@ class StorageService:
             # Select bucket based on content type
             bucket_name = self.JSON_BUCKET if content_type == "application/json" else self.BASE_BUCKET
 
+            # Generate UUID filename with proper extension
+            file_uuid = str(uuid.uuid4())
+            extension = "json" if content_type == "application/json" else "txt"
+
             # Ensure proper path structure
-            blob_name = f"properties/{property_id}/{filename}.{content_type.split('/')[-1]}"
+            blob_name = f"properties/{property_id}/{file_uuid}.{extension}"
 
             # Get bucket and create if doesn't exist
             bucket = self.client.bucket(bucket_name)
