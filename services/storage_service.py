@@ -46,10 +46,23 @@ class StorageService:
             logging.error(f"Error uploading file to GCS: {e}")
             raise
 
-    async def upload_document(self, property_id: str, file_content: Union[str, BinaryIO], filename: str, content_type: Optional[str] = None) -> Optional[str]:
-        """Upload a file to property documents folder"""
-        destination_path = f"{property_id}/property_information/{filename}.txt"
-        return await self._upload(bucket_name=self.BASE_BUCKET, file_content=file_content, destination_path=destination_path, content_type=content_type)
+    async def upload_document(self, property_id: str, file_content: str, filename: str, content_type: str) -> None:
+        """Upload a document to Google Cloud Storage"""
+        try:
+            bucket_name = "amastay_property_data_json"  # Changed from hardcoded bucket
+            blob_name = f"properties/{property_id}/{filename}.{content_type.split('/')[-1]}"
+
+            bucket = self.client.bucket(bucket_name)
+            blob = bucket.blob(blob_name)
+
+            # Upload the file
+            blob.upload_from_string(file_content, content_type=content_type)
+
+            logging.info(f"File {blob_name} uploaded to {bucket_name}")
+
+        except Exception as e:
+            logging.error(f"Failed to upload document: {e}")
+            raise
 
     async def upload_photo(self, property_id: str, photo_url: str, filename: str) -> Optional[str]:
         """Upload a photo from URL to property photos folder"""

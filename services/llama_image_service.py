@@ -1,4 +1,5 @@
 import os
+import logging
 from typing import Optional
 from openai import OpenAI
 from google.oauth2 import service_account
@@ -21,48 +22,68 @@ class LlamaImageService:
     BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
     SERVICE_ACCOUNT_PATH = os.path.join(BASE_DIR, "amastay_service_account.json")
 
+    PROPERTY_PHOTO_PROMPT = """
+    Analyze this property photo in detail. Focus on:
+    1. Room/area type and purpose
+    2. Key features and amenities visible
+    3. Design elements and finishes
+    4. Notable architectural details
+    5. Overall condition and quality
+    Be specific but concise. Format as a clear, descriptive paragraph.
+    """
+
     @classmethod
-    def get_client(cls) -> OpenAI:
+    def get_client(cls) -> Optional[OpenAI]:
         """Get an OpenAI client configured for Vertex AI"""
         try:
             credentials = service_account.Credentials.from_service_account_file(cls.SERVICE_ACCOUNT_PATH, scopes=["https://www.googleapis.com/auth/cloud-platform"])
             credentials.refresh(Request())
 
-            return OpenAI(api_key=credentials.token, base_url=cls.BASE_URL)  # Token will be used as API key
+            client = OpenAI(api_key=credentials.token, base_url=cls.BASE_URL)
+            logging.info("Successfully created Llama Vision client")
+            return client
+
         except Exception as e:
-            print(f"Error creating client: {str(e)}")
+            logging.error(f"Error creating Llama Vision client: {str(e)}")
             return None
 
     @classmethod
-    def analyze_image(cls, gcs_uri: str, prompt: Optional[str] = None) -> str:
+    async def analyze_image(cls, gcs_uri: str) -> str:
         """
-        Analyze an image using the Llama Vision model.
+        Analyze a property photo using the Llama Vision model.
 
         Args:
-            image_gcs_path: GCS path to the image (e.g. 'gs://bucket/image.jpg')
-            prompt: The text prompt/question for the model
+            gcs_uri: GCS path to the image (e.g. 'gs://bucket/image.jpg')
 
         Returns:
-            The model's response as a string
+            Detailed description of the property photo
         """
         try:
             client = cls.get_client()
             if not client:
-                return "Failed to initialize client"
+                logging.error("Failed to initialize Llama Vision client")
+                return "Error: Failed to initialize image analysis service"
 
-            response = client.chat.completions.create(stream=False, model="meta/llama-3.2-90b-vision-instruct-maas", messages=[{"role": "user", "content": [{"image_url": {"url": gcs_uri}, "type": "image_url"}, {"text": "What s in this image? Be very specific as to what you see for property description", "type": "text"}]}], max_tokens=4000, temperature=0.2, top_p=0.95)
+            logging.info(f"Analyzing image: {gcs_uri}")
+            response = client.chat.completions.create(model="meta/llama-3.2-90b-vision-instruct-maas", messages=[{"role": "user", "content": [{"type": "image_url", "image_url": {"url": gcs_uri}}, {"type": "text", "text": cls.PROPERTY_PHOTO_PROMPT}]}], max_tokens=4000, temperature=0.2, top_p=0.95, stream=False)
 
-            return response.choices[0].message.content
+            description = response.choices[0].message.content
+            logging.info(f"Successfully analyzed image: {gcs_uri[:100]}...")
+            return description
 
         except Exception as e:
-            print(f"Error analyzing image: {str(e)}")
-            return f"Error: {str(e)}"
+            error_msg = f"Error analyzing image {gcs_uri}: {str(e)}"
+            logging.error(error_msg)
+            return f"Error: Failed to analyze image - {str(e)}"
 
 
-# Example usage
 if __name__ == "__main__":
-    image_path = "gs://amastay/test.png"
-    user_prompt = "Tell me what you know about this property"
+    # Test the service
+    test_image = "gs://amastay_property_photos/test/sample.jpg"
+    import asyncio
 
-    result = LlamaImageService.analyze_image(image_path, user_prompt)
-    print("Model response:", result)
+    async def test():
+        result = await LlamaImageService.analyze_image(test_image)
+        print("Analysis result:", result)
+
+    asyncio.run(test())

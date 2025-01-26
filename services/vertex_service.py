@@ -8,6 +8,9 @@ from typing import Optional, List, Tuple
 from google.oauth2 import service_account
 import json
 from datetime import datetime
+from google.api_core import exceptions
+
+from models.property_model import Property
 
 
 class VertexService:
@@ -19,6 +22,7 @@ class VertexService:
     SERVICE_ACCOUNT_PATH = os.path.join(BASE_DIR, "amastay_service_account.json")
     MAX_RETRIES = 3
     RETRY_DELAY = 2
+    BUCKET_NAME = "amastay_property_data_text"
 
     @staticmethod
     async def _check_file_exists(bucket_name: str, file_path: str) -> bool:
@@ -112,47 +116,46 @@ class VertexService:
             raise
 
     @staticmethod
-    async def create_data_store(data_store_id: str) -> str:
-        """Create a new data store for property search"""
+    async def create_data_store(property_id: str) -> str:
+        """Create a data store for a property if it doesn't exist"""
         try:
-            # Create a client
+            data_store_id = f"property_information_{property_id}"
             client = discoveryengine_v1beta.DataStoreServiceClient(credentials=service_account.Credentials.from_service_account_file(VertexService.SERVICE_ACCOUNT_PATH))
 
-            # The full resource name of the collection
-            parent = client.collection_path(
-                project=VertexService.PROJECT_ID,
-                location=VertexService.LOCATION,
-                collection="default_collection",
-            )
+            # Check if data store exists
+            try:
+                parent = client.data_store_path(project=VertexService.PROJECT_ID, location=VertexService.LOCATION, data_store=data_store_id)
+                existing_store = client.get_data_store(name=parent)
+                logging.info(f"Data store already exists for property {property_id}")
+                return data_store_id
 
-            # Create chunking config
-            chunking_config = discoveryengine_v1beta.DocumentProcessingConfig.ChunkingConfig(layout_based_chunking_config=discoveryengine_v1beta.DocumentProcessingConfig.ChunkingConfig.LayoutBasedChunkingConfig(chunk_size=500, include_ancestor_headings=True))
+            except exceptions.NotFound:
+                # Data store doesn't exist, create it
+                logging.info(f"Creating new data store for property {property_id}")
+                parent = f"projects/{VertexService.PROJECT_ID}/locations/{VertexService.LOCATION}/collections/default_collection"
 
-            # Create document processing config
-            doc_processing_config = discoveryengine_v1beta.DocumentProcessingConfig(chunking_config=chunking_config)
+                # Create chunking config
+                chunking_config = discoveryengine_v1beta.DocumentProcessingConfig.ChunkingConfig(layout_based_chunking_config=discoveryengine_v1beta.DocumentProcessingConfig.ChunkingConfig.LayoutBasedChunkingConfig(chunk_size=500, include_ancestor_headings=True))
 
-            data_store = discoveryengine_v1beta.DataStore(display_name=f"property_information_{data_store_id}", industry_vertical=discoveryengine_v1beta.IndustryVertical.GENERIC, solution_types=[discoveryengine_v1beta.SolutionType.SOLUTION_TYPE_SEARCH], content_config=discoveryengine_v1beta.DataStore.ContentConfig.CONTENT_REQUIRED, document_processing_config=doc_processing_config)
+                # Create document processing config
+                doc_processing_config = discoveryengine_v1beta.DocumentProcessingConfig(chunking_config=chunking_config)
 
-            request = discoveryengine_v1beta.CreateDataStoreRequest(
-                parent=parent,
-                data_store_id=data_store_id,
-                data_store=data_store,
-            )
+                # Create data store config with both chunking and chat
+                data_store = discoveryengine_v1beta.DataStore(display_name=f"Property Information - {property_id}", industry_vertical=discoveryengine_v1beta.IndustryVertical.GENERIC, solution_types=[discoveryengine_v1beta.SolutionType.SOLUTION_TYPE_GENERATIVE_CHAT], content_config=discoveryengine_v1beta.DataStore.ContentConfig.CONTENT_REQUIRED, document_processing_config=doc_processing_config)
 
-            # Make the request
-            operation = client.create_data_store(request=request)
-            print(f"Waiting for operation to complete: {operation.operation.name}")
-            result = operation.result()
+                request = discoveryengine_v1beta.CreateDataStoreRequest(parent=parent, data_store_id=data_store_id, data_store=data_store)
 
-            # Get metadata after operation is complete
-            metadata = discoveryengine_v1beta.CreateDataStoreMetadata(operation.metadata)
-            print(f"Created data store: {result.name}")
-            print(f"Metadata: {metadata}")
+                operation = client.create_data_store(request=request)
+                result = operation.result()  # Wait for operation to complete
+                logging.info(f"Successfully created data store: {result.name}")
+                return data_store_id
 
-            return result.name
-
+        except exceptions.AlreadyExists:
+            # Handle race condition where store was created between our check and create
+            logging.info(f"Data store was created concurrently for property {property_id}")
+            return data_store_id
         except Exception as e:
-            print(f"Error creating data store: {e}")
+            logging.error(f"Error creating data store for property {property_id}: {e}")
             raise
 
     @staticmethod
@@ -175,7 +178,7 @@ class VertexService:
             # Create document processing config
             doc_processing_config = discoveryengine_v1beta.DocumentProcessingConfig(chunking_config=chunking_config)
 
-            data_store = discoveryengine_v1beta.DataStore(display_name="My Test Data Store2", industry_vertical=discoveryengine_v1beta.IndustryVertical.GENERIC, solution_types=[discoveryengine_v1beta.SolutionType.SOLUTION_TYPE_SEARCH], content_config=discoveryengine_v1beta.DataStore.ContentConfig.CONTENT_REQUIRED, document_processing_config=doc_processing_config)
+            data_store = discoveryengine_v1beta.DataStore(display_name="My Test Data Store2", industry_vertical=discoveryengine_v1beta.IndustryVertical.GENERIC, solution_types=[discoveryengine_v1beta.SolutionType.SOLUTION_TYPE_GENERATIVE_CHAT], content_config=discoveryengine_v1beta.DataStore.ContentConfig.CONTENT_REQUIRED, document_processing_config=doc_processing_config)
 
             request = discoveryengine_v1beta.CreateDataStoreRequest(
                 parent=parent,
@@ -200,7 +203,7 @@ class VertexService:
             raise
 
     @staticmethod
-    async def import_documents(Property: property) -> bool:
+    async def import_documents(property: Property) -> bool:
         """Import documents from GCS into a data store"""
         try:
             client = discoveryengine_v1beta.DocumentServiceClient(credentials=service_account.Credentials.from_service_account_file(VertexService.SERVICE_ACCOUNT_PATH))
