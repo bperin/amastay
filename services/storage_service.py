@@ -26,14 +26,17 @@ class StorageService:
         credentials = service_account.Credentials.from_service_account_file(self.SERVICE_ACCOUNT_PATH)
         self.client = Client(credentials=credentials)
 
-    async def _upload(self, bucket_name: str, file_content: Union[str, BinaryIO], destination_path: str, content_type: Optional[str] = None) -> Optional[str]:
+    async def _upload(self, bucket_name: str, file_content: Union[str, bytes], destination_path: str, content_type: Optional[str] = None) -> Optional[str]:
         """Core upload method for GCS"""
         try:
             bucket = self.client.bucket(bucket_name)
             blob = bucket.blob(destination_path)
 
+            # Handle different content types
             if isinstance(file_content, str):
                 blob.upload_from_string(file_content)
+            elif isinstance(file_content, bytes):
+                blob.upload_from_string(file_content, content_type=content_type)
             else:
                 blob.upload_from_file(file_content)
 
@@ -87,20 +90,29 @@ class StorageService:
     async def upload_photo(self, property_id: str, photo_url: str, filename: str) -> Optional[str]:
         """Upload a photo from URL to property photos folder"""
         try:
-            # Download photo
+            logging.info(f"[DEBUG] StorageService: Starting photo upload from {photo_url}")
+
+            # Download photo using download service
             download_service = DownloadService()
             result = await download_service.download_from_url(photo_url)
+
             if not result:
+                logging.error(f"[DEBUG] StorageService: Failed to download photo from {photo_url}")
                 return None
 
             content, content_type = result
+            logging.info(f"[DEBUG] StorageService: Downloaded {len(content)} bytes with type {content_type}")
 
             # Upload to GCS
-            destination_path = f"{property_id}/{filename}"
-            return await self._upload(bucket_name=self.PHOTOS_BUCKET, file_content=content, destination_path=destination_path, content_type=content_type or "image/jpeg")
+            destination_path = f"properties/{property_id}/{filename}"
+            gcs_uri = await self._upload(bucket_name=self.PHOTOS_BUCKET, file_content=content, destination_path=destination_path, content_type=content_type or "image/jpeg")
+
+            logging.info(f"[DEBUG] StorageService: Successfully uploaded photo to {gcs_uri}")
+            return gcs_uri
 
         except Exception as e:
-            logging.error(f"Error uploading photo from URL {photo_url}: {e}")
+            logging.error(f"[DEBUG] StorageService: Error uploading photo: {str(e)}")
+            logging.exception("[DEBUG] StorageService: Upload error traceback:")
             raise
 
     async def download_photo(self, property_id: str, photo_filename: str, local_path: Optional[str] = None) -> Optional[Tuple[str, bytes]]:

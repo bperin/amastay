@@ -98,8 +98,6 @@ class ScraperService:
             logging.info(f"[DEBUG] Starting _process_photos with {len(photos)} photos for property {property_id}")
             logging.info(f"[DEBUG] Photo URLs: {photos[:3]}...")  # Log first 3 photos
 
-            photo_service = PhotoService()
-            llama_service = LlamaService()
             storage_service = StorageService()
 
             for index, photo_url in enumerate(photos):
@@ -112,32 +110,19 @@ class ScraperService:
                     filename = f"{photo_uuid}.jpg"
                     logging.info(f"[DEBUG] Generated filename: {filename}")
 
-                    # Download photo
-                    logging.info(f"[DEBUG] Downloading photo...")
-                    downloaded_photo = await photo_service.download_photo(photo_url)
-                    if not downloaded_photo:
-                        logging.error(f"[DEBUG] Failed to download photo {photo_url}")
-                        continue
-                    logging.info(f"[DEBUG] Photo downloaded successfully")
-
-                    # Upload to GCS
-                    logging.info(f"[DEBUG] Uploading to GCS...")
+                    # Download and upload photo
+                    logging.info(f"[DEBUG] Downloading and uploading photo...")
                     uploaded_url = await storage_service.upload_photo(property_id=property_id, photo_url=photo_url, filename=filename)
 
                     if not uploaded_url:
-                        logging.error(f"[DEBUG] Failed to upload photo to GCS")
+                        logging.error(f"[DEBUG] Failed to upload photo {photo_url}")
                         continue
+
                     logging.info(f"[DEBUG] Photo uploaded successfully: {uploaded_url}")
 
-                    # Get image analysis
+                    # Store in Supabase without Llama analysis for now
                     gcs_uri = f"gs://{storage_service.PHOTOS_BUCKET}/properties/{property_id}/{filename}"
-                    logging.info(f"[DEBUG] Getting image analysis for {gcs_uri}")
-                    description = await llama_service.analyze_image(gcs_uri=gcs_uri)
-                    logging.info(f"[DEBUG] Generated description: {description[:100]}...")
-
-                    # Store in Supabase
-                    photo_data = {"property_id": property_id, "url": photo_url, "gs_uri": gcs_uri, "description": description, "filename": filename}
-                    logging.info(f"[DEBUG] Storing photo data in Supabase...")
+                    photo_data = {"property_id": property_id, "url": photo_url, "gs_uri": gcs_uri, "filename": filename}
 
                     photo_response = supabase_client.table("property_photos").insert(photo_data).execute()
                     if photo_response.data:
