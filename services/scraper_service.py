@@ -13,6 +13,7 @@ from dotenv import load_dotenv
 from datetime import datetime
 from services.storage_service import StorageService
 import json
+from services.llama_image_service import LlamaImageService
 
 load_dotenv()
 
@@ -110,7 +111,7 @@ class ScraperService:
                     filename = f"{photo_uuid}.jpg"
                     logging.info(f"[DEBUG] Generated filename: {filename}")
 
-                    # Download and upload photo
+                    # First: Download and upload photo to GCS
                     logging.info(f"[DEBUG] Downloading and uploading photo...")
                     uploaded_url = await storage_service.upload_photo(property_id=property_id, photo_url=photo_url, filename=filename)
 
@@ -120,16 +121,16 @@ class ScraperService:
 
                     logging.info(f"[DEBUG] Photo uploaded successfully: {uploaded_url}")
 
-                    # Store in Supabase without Llama analysis for now
+                    # Second: Now that photo is in GCS, analyze it with Llama
                     gcs_uri = f"gs://{storage_service.PHOTOS_BUCKET}/properties/{property_id}/{filename}"
-                    photo_data = {"property_id": property_id, "url": photo_url, "gs_uri": gcs_uri, "filename": filename}
+                    logging.info(f"[DEBUG] Getting Llama image analysis for {gcs_uri}")
+                    description = await LlamaImageService.analyze_image(gcs_uri=gcs_uri)
+                    logging.info(f"[DEBUG] Generated description: {description[:100]}...")
 
-                    photo_response = supabase_client.table("property_photos").insert(photo_data).execute()
-                    if photo_response.data:
-                        property_document.push_photo(photo_data)
-                        logging.info(f"[DEBUG] Photo record created successfully")
-                    else:
-                        logging.error(f"[DEBUG] Failed to create photo record: {photo_response.error}")
+                    # Add photo with description to property document
+                    photo_data = {"url": photo_url, "gs_uri": gcs_uri, "filename": filename, "description": description}
+                    property_document.push_photo(photo_data)
+                    logging.info(f"[DEBUG] Added photo with description to property document")
 
                 except Exception as e:
                     logging.error(f"[DEBUG] Error processing individual photo {photo_url}: {str(e)}")
