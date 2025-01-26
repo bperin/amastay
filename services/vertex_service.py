@@ -4,9 +4,10 @@ from google.cloud import discoveryengine_v1beta
 from google.cloud import storage
 from google.api_core.client_options import ClientOptions
 import asyncio
-from typing import Optional
+from typing import Optional, List, Tuple
 from google.oauth2 import service_account
 import json
+from datetime import datetime
 
 
 class VertexService:
@@ -203,7 +204,7 @@ class VertexService:
         """Import documents from GCS into a data store"""
         try:
             client = discoveryengine_v1beta.DocumentServiceClient(credentials=service_account.Credentials.from_service_account_file(VertexService.SERVICE_ACCOUNT_PATH))
-
+            data_store_id = f"property_information_{property.id}"
             # Get the full resource name of the data store
             parent = client.data_store_path(
                 project=VertexService.PROJECT_ID,
@@ -229,8 +230,8 @@ class VertexService:
             raise
 
     @staticmethod
-    async def create_document(data_store_id: str, document_id: str, content: str) -> bool:
-        """Create a single document in the data store"""
+    async def create_document(data_store_id: str, document_id: str, content: dict):
+        """Create a document in a specific data store."""
         try:
             client = discoveryengine_v1beta.DocumentServiceClient(credentials=service_account.Credentials.from_service_account_file(VertexService.SERVICE_ACCOUNT_PATH))
 
@@ -241,16 +242,89 @@ class VertexService:
             )
 
             # Create document
-            document = discoveryengine_v1beta.Document(id=document_id, content=content, content_type="text/plain")
+            document = discoveryengine_v1beta.Document(id=document_id, content=content, content_type="application/json")
 
             request = discoveryengine_v1beta.CreateDocumentRequest(parent=parent, document=document, document_id=document_id)
 
             response = client.create_document(request=request)
-            print(f"Created document: {response.name}")
-            return True
+            logging.info(f"Created document: {response.name}")
 
         except Exception as e:
-            print(f"Error creating document: {e}")
+            logging.error(f"Error creating document: {e}")
+            raise
+
+    @staticmethod
+    async def index_property(property_id: str, property_data: dict, files: List[Tuple[str, str]], data_store_id: str):
+        """Index property data and files in vertex search."""
+        try:
+            logging.info(f"Starting to index property {property_id} in data store {data_store_id}")
+            logging.info(f"Property data keys: {property_data.keys()}")
+            logging.info(f"Number of files to index: {len(files)}")
+
+            # Prepare document for indexing
+            document = {
+                "id": property_id,
+                "content": {"title": property_data.get("title", ""), "description": property_data.get("description", ""), "amenities": property_data.get("amenities", []), "location": property_data.get("location", {}), "files": files},
+                "metadata": {"type": "property", "created_at": datetime.now().isoformat(), "source": property_data.get("source", ""), "url": property_data.get("url", "")},
+            }
+            logging.info(f"Prepared document for indexing: {json.dumps(document, indent=2)}")
+
+            # Create document in the specific data store
+            logging.info("Creating document in data store")
+            await VertexService.create_document(data_store_id, property_id, document)
+            logging.info("Successfully created document")
+
+            # Import files to the data store
+            if files:
+                logging.info(f"Starting file import for {len(files)} files")
+                await VertexService.import_files_to_data_store(data_store_id, files)
+                logging.info("Successfully imported all files")
+            else:
+                logging.info("No files to import")
+
+            logging.info(f"Successfully completed indexing for property {property_id}")
+
+        except Exception as e:
+            logging.error(f"Failed to index property in vertex: {e}")
+            raise
+
+    @staticmethod
+    async def import_files_to_data_store(data_store_id: str, files: List[Tuple[str, str]]):
+        """Import files into a specific data store."""
+        try:
+            logging.info(f"Starting file import to data store {data_store_id}")
+            client = discoveryengine_v1beta.DocumentServiceClient(credentials=service_account.Credentials.from_service_account_file(VertexService.SERVICE_ACCOUNT_PATH))
+
+            parent = client.data_store_path(
+                project=VertexService.PROJECT_ID,
+                location=VertexService.LOCATION,
+                data_store=data_store_id,
+            )
+            logging.info(f"Using parent path: {parent}")
+
+            # Convert local paths to GCS URIs and maintain content types
+            gcs_files = [{"uri": f"gs://{VertexService.BUCKET_NAME}/{file_path}", "content_type": content_type} for file_path, content_type in files]
+            logging.info(f"Prepared GCS files: {json.dumps(gcs_files, indent=2)}")
+
+            # Create import request for each file with its content type
+            for idx, file_info in enumerate(gcs_files, 1):
+                logging.info(f"Processing file {idx}/{len(gcs_files)}: {file_info['uri']}")
+                request = discoveryengine_v1beta.ImportDocumentsRequest(
+                    parent=parent, gcs_source=discoveryengine_v1beta.GcsSource(input_uris=[file_info["uri"]], data_schema="content"), document_option=discoveryengine_v1beta.ImportDocumentsRequest.DocumentOption(content_type=file_info["content_type"]), reconciliation_mode=discoveryengine_v1beta.ImportDocumentsRequest.ReconciliationMode.INCREMENTAL
+                )
+
+                # Start the import operation
+                operation = client.import_documents(request=request)
+                logging.info(f"Started import operation: {operation.operation.name}")
+
+                # Wait for operation to complete
+                result = operation.result()
+                logging.info(f"Import completed for file {idx}: {result}")
+
+            logging.info("Successfully completed all file imports")
+
+        except Exception as e:
+            logging.error(f"Error importing files to data store: {e}")
             raise
 
 

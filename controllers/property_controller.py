@@ -25,20 +25,24 @@ from services.vertex_service import VertexService
 router = APIRouter(tags=["properties"])
 
 
-@router.post("/create", response_model=Property, status_code=201, operation_id="create_property")
-async def create_property(create_property_input: CreateProperty, current_user: dict = Depends(get_current_user)):
-    """Creates a new property (owners only)"""
+@router.post("", response_model=Property, operation_id="create_property")
+async def create_property(
+    background_tasks: BackgroundTasks,
+    property: CreateProperty,
+    current_user: dict = Depends(get_current_user),
+):
+    """Create a new property."""
     try:
-        # Create property with named parameters
-        new_property = await PropertyService.create_property(owner_id=current_user["id"], create_property_request=create_property_input)
-        data_store = await VertexService.create_data_store(new_property.id)
+        # Create the property first
+        new_property = PropertyService.create_property(property, current_user["id"])
+
+        # Trigger async scraping
+        background_tasks.add_task(PropertyService.scrape_and_index_property, property_id=new_property.id, user_id=current_user["id"])
+
         return new_property
-    except ValueError as ve:
-        logging.error(f"Validation error in create_property: {ve}")
-        raise HTTPException(status_code=400, detail=str(ve))
     except Exception as e:
-        logging.error(f"Error in create_property: {e}")
-        raise HTTPException(status_code=500, detail="An unexpected error occurred")
+        logging.error(f"Failed to create property: {e}")
+        raise HTTPException(status_code=400, detail=str(e))
 
 
 @router.post("/{property_id}/scrape", status_code=202, response_model=ScrapeAsyncResponse, operation_id="scrape_property")

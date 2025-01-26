@@ -9,6 +9,9 @@ from supabase_utils import supabase_client
 from models.property_model import CreateProperty, Property
 from typing import List, Optional, Tuple
 from urllib.parse import urlparse, urlunparse
+from .vertex_service import VertexService
+from .storage_service import StorageService
+from datetime import datetime
 
 
 class PropertyService:
@@ -299,3 +302,47 @@ class PropertyService:
         except Exception as e:
             logging.error(f"Exception in get_property_photos: {property_id}: {e}")
             raise e
+
+    @staticmethod
+    async def update_property_data_store(property_id: str, data_store_id: str) -> Property:
+        """Update property with data store ID"""
+        try:
+            response = supabase_client.from_("properties").update({"data_store_id": data_store_id}).eq("id", property_id).execute()
+
+            if not response.data:
+                raise ValueError(f"Failed to update property {property_id} with data store ID")
+
+            return Property(**response.data[0])
+        except Exception as e:
+            logging.error(f"Error updating property data store: {e}")
+            raise
+
+    @staticmethod
+    async def scrape_and_index_property(property_id: str, user_id: str):
+        """Scrape property data and index it in vertex search."""
+        try:
+            # Get property details
+            property = PropertyService.get_property(property_id)
+
+            # Create data store ID if not exists
+            data_store_id = property.data_store_id or f"property_information_{property_id}"
+            if not property.data_store_id:
+                await VertexService.create_data_store(property_id)
+                await PropertyService.update_property_data_store(property_id, data_store_id)
+
+            # Scrape the property
+            scrape_result = await PropertyService.scrape_property(property_id)
+
+            # Store scraped data with content types
+            stored_files = await StorageService.store_property_data(property_id=property_id, data=scrape_result.data)
+
+            # Index in vertex search with data store ID
+            await VertexService.index_property(property_id=property_id, property_data=scrape_result.data, files=stored_files, data_store_id=data_store_id)  # Now contains tuples of (path, content_type)
+
+            # Update property status
+            PropertyService.update_property(property_id=property_id, update_data={"last_scraped_at": datetime.now(), "scrape_status": "completed"})
+
+        except Exception as e:
+            logger.error(f"Failed to scrape and index property {property_id}: {e}")
+            PropertyService.update_property(property_id=property_id, update_data={"scrape_status": "failed", "scrape_error": str(e)})
+            raise
