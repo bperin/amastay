@@ -132,21 +132,28 @@ class ScraperService:
 
     @staticmethod
     async def _upload_property_documents(property_id: str, property_document: PropertyDocument) -> None:
-        """Upload property documents to Google Cloud Storage"""
+        """Upload property documents to appropriate Google Cloud Storage buckets"""
         storage_service = StorageService()
         doc_dict = property_document.to_dict()
         doc_text = property_document.to_text()
 
         try:
-            # Store documents in GCS
+            logging.info(f"Starting document upload for property {property_id}")
+
+            # Store text document
+            logging.info("Uploading text document...")
             await storage_service.upload_document(property_id=property_id, file_content=doc_text, filename="data", content_type="text/plain")
+            logging.info("Text document uploaded successfully")
 
+            # Store JSON document
+            logging.info("Uploading JSON document...")
             await storage_service.upload_document(property_id=property_id, file_content=json.dumps(doc_dict), filename="data", content_type="application/json")
+            logging.info("JSON document uploaded successfully")
 
-            logging.info(f"Documents uploaded for property {property_id}")
+            logging.info(f"All documents uploaded for property {property_id}")
 
         except Exception as e:
-            logging.error(f"Failed to upload documents: {e}")
+            logging.error(f"Failed to upload documents for property {property_id}: {str(e)}")
             raise
 
     @staticmethod

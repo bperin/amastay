@@ -18,6 +18,7 @@ class StorageService:
     BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
     SERVICE_ACCOUNT_PATH = os.path.join(BASE_DIR, "amastay_service_account.json")
     BASE_BUCKET = "amastay_property_data_text"
+    JSON_BUCKET = "amastay_property_data_json"
     PHOTOS_BUCKET = "amastay_property_photos"
 
     def __init__(self):
@@ -47,21 +48,35 @@ class StorageService:
             raise
 
     async def upload_document(self, property_id: str, file_content: str, filename: str, content_type: str) -> None:
-        """Upload a document to Google Cloud Storage"""
+        """Upload a document to the appropriate bucket based on content type"""
         try:
-            bucket_name = "amastay_property_data_json"  # Changed from hardcoded bucket
+            # Select bucket based on content type
+            bucket_name = self.JSON_BUCKET if content_type == "application/json" else self.BASE_BUCKET
+
+            # Ensure proper path structure
             blob_name = f"properties/{property_id}/{filename}.{content_type.split('/')[-1]}"
 
+            # Get bucket and create if doesn't exist
             bucket = self.client.bucket(bucket_name)
-            blob = bucket.blob(blob_name)
+            if not bucket.exists():
+                bucket = self.client.create_bucket(bucket_name)
+                logging.info(f"Created bucket: {bucket_name}")
 
-            # Upload the file
+            # Create and upload blob
+            blob = bucket.blob(blob_name)
             blob.upload_from_string(file_content, content_type=content_type)
 
-            logging.info(f"File {blob_name} uploaded to {bucket_name}")
+            # Verify upload
+            if not blob.exists():
+                raise Exception(f"Upload verification failed for {blob_name}")
+
+            logging.info(f"Successfully uploaded {blob_name} to {bucket_name}")
+            logging.info(f"File can be accessed at: gs://{bucket_name}/{blob_name}")
 
         except Exception as e:
-            logging.error(f"Failed to upload document: {e}")
+            logging.error(f"Failed to upload document: {str(e)}")
+            logging.error(f"Bucket: {bucket_name}, Blob: {blob_name}")
+            logging.error(f"Content type: {content_type}")
             raise
 
     async def upload_photo(self, property_id: str, photo_url: str, filename: str) -> Optional[str]:
