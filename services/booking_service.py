@@ -50,8 +50,17 @@ class BookingService:
 
     @staticmethod
     def create_booking(booking_data: CreateBooking) -> Optional[Booking]:
+        """
+        Creates a new booking with associated guests.
+
+        Args:
+            booking_data: CreateBooking model containing booking and guest information
+
+        Returns:
+            Optional[Booking]: The created booking with guests if successful
+        """
         try:
-            # First create the booking
+            # Create the booking
             booking_dict = booking_data.model_dump(exclude={"guests"})
             booking_response = supabase_client.table("bookings").insert(booking_dict).execute()
 

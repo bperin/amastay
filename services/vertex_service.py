@@ -1,6 +1,6 @@
 import logging
 import os
-from google.cloud import discoveryengine_v1beta
+from google.cloud import discoveryengine_v1beta as discoveryengine
 from google.cloud import storage
 from google.api_core.client_options import ClientOptions
 import asyncio
@@ -21,9 +21,7 @@ class VertexService:
     LOCATION = "global"
     BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
     SERVICE_ACCOUNT_PATH = os.path.join(BASE_DIR, "amastay_service_account.json")
-    MAX_RETRIES = 3
-    RETRY_DELAY = 2
-    BUCKET_NAME = "amastay_property_data_text"
+    SEARCH_DATA_STORE = "amastay_property_search"  # Single data store for all properties
 
     @staticmethod
     async def _check_file_exists(bucket_name: str, file_path: str) -> bool:
@@ -63,7 +61,7 @@ class VertexService:
         return False
 
     @staticmethod
-    async def update_property_index(property_id: str) -> Optional[discoveryengine_v1beta.ImportDocumentsResponse]:
+    async def update_property_index(property_id: str) -> Optional[discoveryengine.ImportDocumentsResponse]:
         """
         Updates Vertex AI search index with property document
         Waits for file to be available in GCS before updating
@@ -93,13 +91,13 @@ class VertexService:
             client_options = ClientOptions(api_endpoint=f"{VertexService.LOCATION}-discoveryengine.googleapis.com") if VertexService.LOCATION != "global" else None
 
             # Create a client
-            client = discoveryengine_v1beta.DocumentServiceClient(client_options=client_options, credentials=service_account.Credentials.from_service_account_file(VertexService.SERVICE_ACCOUNT_PATH))
+            client = discoveryengine.DocumentServiceClient(client_options=client_options, credentials=service_account.Credentials.from_service_account_file(VertexService.SERVICE_ACCOUNT_PATH))
 
             # Get the full resource name of the branch
-            parent = client.branch_path(project=VertexService.PROJECT_ID, location=VertexService.LOCATION, data_store=VertexService.SEARCH_ENGINE_ID, branch="default_branch")
+            parent = client.branch_path(project=VertexService.PROJECT_ID, location=VertexService.LOCATION, data_store=VertexService.SEARCH_DATA_STORE, branch="default_branch")
 
             # Create import request
-            request = discoveryengine_v1beta.ImportDocumentsRequest(parent=parent, gcs_source=discoveryengine_v1beta.GcsSource(input_uris=[f"gs://{bucket_name}/{file_path}"], data_schema="content"), reconciliation_mode=discoveryengine_v1beta.ImportDocumentsRequest.ReconciliationMode.INCREMENTAL)  # For unstructured documents (TXT files)
+            request = discoveryengine.ImportDocumentsRequest(parent=parent, gcs_source=discoveryengine.GcsSource(input_uris=[f"gs://{bucket_name}/{file_path}"], data_schema="content"), reconciliation_mode=discoveryengine.ImportDocumentsRequest.ReconciliationMode.INCREMENTAL)  # For unstructured documents (TXT files)
 
             # Make the request and wait for completion
             operation = client.import_documents(request=request)
@@ -107,7 +105,7 @@ class VertexService:
             result = operation.result()
 
             # Get metadata after operation is complete
-            metadata = discoveryengine_v1beta.ImportDocumentsMetadata(operation.metadata)
+            metadata = discoveryengine.ImportDocumentsMetadata(operation.metadata)
             logging.info(f"Successfully updated search index for property {property_id}. Metadata: {metadata}")
 
             return result
@@ -118,34 +116,36 @@ class VertexService:
 
     @staticmethod
     async def create_data_store(property_id: str) -> str:
-        """Create a data store for property documents"""
+        """Create the main search data store if it doesn't exist"""
         try:
-            client = discoveryengine.DataStoreServiceClient()
-            parent = f"projects/{VertexService.PROJECT_ID}/locations/{VertexService.LOCATION}"
+            credentials = service_account.Credentials.from_service_account_file(VertexService.SERVICE_ACCOUNT_PATH, scopes=["https://www.googleapis.com/auth/cloud-platform"])
+            client = discoveryengine.DataStoreServiceClient(credentials=credentials)
 
-            # Create data store for text/documents
-            data_store = DataStore(
-                display_name=f"property_information_{property_id}",
-                content_config=DataStore.ContentConfig(
-                    content_type="CONTENT_TYPE_UNSTRUCTURED",  # For text documents
-                ),
-                solution_types=["SOLUTION_TYPE_SEARCH"],  # Not generative chat
-            )
+            # Check if data store exists
+            try:
+                parent = client.data_store_path(project=VertexService.PROJECT_ID, location=VertexService.LOCATION, data_store=f"{VertexService.SEARCH_DATA_STORE}_{property_id}")
+                existing_store = client.get_data_store(name=parent)
+                logging.info(f"Search data store already exists for property {property_id}")
+                return existing_store.name
+            except exceptions.NotFound:
+                # Create new data store
+                parent = f"projects/{VertexService.PROJECT_ID}/locations/{VertexService.LOCATION}"
 
-            request = discoveryengine.CreateDataStoreRequest(
-                parent=parent,
-                data_store_id=f"property_information_{property_id}",
-                data_store=data_store,
-            )
+                # Fix: Use the correct enum structure
+                content_config = discoveryengine.DataStore.ContentConfig()
+                content_config.content_type = "UNSTRUCTURED"  # Use string value instead of enum
 
-            operation = client.create_data_store(request=request)
-            data_store = operation.result()
+                data_store = discoveryengine.DataStore(display_name=f"Amastay Property Search - {property_id}", content_config=content_config, solution_types=[discoveryengine.SolutionType.SOLUTION_TYPE_GENERATIVE_CHAT])
 
-            logging.info(f"Created data store: {data_store.name}")
-            return data_store.name
+                request = discoveryengine.CreateDataStoreRequest(parent=parent, data_store_id=f"{VertexService.SEARCH_DATA_STORE}_{property_id}", data_store=data_store)
+
+                operation = client.create_data_store(request=request)
+                data_store = operation.result()
+                logging.info(f"Created search data store for property {property_id}: {data_store.name}")
+                return data_store.name
 
         except Exception as e:
-            logging.error(f"Failed to create data store: {str(e)}")
+            logging.error(f"Failed to create/get data store for property {property_id}: {str(e)}")
             raise
 
     @staticmethod
@@ -153,7 +153,7 @@ class VertexService:
         """Test creating a new data store"""
         try:
             # Create a client
-            client = discoveryengine_v1beta.DataStoreServiceClient(credentials=service_account.Credentials.from_service_account_file(VertexService.SERVICE_ACCOUNT_PATH))
+            client = discoveryengine.DataStoreServiceClient(credentials=service_account.Credentials.from_service_account_file(VertexService.SERVICE_ACCOUNT_PATH))
 
             # The full resource name of the collection
             parent = client.collection_path(
@@ -163,14 +163,14 @@ class VertexService:
             )
 
             # Create chunking config
-            chunking_config = discoveryengine_v1beta.DocumentProcessingConfig.ChunkingConfig(layout_based_chunking_config=discoveryengine_v1beta.DocumentProcessingConfig.ChunkingConfig.LayoutBasedChunkingConfig(chunk_size=500, include_ancestor_headings=True))
+            chunking_config = discoveryengine.DocumentProcessingConfig.ChunkingConfig(layout_based_chunking_config=discoveryengine.DocumentProcessingConfig.ChunkingConfig.LayoutBasedChunkingConfig(chunk_size=500, include_ancestor_headings=True))
 
             # Create document processing config
-            doc_processing_config = discoveryengine_v1beta.DocumentProcessingConfig(chunking_config=chunking_config)
+            doc_processing_config = discoveryengine.DocumentProcessingConfig(chunking_config=chunking_config)
 
-            data_store = discoveryengine_v1beta.DataStore(display_name="My Test Data Store2", industry_vertical=discoveryengine_v1beta.IndustryVertical.GENERIC, solution_types=[discoveryengine_v1beta.SolutionType.SOLUTION_TYPE_GENERATIVE_CHAT], content_config=discoveryengine_v1beta.DataStore.ContentConfig.CONTENT_REQUIRED, document_processing_config=doc_processing_config)
+            data_store = discoveryengine.DataStore(display_name="My Test Data Store2", industry_vertical=discoveryengine.IndustryVertical.GENERIC, solution_types=[discoveryengine.SolutionType.SOLUTION_TYPE_GENERATIVE_CHAT], content_config=discoveryengine.DataStore.ContentConfig.CONTENT_REQUIRED, document_processing_config=doc_processing_config)
 
-            request = discoveryengine_v1beta.CreateDataStoreRequest(
+            request = discoveryengine.CreateDataStoreRequest(
                 parent=parent,
                 data_store_id="amastay-ds-test2",
                 data_store=data_store,
@@ -182,7 +182,7 @@ class VertexService:
             result = operation.result()
 
             # Get metadata after operation is complete
-            metadata = discoveryengine_v1beta.CreateDataStoreMetadata(operation.metadata)
+            metadata = discoveryengine.CreateDataStoreMetadata(operation.metadata)
             print(f"Created data store: {result.name}")
             print(f"Metadata: {metadata}")
 
@@ -196,8 +196,8 @@ class VertexService:
     async def import_documents(property: Property) -> bool:
         """Import documents from GCS into a data store"""
         try:
-            client = discoveryengine_v1beta.DocumentServiceClient(credentials=service_account.Credentials.from_service_account_file(VertexService.SERVICE_ACCOUNT_PATH))
-            data_store_id = f"property_information_{property.id}"
+            client = discoveryengine.DocumentServiceClient(credentials=service_account.Credentials.from_service_account_file(VertexService.SERVICE_ACCOUNT_PATH))
+            data_store_id = VertexService.SEARCH_DATA_STORE
             # Get the full resource name of the data store
             parent = client.data_store_path(
                 project=VertexService.PROJECT_ID,
@@ -206,7 +206,7 @@ class VertexService:
             )
 
             # Create import request
-            request = discoveryengine_v1beta.ImportDocumentsRequest(parent=parent, gcs_source=discoveryengine_v1beta.GcsSource(input_uris=[gcs_uri], data_schema="content"), reconciliation_mode=discoveryengine_v1beta.ImportDocumentsRequest.ReconciliationMode.INCREMENTAL)
+            request = discoveryengine.ImportDocumentsRequest(parent=parent, gcs_source=discoveryengine.GcsSource(input_uris=[gcs_uri], data_schema="content"), reconciliation_mode=discoveryengine.ImportDocumentsRequest.ReconciliationMode.INCREMENTAL)
 
             # Start the import operation
             operation = client.import_documents(request=request)
@@ -226,7 +226,7 @@ class VertexService:
     async def create_document(data_store_id: str, document_id: str, content: dict):
         """Create a document in a specific data store."""
         try:
-            client = discoveryengine_v1beta.DocumentServiceClient(credentials=service_account.Credentials.from_service_account_file(VertexService.SERVICE_ACCOUNT_PATH))
+            client = discoveryengine.DocumentServiceClient(credentials=service_account.Credentials.from_service_account_file(VertexService.SERVICE_ACCOUNT_PATH))
 
             parent = client.data_store_path(
                 project=VertexService.PROJECT_ID,
@@ -235,9 +235,9 @@ class VertexService:
             )
 
             # Create document
-            document = discoveryengine_v1beta.Document(id=document_id, content=content, content_type="application/json")
+            document = discoveryengine.Document(id=document_id, content=content, content_type="application/json")
 
-            request = discoveryengine_v1beta.CreateDocumentRequest(parent=parent, document=document, document_id=document_id)
+            request = discoveryengine.CreateDocumentRequest(parent=parent, document=document, document_id=document_id)
 
             response = client.create_document(request=request)
             logging.info(f"Created document: {response.name}")
@@ -286,7 +286,7 @@ class VertexService:
         """Import files into a specific data store."""
         try:
             logging.info(f"Starting file import to data store {data_store_id}")
-            client = discoveryengine_v1beta.DocumentServiceClient(credentials=service_account.Credentials.from_service_account_file(VertexService.SERVICE_ACCOUNT_PATH))
+            client = discoveryengine.DocumentServiceClient(credentials=service_account.Credentials.from_service_account_file(VertexService.SERVICE_ACCOUNT_PATH))
 
             parent = client.data_store_path(
                 project=VertexService.PROJECT_ID,
@@ -302,9 +302,7 @@ class VertexService:
             # Create import request for each file with its content type
             for idx, file_info in enumerate(gcs_files, 1):
                 logging.info(f"Processing file {idx}/{len(gcs_files)}: {file_info['uri']}")
-                request = discoveryengine_v1beta.ImportDocumentsRequest(
-                    parent=parent, gcs_source=discoveryengine_v1beta.GcsSource(input_uris=[file_info["uri"]], data_schema="content"), document_option=discoveryengine_v1beta.ImportDocumentsRequest.DocumentOption(content_type=file_info["content_type"]), reconciliation_mode=discoveryengine_v1beta.ImportDocumentsRequest.ReconciliationMode.INCREMENTAL
-                )
+                request = discoveryengine.ImportDocumentsRequest(parent=parent, gcs_source=discoveryengine.GcsSource(input_uris=[file_info["uri"]], data_schema="content"), document_option=discoveryengine.ImportDocumentsRequest.DocumentOption(content_type=file_info["content_type"]), reconciliation_mode=discoveryengine.ImportDocumentsRequest.ReconciliationMode.INCREMENTAL)
 
                 # Start the import operation
                 operation = client.import_documents(request=request)

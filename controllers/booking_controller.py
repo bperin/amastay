@@ -13,7 +13,7 @@ router = APIRouter(tags=["bookings"])
 async def create_booking(data: CreateBooking, current_user: dict = Depends(get_current_user)):
     """Creates a new booking"""
     try:
-        new_booking = BookingService.create_booking(property_id=str(data.property_id), check_in=data.check_in, check_out=data.check_out, notes=data.notes)
+        new_booking = BookingService.create_booking(booking_data=data)
         return new_booking
     except ValueError as ve:
         logging.error(f"Validation error in create_booking: {ve}")
@@ -34,7 +34,7 @@ async def list_bookings(current_user: dict = Depends(get_current_user)):
         raise HTTPException(status_code=500, detail=str(e))
 
 
-@router.get("/list/properites/{property_id}", response_model=List[Booking], operation_id="get_bookings_for_property")
+@router.get("/list/properties/{property_id}", response_model=List[Booking], operation_id="get_bookings_for_property")
 async def list_bookings_for_property(property_id: str, current_user: dict = Depends(get_current_user)):
     """Lists all bookings for property"""
     try:
@@ -45,11 +45,11 @@ async def list_bookings_for_property(property_id: str, current_user: dict = Depe
         raise HTTPException(status_code=500, detail=str(e))
 
 
-@router.get("/get/{booking_id}", response_model=List[Booking], operation_id="get_booking")
+@router.get("/get/{booking_id}", response_model=Booking, operation_id="get_booking")
 async def get_booking(booking_id: str, current_user: dict = Depends(get_current_user)):
     """Retrieves a booking by its ID"""
     try:
-        booking = BookingService.get_booking_by_manager(booking_id)
+        booking = BookingService.get_booking_by_manager(current_user["id"], booking_id)
         if not booking:
             raise HTTPException(status_code=404, detail="Booking not found")
         return booking
@@ -75,7 +75,7 @@ async def update_booking(data: UpdateBooking, current_user: dict = Depends(get_c
 async def delete_booking(booking_id: str, current_user: dict = Depends(get_current_user)):
     """Deletes a booking"""
     try:
-        success = BookingService.delete_booking(str(booking_id))
+        success = BookingService.delete_booking(current_user["id"], booking_id)
         if success:
             return {"message": "Booking deleted successfully"}
         raise HTTPException(status_code=400, detail="Failed to delete booking")

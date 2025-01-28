@@ -159,12 +159,12 @@ class ScraperService:
 
             # Store text document in BASE_BUCKET
             logging.info("[DEBUG] Uploading text document...")
-            await storage_service.upload_document(property_id=property_id, file_content=doc_text, filename="data", content_type="text/plain")
+            await storage_service.upload_document(property_id=property_id, file_content=doc_text, filename="data")
             logging.info("[DEBUG] Text document uploaded successfully")
 
             # Store JSON document in JSON_BUCKET
             logging.info("[DEBUG] Uploading JSON document...")
-            await storage_service.upload_document(property_id=property_id, file_content=json.dumps(doc_dict), filename="data", content_type="application/json")
+            await storage_service.upload_document(property_id=property_id, file_content=json.dumps(doc_dict), filename="data")
             logging.info("[DEBUG] JSON document uploaded successfully")
             logging.info(f"[DEBUG] _upload_property_documents completed for property {property_id}")
 
@@ -191,6 +191,9 @@ class ScraperService:
             property_document.set_address(property.address)
 
             logging.info(f"[DEBUG] Property document initialized for {property.id}")
+
+            # Ensure search data store exists
+            await VertexService.create_data_store(property.id)  # Creates if doesn't exist
 
             # Set initial progress
             supabase_client.table("properties").update({"metadata_progress": 1}).eq("id", property.id).execute()
@@ -224,14 +227,17 @@ class ScraperService:
                 property_document.push_amenity(amenity)
             logging.info("[DEBUG] Property document updated with scraped data")
 
-            # Upload documents
+            # Upload documents and update search index
             logging.info("[DEBUG] Starting document upload")
             await ScraperService._upload_property_documents(property.id, property_document)
             logging.info("[DEBUG] Document upload completed")
+
+            # Update property metadata and progress
+            supabase_client.table("properties").update({"metadata_progress": 2}).eq("id", property.id).execute()
 
             logging.info(f"[DEBUG] Scraping completed for property {property.id}")
 
         except Exception as e:
             logging.error(f"[DEBUG] Error in scrape_property_background: {str(e)}")
-            logging.exception("Full traceback:")
+            logging.exception("[DEBUG] Full traceback:")
             raise

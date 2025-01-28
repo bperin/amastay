@@ -56,7 +56,7 @@ class LlamaImageService:
             gcs_uri: GCS path to the image (e.g. 'gs://bucket/image.jpg')
 
         Returns:
-            Detailed description of the property photo
+        Detailed description of the property photoa
         """
         try:
             client = cls.get_client()
