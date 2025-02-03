@@ -1,4 +1,4 @@
-from google.cloud.storage import Client
+from google.cloud.storage import Client, Bucket, Blob
 from google.oauth2 import service_account
 import logging
 import os
@@ -141,27 +141,15 @@ class StorageService:
             raise
 
     async def list_property_photos(self, property_id: str) -> List[str]:
-        """
-        Lists all photos for a given property in GCS.
-
-        Args:
-            property_id: The ID of the property
-
-        Returns:
-            List[str]: List of GCS URIs for the property's photos
-        """
+        """List all photos for a property"""
         try:
-            storage_client = Client.from_service_account_json(self.SERVICE_ACCOUNT_PATH)
-            bucket = storage_client.bucket(self.PHOTOS_BUCKET)
+            bucket = self.client.bucket(self.PHOTOS_BUCKET)
             prefix = f"properties/{property_id}/"
-
             blobs = bucket.list_blobs(prefix=prefix)
-            photo_uris = [f"gs://{self.PHOTOS_BUCKET}/{blob.name}" for blob in blobs]
-
-            return photo_uris
+            return [f"gs://{self.PHOTOS_BUCKET}/{blob.name}" for blob in blobs]
 
         except Exception as e:
-            logging.error(f"Error listing property photos: {e}")
+            logging.error(f"Error listing photos for property {property_id}: {e}")
             raise
 
     async def download_property_photos(self, property_id: str, output_dir: str) -> List[str]:
@@ -184,54 +172,38 @@ class StorageService:
             raise
 
     async def store_property_data(self, property_id: str, data: dict) -> List[Tuple[str, str]]:
-        """
-        Store property data and prepare for Vertex processing.
-
-        Args:
-            property_id: The property ID
-            data: Dictionary containing property data and images
-
-        Returns:
-            List[Tuple[str, str]]: List of (file_path, content_type) for stored files
-        """
+        """Store property data and return list of stored file paths."""
         stored_files = []
         logging.info(f"Starting to store property data for property {property_id}")
 
         try:
-            # 1. Store JSON data
+            # Store JSON data
             json_path = f"properties/{property_id}/data.json"
             logging.info(f"Storing JSON data at {json_path}")
-            await self._upload(bucket_name=self.JSON_BUCKET, file_content=json.dumps(data), destination_path=json_path, content_type="application/json")
+            await self.store_json(json_path, data)
             stored_files.append((json_path, "application/json"))
+            logging.info(f"Successfully stored JSON data")
 
-            # 2. Store text version for Vertex processing
-            text_content = self._convert_data_to_text(data)
-            text_path = f"properties/{property_id}/data.txt"
-            await self._upload(bucket_name=self.BASE_BUCKET, file_content=text_content, destination_path=text_path, content_type="text/plain")
-            stored_files.append((text_path, "text/plain"))
-
-            # 3. Store and process images
+            # Store images if present
             if "images" in data:
                 logging.info(f"Found {len(data['images'])} images to store")
                 for idx, image_url in enumerate(data["images"]):
-                    # Store original image
                     image_path = f"properties/{property_id}/images/{idx}.jpg"
-                    gcs_uri = await self.upload_photo(property_id=property_id, photo_url=image_url, filename=f"images/{idx}.jpg")
-                    if gcs_uri:
-                        stored_files.append((image_path, "image/jpeg"))
-                        logging.info(f"Successfully stored image {idx + 1}")
+                    logging.info(f"Storing image {idx + 1}/{len(data['images'])} from {image_url} to {image_path}")
+                    await self.store_image(image_path, image_url)
+                    stored_files.append((image_path, "image/jpeg"))
+                    logging.info(f"Successfully stored image {idx + 1}")
 
             logging.info(f"Successfully stored all property data. Total files: {len(stored_files)}")
             return stored_files
 
         except Exception as e:
             logging.error(f"Failed to store property data: {e}")
-            # Cleanup on failure
-            for file_path, _ in stored_files:
-                try:
+            if stored_files:
+                logging.info("Cleaning up stored files due to error")
+                for file_path, _ in stored_files:
+                    logging.info(f"Deleting file: {file_path}")
                     await self._delete_file(file_path)
-                except Exception as del_e:
-                    logging.error(f"Error during cleanup: {del_e}")
             raise
 
     def _convert_data_to_text(self, data: dict) -> str:
