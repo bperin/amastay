@@ -2964,13 +2964,13 @@ test = ["accelerate (>=0.24.1,<=0.27.0)", "apache-airflow (==2.9.3)", "apache-ai
 
 [[package]]
 name = "sagemaker-core"
-version = "1.0.19"
+version = "1.0.20"
 description = "An python package for sagemaker core functionalities"
 optional = false
 python-versions = ">=3.8"
 files = [
-    {file = "sagemaker_core-1.0.19-py3-none-any.whl", hash = "sha256:1fab1f7a856b52f48b65884c1f82ffac4116c37ec0b6e71a67a81f82adc02e48"},
-    {file = "sagemaker_core-1.0.19.tar.gz", hash = "sha256:cdd1e482d8283553f557612f80bd60ec273622efb7e245d8a14cd88ce767ee54"},
+    {file = "sagemaker_core-1.0.20-py3-none-any.whl", hash = "sha256:b18d1230b0f197785b7ee1d4d387fb350f38c0a4863b9466c08cb30382770ada"},
+    {file = "sagemaker_core-1.0.20.tar.gz", hash = "sha256:515ea794c067917124ab76534c9ff4c16be56a977d0b1f48cd2a3558ac99f5ab"},
 ]
 
 [package.dependencies]

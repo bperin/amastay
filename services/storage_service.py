@@ -1,4 +1,4 @@
-from google.cloud.storage import Client, Bucket, Blob
+from google.cloud import storage
 from google.oauth2 import service_account
 import logging
 import os
@@ -19,12 +19,12 @@ class StorageService:
     BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
     SERVICE_ACCOUNT_PATH = os.path.join(BASE_DIR, "amastay_service_account.json")
     BASE_BUCKET = "amastay_property_data_text"
-    JSON_BUCKET = "amastay_property_data_json"
+    JSON_BUCKET = "amastay_property_data_json"xx
     PHOTOS_BUCKET = "amastay_property_photos"
 
     def __init__(self):
-        credentials = service_account.Credentials.from_service_account_file(self.SERVICE_ACCOUNT_PATH)
-        self.client = Client(credentials=credentials)
+        credentials = service_account.Credentials.from_service_account_file(self.SERVICE_ACCOUNT_PATH, scopes=["https://www.googleapis.com/auth/cloud-platform"])
+        self.client = storage.Client(credentials=credentials, project="amastay")
 
     async def _upload(self, bucket_name: str, file_content: Union[str, bytes], destination_path: str, content_type: Optional[str] = None) -> Optional[str]:
         """Core upload method for GCS"""
@@ -34,14 +34,9 @@ class StorageService:
 
             # Handle different content types
             if isinstance(file_content, str):
-                blob.upload_from_string(file_content)
+                blob.upload_from_string(file_content, content_type=content_type)
             elif isinstance(file_content, bytes):
                 blob.upload_from_string(file_content, content_type=content_type)
-            else:
-                blob.upload_from_file(file_content)
-
-            if content_type:
-                blob.content_type = content_type
 
             gcs_uri = f"gs://{bucket_name}/{destination_path}"
             logging.info(f"File uploaded successfully to {gcs_uri}")
@@ -141,12 +136,9 @@ class StorageService:
             raise
 
     async def list_property_photos(self, property_id: str) -> List[str]:
-        """
-        Lists all photos for a given property in GCS.
-        """
+        """Lists all photos for a given property in GCS."""
         try:
-            storage_client = Client.from_service_account_json(self.SERVICE_ACCOUNT_PATH)
-            bucket = storage_client.bucket(self.PHOTOS_BUCKET)
+            bucket = self.client.bucket(self.PHOTOS_BUCKET)
             prefix = f"properties/{property_id}/"
 
             blobs = bucket.list_blobs(prefix=prefix)
