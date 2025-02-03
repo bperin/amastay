@@ -1,4 +1,4 @@
-from google.cloud.storage import Client, Bucket, Blob
+from google.cloud.storage import Client
 from google.oauth2 import service_account
 import logging
 import os
@@ -11,7 +11,6 @@ from models.document_model import Document
 from supabase_utils import supabase_client
 from services.download_service import DownloadService
 import uuid
-import google.cloud.storage as storage
 
 
 class StorageService:
@@ -152,7 +151,7 @@ class StorageService:
             List[str]: List of GCS URIs for the property's photos
         """
         try:
-            storage_client = storage.Client.from_service_account_json(self.SERVICE_ACCOUNT_PATH)
+            storage_client = Client.from_service_account_json(self.SERVICE_ACCOUNT_PATH)
             bucket = storage_client.bucket(self.PHOTOS_BUCKET)
             prefix = f"properties/{property_id}/"
 
