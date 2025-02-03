@@ -141,15 +141,21 @@ class StorageService:
             raise
 
     async def list_property_photos(self, property_id: str) -> List[str]:
-        """List all photos for a property"""
+        """
+        Lists all photos for a given property in GCS.
+        """
         try:
-            bucket = self.client.bucket(self.PHOTOS_BUCKET)
+            storage_client = Client.from_service_account_json(self.SERVICE_ACCOUNT_PATH)
+            bucket = storage_client.bucket(self.PHOTOS_BUCKET)
             prefix = f"properties/{property_id}/"
+
             blobs = bucket.list_blobs(prefix=prefix)
-            return [f"gs://{self.PHOTOS_BUCKET}/{blob.name}" for blob in blobs]
+            photo_uris = [f"gs://{self.PHOTOS_BUCKET}/{blob.name}" for blob in blobs]
+
+            return photo_uris
 
         except Exception as e:
-            logging.error(f"Error listing photos for property {property_id}: {e}")
+            logging.error(f"Error listing property photos: {e}")
             raise
 
     async def download_property_photos(self, property_id: str, output_dir: str) -> List[str]:
@@ -172,76 +178,57 @@ class StorageService:
             raise
 
     async def store_property_data(self, property_id: str, data: dict) -> List[Tuple[str, str]]:
-        """Store property data and return list of stored file paths."""
+        """
+        Store property data and prepare for Vertex processing.
+        """
         stored_files = []
-        logging.info(f"Starting to store property data for property {property_id}")
-
         try:
-            # Store JSON data
+            # 1. Store JSON data
             json_path = f"properties/{property_id}/data.json"
-            logging.info(f"Storing JSON data at {json_path}")
-            await self.store_json(json_path, data)
+            await self._upload(bucket_name=self.JSON_BUCKET, file_content=json.dumps(data), destination_path=json_path, content_type="application/json")
             stored_files.append((json_path, "application/json"))
-            logging.info(f"Successfully stored JSON data")
 
-            # Store images if present
-            if "images" in data:
-                logging.info(f"Found {len(data['images'])} images to store")
-                for idx, image_url in enumerate(data["images"]):
-                    image_path = f"properties/{property_id}/images/{idx}.jpg"
-                    logging.info(f"Storing image {idx + 1}/{len(data['images'])} from {image_url} to {image_path}")
-                    await self.store_image(image_path, image_url)
-                    stored_files.append((image_path, "image/jpeg"))
-                    logging.info(f"Successfully stored image {idx + 1}")
+            # 2. Store text version for Vertex processing
+            text_content = self._convert_data_to_text(data)
+            text_path = f"properties/{property_id}/data.txt"
+            await self._upload(bucket_name=self.BASE_BUCKET, file_content=text_content, destination_path=text_path, content_type="text/plain")
+            stored_files.append((text_path, "text/plain"))
 
-            logging.info(f"Successfully stored all property data. Total files: {len(stored_files)}")
             return stored_files
-
         except Exception as e:
             logging.error(f"Failed to store property data: {e}")
-            if stored_files:
-                logging.info("Cleaning up stored files due to error")
-                for file_path, _ in stored_files:
-                    logging.info(f"Deleting file: {file_path}")
-                    await self._delete_file(file_path)
             raise
 
-    def _convert_data_to_text(self, data: dict) -> str:
-        """
-        Convert property data to text format for Vertex processing.
-        """
-        text_parts = []
-
-        # Add property details
-        if "title" in data:
-            text_parts.append(f"Property: {data['title']}")
-        if "description" in data:
-            text_parts.append(f"Description: {data['description']}")
-        if "amenities" in data:
-            text_parts.append("Amenities:")
-            text_parts.extend([f"- {amenity}" for amenity in data["amenities"]])
-        if "location" in data:
-            text_parts.append(f"Location: {data['location']}")
-
-        # Add any other relevant fields
-        if "reviews" in data:
-            text_parts.append("\nReviews:")
-            text_parts.extend([f"- {review}" for review in data["reviews"]])
-
-        return "\n\n".join(text_parts)
-
-    async def _delete_file(self, file_path: str) -> None:
-        """Delete a file from GCS."""
+    async def store_json(self, path: str, data: dict) -> str:
+        """Store JSON data with proper content type"""
         try:
-            bucket_name = self.JSON_BUCKET if file_path.endswith(".json") else self.BASE_BUCKET
-            if file_path.endswith((".jpg", ".jpeg", ".png")):
-                bucket_name = self.PHOTOS_BUCKET
-
-            bucket = self.client.bucket(bucket_name)
-            blob = bucket.blob(file_path)
-            if blob.exists():
-                blob.delete()
-                logging.info(f"Deleted file: {file_path}")
+            logging.info(f"Converting data to JSON for path: {path}")
+            json_content = json.dumps(data)
+            logging.info(f"JSON content size: {len(json_content)} bytes")
+            result = await self._upload(bucket_name=self.BASE_BUCKET, file_content=json_content, destination_path=path, content_type="application/json")
+            logging.info(f"Successfully stored JSON at: {result}")
+            return result
         except Exception as e:
-            logging.error(f"Error deleting file {file_path}: {e}")
+            logging.error(f"Error storing JSON data at {path}: {e}")
+            raise
+
+    async def store_image(self, path: str, image_url: str) -> str:
+        """Store image with proper content type"""
+        try:
+            logging.info(f"Downloading image from: {image_url}")
+            async with aiohttp.ClientSession() as session:
+                async with session.get(image_url) as response:
+                    if response.status != 200:
+                        logging.error(f"Failed to download image. Status: {response.status}")
+                        raise Exception(f"Failed to download image: {response.status}")
+
+                    content = await response.read()
+                    content_type = response.headers.get("content-type", "image/jpeg")
+                    logging.info(f"Downloaded image size: {len(content)} bytes, content-type: {content_type}")
+
+                    result = await self._upload(bucket_name=self.PHOTOS_BUCKET, file_content=content, destination_path=path, content_type=content_type)
+                    logging.info(f"Successfully stored image at: {result}")
+                    return result
+        except Exception as e:
+            logging.error(f"Error storing image from {image_url} to {path}: {e}")
             raise
