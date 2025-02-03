@@ -2,41 +2,42 @@ from __future__ import annotations
 from typing import Optional, List
 from pydantic import BaseModel, Field
 from models import *
-
-
-class Guest(BaseModel):
-    first_name: str = ""
-    last_name: str = ""
-    email: Optional[str] = None
-    phone: Optional[str] = None
+from datetime import datetime
 
 
 class Booking(BaseModel):
     """Model representing a booking in the system"""
 
-    id: str = ""
-    property_id: str = ""
-    check_in: str = ""
-    check_out: str = ""
-    notes: Optional[str] = None
-    guests: List[Guest] = []
-    created_at: str = ""
-    updated_at: str
+    id: Optional[str]
+    property_id: str
+    user_id: str
+    check_in: datetime
+    check_out: datetime
+    guests: int  # Number of guests
+    total_price: float
+    status: str  # pending, confirmed, cancelled
+    created_at: Optional[datetime]
+    updated_at: Optional[datetime]
 
-    # Relationships
+    # Optional relationships
     property_: Optional[Property] = Field(default=None, alias="property")
     messages: Optional[List[Message]] = None
 
 
 class CreateBooking(BaseModel):
-    property_id: str = ""
-    check_in: str = ""
-    check_out: str = ""
-    notes: Optional[str] = None
-    guests: List[Guest] = []
+    """Input model for creating a booking"""
+
+    property_id: str
+    check_in: datetime
+    check_out: datetime
+    guests: int
+    total_price: float
 
 
 class UpdateBooking(BaseModel):
-    notes: Optional[str] = None
-    check_in: Optional[str] = None
-    check_out: Optional[str] = None
+    """Input model for updating a booking"""
+
+    check_in: Optional[datetime] = None
+    check_out: Optional[datetime] = None
+    guests: Optional[int] = None
+    status: Optional[str] = None

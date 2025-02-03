@@ -2,7 +2,7 @@
     "name": "amastay",
     "version": "1.0.0",
     "scripts": {
-        "run": "uvicorn app:app --reload --host 0.0.0.0 --port 5001",
+        "run": "poetry run uvicorn app:app --reload --host 0.0.0.0 --port 5001",
         "deploy:dev": "copilot svc deploy --name api --env develop --force",
         "deploy:staging": "copilot svc deploy --name api --env staging --force",
         "deploy:prod": "copilot svc deploy --name api --env production --force",
@@ -10,6 +10,6 @@
         "clean:python": "find . -type d -name \"__pycache__\" -exec rm -r {} + && find . -type f -name \"*.pyc\" -delete",
         "clean:pip": "pip cache purge",
         "clean": "npm run clean:python && npm run clean:pip",
-        "clear-cache": "rm -rf .venv && find . -name '*.pyc' -delete && find . -name '__pycache__' -type d -exec rm -r {} + && poetry cache clear . --all && poetry cache clear pypi --all && pip cache purge && poetry install --no-cache"
+        "clear-cache": "rm -rf .venv && find . -name '*.pyc' -delete && find . -name '__pycache__' -type d -exec rm -r {} + && poetry cache clear . --all && poetry cache clear pypi --all && /opt/homebrew/bin/pip3 cache purge && poetry install --no-cache"
     }
 }

@@ -1,5 +1,6 @@
 {
   "editor.formatOnSave": true,
+  "python.defaultInterpreterPath": "/opt/homebrew/bin/python3",
   "[python]": {
     "editor.defaultFormatter": "ms-python.black-formatter",
     "editor.formatOnSave": true
@@ -8,6 +9,7 @@
     "--line-length",
     "400"
   ],
+  "python.analysis.typeCheckingMode": "basic",
   "[dockerfile]": {
     "editor.formatOnSave": false,
     "editor.defaultFormatter": "ms-azuretools.vscode-docker"

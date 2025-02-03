@@ -1,112 +1,80 @@
 # services/auth_service.py
 
-from supabase_utils import supabase_client, supabase_admin_client
+from supabase_utils import supabase, auth, supabase_admin
+from fastapi import HTTPException
+from typing import Optional
 import logging
 import requests
 import time
 from gotrue import UserResponse, Session, AuthResponse
 from phone_utils import PhoneUtils
 
+logger = logging.getLogger(__name__)
+
 
 class AuthService:
 
     @staticmethod
-    def sign_up_with_email_and_password(first_name: str, last_name: str, email: str, password: str, phone: str, user_type: str) -> AuthResponse:
-        """
-        Signs up a new user with user type metadata.
-
-        Args:
-            first_name: User's first name
-            last_name: User's last name
-            email: User's email address
-            password: User's password
-            phone: User's phone number
-            user_type: User's type (e.g., owner)
-        """
+    def sign_up_with_email_and_password(email: str, password: str, phone: str, first_name: str, last_name: str, user_type: str = "owner"):
         try:
-            phone = PhoneUtils.normalize_phone(phone)
-            user_metadata = {"first_name": first_name, "last_name": last_name, "phone": phone, "user_type": user_type}
-            auth_response = supabase_client.auth.sign_up({"email": email, "options": {"data": user_metadata, "emailRedirectTo": "http://localhost:3000"}, "password": password})
+            # Create user with the new auth client
+            auth_response = auth.sign_up({"email": email, "password": password, "phone": phone, "data": {"first_name": first_name, "last_name": last_name, "user_type": user_type}})
 
             if not auth_response.user:
-                error_message = auth_response.error.message if auth_response.error else "Failed to sign up user"
-                logging.error(f"Failed to sign up user: {error_message}")
-                raise Exception(error_message)
+                raise HTTPException(status_code=400, detail="Failed to create user")
 
-            logging.debug(f"User signed up with ID: {auth_response.user.id}")
             return auth_response
 
         except Exception as e:
-            logging.error(f"Error during sign-up: {e}")
-            raise
+            logger.error(f"Sign up failed: {str(e)}")
+            raise HTTPException(status_code=400, detail=str(e))
 
     @staticmethod
-    def sign_in_with_email_and_password(email: str, password: str) -> Session:
-        """Logs in a user with email and password using direct Supabase REST API."""
+    def sign_in_with_email_and_password(email: str, password: str):
+        logger.info(f"Attempting sign in for email: {email[:3]}***")
         try:
-            # Define the URL for Supabase's sign-in endpoint
-            auth_url = f"{supabase_client.supabase_url}/auth/v1/token?grant_type=password"
+            # Basic auth - no extra options needed
+            logger.debug("Calling Supabase auth.sign_in_with_password")
+            auth_response = auth.sign_in_with_password({"email": email, "password": password})
 
-            # Set headers for the request
-            headers = {
-                "Content-Type": "application/json",
-                "apikey": supabase_client.supabase_key,
-                "Authorization": f"Bearer {supabase_client.supabase_key}",
-            }
+            logger.debug(f"Raw auth response type: {type(auth_response)}")
+            logger.debug(f"Raw auth response: {auth_response}")
 
-            # Make the request to the Supabase auth endpoint
-            response = requests.post(auth_url, json={"email": email, "password": password}, headers=headers)
+            if not auth_response:
+                logger.error("No auth response received from Supabase")
+                raise HTTPException(status_code=401, detail="Authentication failed")
 
-            if response.status_code != 200:
-                error_message = response.json().get("error_description", "Failed to sign in user")
-                logging.error(f"Failed to sign in user: {error_message}")
-                raise Exception(error_message)
+            logger.debug(f"Auth response has session: {hasattr(auth_response, 'session')}")
+            if not auth_response.session:
+                logger.error("Auth response missing session data")
+                raise HTTPException(status_code=401, detail="No session created")
 
-            # Convert raw JSON response to AuthResponse model
-            # auth_response = AuthResponse.model_validate(response.json())
-            logging.debug("User logged in successfully")
+            logger.info(f"Authentication successful for {email[:3]}***")
+            logger.debug(f"Session expires at: {auth_response.session.expires_at}")
+            return auth_response.session
 
-            return response.json()
-
+        except HTTPException as he:
+            logger.error(f"HTTP Exception during sign in: {str(he)}")
+            raise he
         except Exception as e:
-            logging.error(f"Error during login: {e}")
-            raise
+            logger.error(f"Unexpected error during sign in: {str(e)}", exc_info=True)
+            raise HTTPException(status_code=401, detail=str(e))
 
     @staticmethod
-    def sign_in_with_google(credential: str, nonce: str = None) -> Session:
-        """Signs in or signs up a user with Google credentials using direct Supabase REST API."""
+    def sign_in_with_google(credential: str, nonce: Optional[str] = None) -> Session:
+        """Signs in or signs up a user with Google credentials."""
         try:
-            # Define the URL for Supabase's OAuth sign-in endpoint
-            auth_url = f"{supabase_client.supabase_url}/auth/v1/token?grant_type=id_token"
+            # Sign in with Google using same pattern as password auth
+            auth_response = auth.sign_in_with_password({"email": credential, "password": "", "provider": "google"})  # Google OAuth token as email  # Empty password for OAuth
 
-            # Set headers for the request
-            headers = {
-                "Content-Type": "application/json",
-                "apikey": supabase_client.supabase_key,
-                "Authorization": f"Bearer {supabase_client.supabase_key}",
-            }
+            if not auth_response.session:
+                raise HTTPException(status_code=401, detail="Invalid Google credentials")
 
-            # Prepare the request body
-            body = {
-                "id_token": credential,
-                "provider": "google",
-            }
-            if nonce:
-                body["nonce"] = nonce
-
-            # Make the request to the Supabase auth endpoint
-            response = requests.post(auth_url, json=body, headers=headers)
-
-            if response.status_code == 200:
-                return response.json()
-            else:
-                error_message = response.json().get("error_description", "Failed to authenticate with Google")
-                logging.error(f"Failed to sign in with Google: {error_message}")
-                raise Exception(error_message)
+            return auth_response.session
 
         except Exception as e:
-            logging.error(f"Error during Google sign in: {e}")
-            raise
+            logger.error(f"Google sign in failed: {str(e)}")
+            raise HTTPException(status_code=401, detail=str(e))
 
     @staticmethod
     def refresh_token(refresh_token: str) -> Session:
@@ -119,13 +87,13 @@ class AuthService:
                 return {"error": "Refresh token is required"}, 400
 
             # Define the URL for Supabase's token refresh endpoint
-            token_url = f"{supabase_client.supabase_url}/auth/v1/token?grant_type=refresh_token"
+            token_url = f"{supabase.supabase_url}/auth/v1/token?grant_type=refresh_token"
 
             # Set headers for the request
             headers = {
                 "Content-Type": "application/json",
-                "apikey": supabase_client.supabase_key,
-                "Authorization": f"Bearer {supabase_client.supabase_key}",
+                "apikey": supabase.supabase_key,
+                "Authorization": f"Bearer {supabase.supabase_key}",
             }
 
             # Make the request to the Supabase token endpoint
@@ -161,7 +129,7 @@ class AuthService:
 
             access_token = auth_header.split(" ")[1]
 
-            user_response = supabase_client.auth.get_user(access_token)
+            user_response = supabase.auth.get_user(access_token)
             return user_response
 
         except Exception as e:
@@ -169,50 +137,21 @@ class AuthService:
             raise
 
     @staticmethod
-    def request_password_reset(*, email: str):
-        """
-        Requests a password reset for the given email using Supabase REST API
-
-        Args:
-            email: User's email address
-        """
+    def request_password_reset(email: str):
         try:
-            auth_url = f"{supabase_client.supabase_url}/auth/v1/recover"
-
-            headers = {"Content-Type": "application/json", "apikey": supabase_client.supabase_key, "Authorization": f"Bearer {supabase_client.supabase_key}"}
-
-            response = requests.post(auth_url, json={"email": email}, headers=headers)
-
-            if response.status_code != 200:
-                error_message = response.json().get("error_description", "Failed to request password reset")
-                logging.error(f"Failed to request password reset: {error_message}")
-                raise Exception(error_message)
-
-            return {"message": "Password reset instructions sent to email"}, 200
-
+            # Send password reset email
+            auth.reset_password_email(email)
+            return {"message": "Password reset email sent"}
         except Exception as e:
-            logging.error(f"Error requesting password reset: {e}")
-            raise
+            logger.error(f"Password reset request failed: {str(e)}")
+            raise HTTPException(status_code=400, detail=str(e))
 
     @staticmethod
-    def reset_password(*, access_token: str, new_password: str):
-        """
-        Resets the user's password using Supabase's verify_otp method
-
-        Args:
-            access_token: Recovery token from URL (the OTP)
-            new_password: New password to set
-        """
+    def reset_password(access_token: str, new_password: str):
         try:
-            # Verify the recovery token (OTP)
-            verify_response = supabase_client.auth.verify_otp({"token_hash": access_token, "type": "recovery", "new_password": new_password})
-
-            if not verify_response.user:
-                logging.error("Failed to verify recovery token")
-                raise Exception("Failed to reset password")
-
-            return {"message": "Password reset successfully"}, 200
-
+            # Update password with token
+            auth.update_user(access_token, {"password": new_password})
+            return {"message": "Password updated successfully"}
         except Exception as e:
-            logging.error(f"Error resetting password: {e}")
-            raise
+            logger.error(f"Password reset failed: {str(e)}")
+            raise HTTPException(status_code=400, detail=str(e))

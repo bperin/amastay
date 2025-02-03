@@ -18,19 +18,17 @@ logger = logging.getLogger(__name__)
 router = APIRouter(tags=["authentication"])
 
 
-@router.post("/signup", response_model=AuthResponse, operation_id="signup")
+@router.post("/signup", response_model=AuthResponse)
 async def signup(data: SignupInput):
-    """Signs up a new user and sends an OTP to their phone number."""
+    """Signs up a new user."""
     try:
-        # Call the AuthService to handle sign-up
-        user = AuthService.sign_up_with_email_and_password(first_name=data.first_name, last_name=data.last_name, email=data.email, password=data.password, phone=data.phone, user_type="owner")
-        return user
-    except ValueError as ve:
-        logger.warning(f"Signup failed: {ve}")
-        raise HTTPException(status_code=400, detail=str(ve))
+        response = AuthService.sign_up_with_email_and_password(email=data.email, password=data.password, phone=data.phone, first_name=data.first_name, last_name=data.last_name)
+        return response
+    except HTTPException as he:
+        raise he
     except Exception as e:
-        logger.error(f"Error in signup: {e}")
-        raise HTTPException(status_code=500, detail="An unexpected error occurred")
+        logger.error(f"Signup failed: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
 
 
 @router.post("/refresh_token", response_model=Session, operation_id="refresh_token")
@@ -60,13 +58,29 @@ async def logout():
     return AuthService.logout()
 
 
-@router.post("/signin", response_model=Session, operation_id="signin")
+@router.post("/signin", response_model=Session)
 async def login(data: LoginInput):
     """Logs in a user with email and password."""
+    logger.info("Received login request")
+    logger.debug(f"Login data: email={data.email[:3]}***, password=***")
+
     try:
-        return AuthService.sign_in_with_email_and_password(data.email, data.password)
+        # Validate input
+        if not data.email or not data.password:
+            logger.error("Missing email or password")
+            raise HTTPException(status_code=400, detail="Email and password are required")
+
+        # Attempt login
+        session = AuthService.sign_in_with_password(email=data.email, password=data.password)
+
+        logger.info("Login successful")
+        return session
+
+    except HTTPException as he:
+        logger.error(f"Login failed with HTTP error: {he.detail}")
+        raise he
     except Exception as e:
-        logger.error(f"Login failed: {e}")
+        logger.error(f"Login failed with error: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
 
 
