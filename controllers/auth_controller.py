@@ -71,7 +71,7 @@ async def login(data: LoginInput):
             raise HTTPException(status_code=400, detail="Email and password are required")
 
         # Attempt login
-        session = AuthService.sign_in_with_password(email=data.email, password=data.password)
+        session = AuthService.sign_in_with_email_and_password(email=data.email, password=data.password)
 
         logger.info("Login successful")
         return session

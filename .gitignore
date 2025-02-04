@@ -4,6 +4,8 @@ __pycache__/
 *$py.class
 *.so
 
+deepseek.py
+
 .DS_Store
 .depending
 depending
