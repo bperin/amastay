@@ -1,6 +1,6 @@
 import unittest
 import os
-from ..supabase_utils import supabase_client, SUPABASE_URL
+from ...supabase_utils import supabase_client, SUPABASE_URL
 
 
 class TestSupabaseConnection(unittest.TestCase):

@@ -9,7 +9,6 @@ class TestSupabaseConnection(unittest.TestCase):
         self.assertIsNotNone(SUPABASE_URL)
         self.assertIsNotNone(supabase_client)
 
-        # Test connection by checking if client is initialized
         try:
             self.assertTrue(supabase_client.auth is not None)
         except Exception as e:

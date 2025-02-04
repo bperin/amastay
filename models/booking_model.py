@@ -3,6 +3,7 @@ from typing import Optional, List
 from pydantic import BaseModel, Field
 from models import *
 from datetime import datetime
+from models.guest_model import Guest  # Import existing Guest model
 
 
 class Booking(BaseModel):
@@ -30,7 +31,6 @@ class CreateBooking(BaseModel):
     property_id: str
     check_in: datetime
     check_out: datetime
-    guests: int
     total_price: float
 
 
@@ -39,5 +39,10 @@ class UpdateBooking(BaseModel):
 
     check_in: Optional[datetime] = None
     check_out: Optional[datetime] = None
-    guests: Optional[int] = None
+    guest_count: Optional[int] = None
     status: Optional[str] = None
+
+
+class BookingDetailsResponse(BaseModel):
+    booking: Booking
+    property_details: dict  # Property details can be added as needed

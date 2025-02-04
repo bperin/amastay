@@ -8,7 +8,7 @@ from jwt import PyJWTError
 
 app = FastAPI()
 
-JWT_SECRET = os.environ["JWT_SECRET"]
+JWT_SECRET = os.environ["SUPABASE_JWT_SECRET"]
 JWT_ALGORITHM = "HS256"
 SUPABASE_URL = os.environ["SUPABASE_URL"]
 
