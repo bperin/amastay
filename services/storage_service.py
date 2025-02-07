@@ -48,10 +48,10 @@ class StorageService:
 
     async def upload_document(self, property_id: str, file_content: str, filename: str, content_type: str) -> None:
         """Upload a document to the appropriate bucket based on content type"""
-        try:
-            # Select bucket based on content type
-            bucket_name = self.JSON_BUCKET if content_type == "application/json" else self.BASE_BUCKET
+        bucket_name = self.JSON_BUCKET if content_type == "application/json" else self.BASE_BUCKET
+        blob_name = None
 
+        try:
             # Generate UUID filename with proper extension
             file_uuid = str(uuid.uuid4())
             extension = "json" if content_type == "application/json" else "txt"
@@ -78,37 +78,32 @@ class StorageService:
 
         except Exception as e:
             logging.error(f"Failed to upload document: {str(e)}")
-            logging.error(f"Bucket: {bucket_name}, Blob: {blob_name}")
+            if blob_name:  # Only log if blob_name was set
+                logging.error(f"Bucket: {bucket_name}, Blob: {blob_name}")
             logging.error(f"Content type: {content_type}")
             raise
 
-    async def upload_photo(self, property_id: str, photo_url: str, filename: str) -> Optional[str]:
-        """Upload a photo from URL to property photos folder"""
+    async def upload_photo(self, property_id: str, photo_path: str, filename: str) -> Optional[str]:
+        """
+        Upload a photo from a local file path to Google Cloud Storage
+        Returns the public URL of the uploaded photo
+        """
         try:
-            logging.info(f"[DEBUG] StorageService: Starting photo upload from {photo_url}")
+            destination_blob_name = f"properties/{property_id}/{filename}"
+            bucket = self.client.bucket(self.PHOTOS_BUCKET)
+            blob = bucket.blob(destination_blob_name)
 
-            # Download photo using download service
-            download_service = DownloadService()
-            result = await download_service.download_from_url(photo_url)
+            # Upload the local file
+            blob.upload_from_filename(photo_path)
 
-            if not result:
-                logging.error(f"[DEBUG] StorageService: Failed to download photo from {photo_url}")
-                return None
+            # Make the blob publicly accessible
+            blob.make_public()
 
-            content, content_type = result
-            logging.info(f"[DEBUG] StorageService: Downloaded {len(content)} bytes with type {content_type}")
-
-            # Upload to GCS
-            destination_path = f"properties/{property_id}/{filename}"
-            gcs_uri = await self._upload(bucket_name=self.PHOTOS_BUCKET, file_content=content, destination_path=destination_path, content_type=content_type or "image/jpeg")
-
-            logging.info(f"[DEBUG] StorageService: Successfully uploaded photo to {gcs_uri}")
-            return gcs_uri
+            return blob.public_url
 
         except Exception as e:
-            logging.error(f"[DEBUG] StorageService: Error uploading photo: {str(e)}")
-            logging.exception("[DEBUG] StorageService: Upload error traceback:")
-            raise
+            logging.error(f"Failed to upload photo: {e}")
+            return None
 
     async def download_photo(self, property_id: str, photo_filename: str, local_path: Optional[str] = None) -> Optional[Tuple[str, bytes]]:
         """

@@ -13,9 +13,9 @@ class LlamaImageService:
     """
 
     # Environment variables
-    ENDPOINT = os.getenv("GOOGLE_ENDPOINT", "us-central1-aiplatform.googleapis.com")
-    REGION = os.getenv("GOOGLE_REGION", "us-central1")
-    PROJECT_ID = os.getenv("GOOGLE_PROJECT_ID", "amastay")
+    ENDPOINT = os.environ["GOOGLE_ENDPOINT"]
+    REGION = os.environ["GOOGLE_REGION"]
+    PROJECT_ID = os.environ["GOOGLE_PROJECT_ID"]
     BASE_URL = f"https://{ENDPOINT}/v1beta1/projects/{PROJECT_ID}/locations/{REGION}/endpoints/openapi"
 
     # Service account path
@@ -33,7 +33,7 @@ class LlamaImageService:
     """
 
     @classmethod
-    def get_client(cls) -> Optional[OpenAI]:
+    def get_client(cls) -> OpenAI:
         """Get an OpenAI client configured for Vertex AI"""
         try:
             credentials = service_account.Credentials.from_service_account_file(cls.SERVICE_ACCOUNT_PATH, scopes=["https://www.googleapis.com/auth/cloud-platform"])
@@ -45,7 +45,7 @@ class LlamaImageService:
 
         except Exception as e:
             logging.error(f"Error creating Llama Vision client: {str(e)}")
-            return None
+            return None  # type: ignore
 
     @classmethod
     async def analyze_image(cls, gcs_uri: str) -> str:
@@ -56,12 +56,11 @@ class LlamaImageService:
             gcs_uri: GCS path to the image (e.g. 'gs://bucket/image.jpg')
 
         Returns:
-        Detailed description of the property photoa
+            str: Detailed description of the property photo
         """
         try:
             client = cls.get_client()
             if not client:
-                logging.error("Failed to initialize Llama Vision client")
                 return "Error: Failed to initialize image analysis service"
 
             logging.info(f"Analyzing image: {gcs_uri}")
@@ -69,7 +68,7 @@ class LlamaImageService:
 
             description = response.choices[0].message.content
             logging.info(f"Successfully analyzed image: {gcs_uri[:100]}...")
-            return description
+            return description or "No description generated"
 
         except Exception as e:
             error_msg = f"Error analyzing image {gcs_uri}: {str(e)}"
